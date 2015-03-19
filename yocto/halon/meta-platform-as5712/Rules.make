@@ -6,9 +6,9 @@
 # photocopied, reproduced, or translated into another programming language.
 # without prior written consent of the Hewlett-Packard Development Co., L. P.
 
-MAGMA_KERNEL_FILE = $(MAGMA_BZIMAGE_FILE)
-MAGMA_FS_FILE = $(MAGMA_CPIO_FS_FILE)
-MAGMA_PRODUCT_FS_TARGET = halon-disk-image
+HALON_KERNEL_FILE = $(HALON_BZIMAGE_FILE)
+HALON_FS_FILE = $(HALON_CPIO_FS_FILE)
+HALON_PRODUCT_FS_TARGET = halon-disk-image
 ONIE_INSTALLER_RECIPE = halon-onie-installer
 ONIE_INSTALLER_FILE = onie-installer-x86_64-as5712_54x
 

@@ -18,9 +18,9 @@ SRC_URI[kernel.sha256sum] = "d4b9e522925d9b1b3fd130c8b7690ef6af4faf118fc4c5e28df
 
 do_magma_dts() {
    if test "${ARCH}" = "powerpc" ; then
-      if test -n "${MAGMA_PLATFORM_DTS_FILE}" ; then
-         echo "Updating in-kernel dts file with ${MAGMA_PLATFORM_DTS_FILE}"
-         cp ${MAGMA_PLATFORM_DTS_FILE} ${S}/arch/powerpc/boot/dts/
+      if test -n "${HALON_PLATFORM_DTS_FILE}" ; then
+         echo "Updating in-kernel dts file with ${HALON_PLATFORM_DTS_FILE}"
+         cp ${HALON_PLATFORM_DTS_FILE} ${S}/arch/powerpc/boot/dts/
       fi
    fi
 }

@@ -6,4 +6,4 @@
 # photocopied, reproduced, or translated into another programming language.
 # without prior written consent of the Hewlett-Packard Development Co., L. P.
 
-MAGMA_PRODUCT_FS_TARGET = halon-image
+HALON_PRODUCT_FS_TARGET = halon-image
