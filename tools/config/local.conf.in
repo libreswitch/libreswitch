@@ -204,7 +204,7 @@ SOURCE_MIRROR_URL ?= "http://##HALON_ARCHIVE_ADDRESS##/archive/downloads/"
 INHERIT += "own-mirrors" 
 BB_GENERATE_MIRROR_TARBALLS = "1"
 
-# This line will be enabled by magma if any of the directories above is found and
+# This line will be enabled by halon if any of the directories above is found and
 # writable
 ##SSTATE_DIR##
 

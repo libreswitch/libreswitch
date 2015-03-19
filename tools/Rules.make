@@ -199,7 +199,7 @@ images/$(CONFIGURED_PLATFORM).dtb: $(HALON_PLATFORM_DTS_FILE)
 	$(V) cp $< images/$(CONFIGURED_PLATFORM).dts
 	$(V) dtc images/$(CONFIGURED_PLATFORM).dts -O dtb -o $@ -p 2048
 
-MKIMAGE=magma/bin/mkimage
+MKIMAGE=tools/bin/mkimage
 
 $(MKIMAGE): build/tmp/sysroots/$(HOST_ARCH)-linux/usr/bin/uboot-mkimage
 	$(V) ln -sf $(HALON_ROOT)/build/tmp/sysroots/$(HOST_ARCH)-linux/usr/bin/mkimage $@

@@ -19,7 +19,7 @@ SCONF_VERSION = "1"
 # To use git with a proxy, you must use an external git proxy command, such as
 # the one provided by scripts/oe-git-proxy.sh. To use this script, copy it to
 # your PATH and uncomment the following:
-GIT_PROXY_COMMAND = "##HALON_ROOT##/magma/bin/git-proxy.sh"
+GIT_PROXY_COMMAND = "##HALON_ROOT##/tools/bin/git-proxy.sh"
 #ALL_PROXY ?= "socks://socks.example.com:1080"
 #or
 #ALL_PROXY ?= "https://proxy.example.com:8080"
