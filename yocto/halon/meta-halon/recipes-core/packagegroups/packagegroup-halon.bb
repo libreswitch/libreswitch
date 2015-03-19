@@ -68,6 +68,4 @@ RDEPENDS_packagegroup-halon-min-debug = "\
     "
 
 RDEPENDS_packagegroup-halon-core = "\
-    openvswitch \
-    ovsdb \
     "
