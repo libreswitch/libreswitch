@@ -1,0 +1,18 @@
+fix host contamination
+
+Make sure that the Makefile uses gcc cross
+compiler from build system, but not use
+the host gcc
+
+Signed-off-by: Vu Tran <vu.tran@windriver.com>
+
+diff --git a/Makefile b/Makefile
+index 1ae018e..4c23b45 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,5 +1,3 @@
+-CC=gcc
+-CXX=g++
+ CFLAGS+=-D_FILE_OFFSET_BITS=64
+ #CXXFLAGS+=-Wall -D_FILE_OFFSET_BITS=64 -D USE_UTF16
+ CXXFLAGS+=-Wall -D_FILE_OFFSET_BITS=64

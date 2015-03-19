@@ -1,0 +1,18 @@
+Index: gdb-7.4/gdb/gdbserver/remote-utils.c
+===================================================================
+--- gdb-7.4.orig/gdb/gdbserver/remote-utils.c
++++ gdb-7.4/gdb/gdbserver/remote-utils.c
+@@ -597,6 +597,13 @@ try_rle (char *buf, int remaining, unsig
+   *csum += buf[0];
+   *(*p)++ = buf[0];
+ 
++#ifdef __arm__
++  /* When using the t32server software along with run-mode debugging
++   * over DCC, we need to disable run length encoding.
++   */
++  return 1;
++#endif
++
+   /* Don't go past '~'.  */
+   if (remaining > 97)
+     remaining = 97;

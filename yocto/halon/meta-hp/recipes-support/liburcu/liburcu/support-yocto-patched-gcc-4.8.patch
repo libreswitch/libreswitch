@@ -1,0 +1,13 @@
+Index: userspace-rcu-0.8.4/urcu/compiler.h
+===================================================================
+--- userspace-rcu-0.8.4.orig/urcu/compiler.h
++++ userspace-rcu-0.8.4/urcu/compiler.h
+@@ -121,7 +121,7 @@
+  * http://gcc.gnu.org/bugzilla/show_bug.cgi?id=58854
+  */
+ # ifdef __ARMEL__
+-#  if URCU_GCC_VERSION >= 40800 && URCU_GCC_VERSION <= 40802
++#  if URCU_GCC_VERSION >= 40800 && URCU_GCC_VERSION <= 40801
+ #   error Your gcc version produces clobbered frame accesses
+ #  endif
+ # endif

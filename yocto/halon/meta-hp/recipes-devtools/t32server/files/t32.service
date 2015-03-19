@@ -1,0 +1,9 @@
+[Unit]
+Description=T32 Debug Server
+ConditionPathExists=|/usr/bin/t32server
+
+[Service]
+ExecStart=/usr/bin/t32server
+
+[Install]
+WantedBy=getty.target

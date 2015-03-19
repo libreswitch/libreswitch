@@ -1,0 +1,11 @@
+[Unit]
+Description=TCF Agent Service
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/tcf-agent -L- -l0
+
+ExecStop=/sbin/killall -9 tcf-agent
+
+[Install]
+WantedBy=multi-user.target
