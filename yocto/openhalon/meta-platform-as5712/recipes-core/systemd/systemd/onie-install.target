@@ -1,0 +1,10 @@
+[Unit]
+Description=ONIE Installer mode
+Documentation=man:systemd.special(7)
+DefaultDependencies=no
+Requires=onie-install.service
+After=onie-install.service
+AllowIsolate=yes
+
+[Install]
+Alias=onie-install.target

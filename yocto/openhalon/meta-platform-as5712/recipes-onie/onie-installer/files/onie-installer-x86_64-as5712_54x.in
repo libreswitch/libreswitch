@@ -1,0 +1,98 @@
+#!/bin/sh
+
+halon_installer_version="0.2"
+echo "Halon ONIE installer... $halon_installer_version"
+
+NOS_PARTITION_SIZE=500M
+# Set system partition (bit 0) attributes.
+attr_bitmask="0x0000000000000001"
+label="halon"
+mount_point=/mnt/nos
+
+setup_nos_partition()
+{
+    echo "==== Creating a new NOS partition (#${NOS_PARTITION_NUMBER}, label $label)"
+    first_sector=$(($(sgdisk -i $((${NOS_PARTITION_NUMBER} - 1)) ${NOS_DISK} | grep 'Last sector:' | awk '{ print $3 }') + 1))
+    sgdisk --new=${NOS_PARTITION_NUMBER}:${first_sector}:+${NOS_PARTITION_SIZE} \
+       --typecode=${NOS_PARTITION_NUMBER}:8300 \
+       --attributes=${NOS_PARTITION_NUMBER}:=:$attr_bitmask \
+       --change-name=${NOS_PARTITION_NUMBER}:"$label"  ${NOS_DISK} || {
+            echo "ERROR: Failed to create partition ${NOS_DISK}${NOS_PARTITION_NUMBER}!"
+            exit 1
+        }
+    partprobe ${NOS_DISK}
+
+    echo "==== Formatting NOS partition in ext4"
+    mkfs.ext4 -L "$label" -q ${NOS_DISK}${NOS_PARTITION_NUMBER}
+}
+
+populate_rootfs()
+{
+    echo "==== Populating the root filesystem"
+    mkdir -p $mount_point
+    mount -t ext4 ${NOS_DISK}${NOS_PARTITION_NUMBER} $mount_point
+    prev_dir=$(pwd)
+    source_path=$(realpath "$0")
+    cd $mount_point
+    sed -e '1,/^exit_marker$/d' "$source_path" | gzip -cd - | cpio -idm || {
+        echo "ERROR: Failed to populate the root filesystem on ${NOS_DISK}${NOS_PARTITION_NUMBER}!"
+        exit 1
+    }
+    echo "==== Installing NOS GRUB"
+    sed -i -e "s/HALON_BOOT_PART_NUM/${NOS_PARTITION_NUMBER}/g" ${mount_point}/boot/grub/grub.cfg
+    ${mount_point}/usr/sbin/grub-install --force --boot-directory ${mount_point}/boot --recheck ${NOS_DISK} || {
+        echo "ERROR: Failed to install the NOS GRUB!"
+        exit 1
+    }
+    chattr +i ${mount_point}/boot/grub/i386-pc/core.img
+
+    cd $prev_dir
+    umount $mount_point
+}
+
+
+# Make sure we are running in the ONIE environment.
+[ "$(uname -n)" != "onie" ] && {
+    echo "ERROR: This machine does not seem to be running ONIE; aborting!"
+    exit 1
+}
+
+# Get the running machine configuration info.
+[ -r /etc/machine.conf ] && . /etc/machine.conf
+
+# Make sure that the machine matches the firmware image.
+[ "$onie_machine" != "accton_as5712_54x" ] && {
+    echo "ERROR: This machine is not an accton_as5712_54x; aborting!"
+    exit 1
+}
+
+NOS_DISK=$(blkid | awk '/LABEL="halon"/ {print substr ($1,0,8)}')
+if [ -n "${NOS_DISK}" ]; then
+    NOS_PARTITION_NUMBER=$(blkid | awk '/LABEL="halon"/ {print substr ($1,9,length($1)-9)}')
+
+    echo "==== Removing existing NOS partition (#${NOS_PARTITION_NUMBER})"
+    # Delete the partition
+    sgdisk -d ${NOS_PARTITION_NUMBER} ${NOS_DISK} || {
+        echo "ERROR: Failed to delete partition ${NOS_DISK}${NOS_PARTITION_NUMBER}!"
+        exit 1
+    }
+    partprobe ${NOS_DISK}
+else
+    # Install NOS on the same block device as ONIE
+    NOS_DISK=$(blkid | awk '/LABEL="ONIE-BOOT"/ {print substr ($1,0,8)}')
+
+    # Find next available partition
+    NOS_PARTITION_NUMBER=$(($(sgdisk -p ${NOS_DISK} | awk END'{print $1}') + 1))
+
+    if [ -z "${NOS_PARTITION_NUMBER}" ]; then
+        echo "ERROR: Failed to find an available partition for installation!"
+        exit 1
+    fi
+fi
+
+setup_nos_partition
+populate_rootfs
+
+echo "Halon installation completed"
+exit 0
+exit_marker

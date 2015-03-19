@@ -1,0 +1,259 @@
+--- linux-3.8-rc7-orig/drivers/i2c/muxes/i2c-mux-mmio.c	1969-12-31 16:00:00.000000000 -0800
++++ linux-3.8-rc7/drivers/i2c/muxes/i2c-mux-mmio.c	2013-02-19 10:42:54.000408214 -0800
+@@ -0,0 +1,256 @@
++/*
++ * I2C multiplexer using MMIO
++ *
++ * Based on i2c-mux-gpio.c by
++ * Peter Korsgaard <peter.korsgaard@barco.com>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++
++#include <linux/i2c.h>
++#include <linux/i2c-mux.h>
++#include <linux/init.h>
++#include <linux/module.h>
++#include <linux/slab.h>
++#include <linux/of_i2c.h>
++#include <asm/io.h>
++
++/* MUX has no specific idle mode */
++#define I2C_MUX_MMIO_NO_IDLE    ((unsigned)-1)
++
++#define I2C_MUX_MMIO_NAME "i2c-mux-mmio"
++
++/**
++ * struct i2c_mux_mmio_data
++ * @parent: Parent I2C bus adapter number
++ * @base_nr: Base I2C bus number to number adapters from or zero for dynamic
++ * @values: Array of bitmasks for each position
++ * @n_values: Number of multiplexer positions (busses to instantiate)
++ * @classes: Optional I2C auto-detection classes
++ * @idle: Bitmask to write to MUX when idle or MMIO_I2CMUX_NO_IDLE if not used
++ * @mmio-base: Base address of memory-mapped IO register
++ */
++struct i2c_mux_mmio_data {
++    int parent;
++    int base_nr;
++    const unsigned *values;
++    int n_values;
++    const unsigned *classes;
++    unsigned idle;
++        unsigned mmio_address;
++};
++
++struct mmiomux {
++    struct i2c_adapter *parent;
++    struct i2c_adapter **adap; /* child busses */
++    struct i2c_mux_mmio_data data;
++    struct device dev;
++    struct resource *res;
++    void *iomem;
++};
++
++struct mmiomux *mux;
++
++static void i2c_mux_mmio_set(const struct mmiomux *mux, unsigned val)
++{
++    //printk("Writing 0x%08x to 0x%p\n", val, mux->iomem);
++
++    iowrite32be(val, (uint32_t *)(mux->iomem));
++}
++
++static int i2c_mux_mmio_select(struct i2c_adapter *adap, void *data, u32 chan)
++{
++    struct mmiomux *mux = data;
++
++    i2c_mux_mmio_set(mux, mux->data.values[chan]);
++
++    return 0;
++}
++
++static int i2c_mux_mmio_deselect(struct i2c_adapter *adap, void *data, u32 chan)
++{
++    struct mmiomux *mux = data;
++
++    i2c_mux_mmio_set(mux, mux->data.idle);
++
++    return 0;
++}
++
++static int i2c_mux_mmio_probe_dt(struct mmiomux *mux)
++{
++    struct device_node *np;
++    struct device_node *adapter_np, *child;
++    struct i2c_adapter *adapter;
++    unsigned *values;
++    int i = 0;
++
++    np = of_find_compatible_node(NULL, NULL, "i2c-mux-mmio");
++    if (!np) {
++        printk("No /i2cmux entry in device tree");
++        return -ENODEV;
++    }
++    adapter_np = of_parse_phandle(np, "i2c-parent", 0);
++    if (!adapter_np) {
++        printk("Cannot parse i2c-parent\n");
++        return -ENODEV;
++    }
++    adapter = of_find_i2c_adapter_by_node(adapter_np);
++    if (!adapter) {
++        printk("Cannot find parent bus\n");
++        return -ENODEV;
++    }
++    
++    if (of_property_read_u32(np, "mmio-address", &mux->data.mmio_address)){
++        printk("Could not read property mmio-address\n");
++        return -ENODEV;
++    }
++
++    if (of_property_read_u32(np, "idle-state", &mux->data.idle))
++        mux->data.idle = I2C_MUX_MMIO_NO_IDLE;
++
++    mux->dev.of_node = np;
++    
++    mux->data.parent = i2c_adapter_id(adapter);
++    put_device(&adapter->dev);
++
++    mux->data.n_values = of_get_child_count(np);
++
++    values = kzalloc(sizeof(*mux->data.values) * mux->data.n_values,
++                     GFP_KERNEL);
++    if (!values) {
++        printk("Cannot allocate values array");
++        return -ENOMEM;
++    }
++
++    for_each_child_of_node(np, child) {
++        of_property_read_u32(child, "reg", values + i);
++        i++;
++    }
++    mux->data.values = values;
++
++    return 0;
++}
++
++int i2c_mux_mmio_init(void)
++{
++    struct i2c_adapter *parent;
++    int (*deselect) (struct i2c_adapter *, void *, u32);
++    unsigned initial_state;
++    int i, ret;
++
++    mux = kzalloc(sizeof(*mux), GFP_KERNEL);
++    if (!mux) {
++        printk("Cannot allocate mmiomux structure");
++        return -ENOMEM;
++    }
++
++    ret = i2c_mux_mmio_probe_dt(mux);
++    if (ret < 0) {
++        printk("i2c_mux_mmio_probe_dt failed");
++        return ret;
++    }
++
++    parent = i2c_get_adapter(mux->data.parent);
++    if (!parent) {
++        printk("Parent adapter (%d) not found\n", mux->data.parent);
++        return -ENODEV;
++    }
++
++    mux->parent = parent;
++
++    mux->adap = kzalloc(sizeof(*mux->adap) * mux->data.n_values,
++                 GFP_KERNEL);
++    if (!mux->adap) {
++        printk("Cannot allocate child i2c_adapter structure");
++        ret = -ENOMEM;
++        goto alloc_failed;
++    }
++
++    if (mux->data.idle != I2C_MUX_MMIO_NO_IDLE) {
++        initial_state = mux->data.idle;
++        deselect = i2c_mux_mmio_deselect;
++    } else {
++        initial_state = mux->data.values[0];
++        deselect = NULL;
++    }
++
++    /* Reserve an I/O memory region */
++/* Disable this for now to allow sharing... maybe a bad idea...
++    mux->res = request_mem_region(mux->data.mmio_address,
++                    sizeof(mux->data.mmio_address),
++                    I2C_MUX_MMIO_NAME);
++    if (mux->res == NULL) {
++        printk("request_mem_region returned error\n");
++        return -ENODEV;
++    }
++*/
++
++    /* Remap I/O memory */
++    mux->iomem = ioremap_nocache(mux->data.mmio_address,
++                    sizeof(mux->data.mmio_address));
++    if (mux->iomem == NULL) {
++        printk("ioremap_nocache returned error\n");
++        return -ENODEV;
++    }
++
++    for (i = 0; i < mux->data.n_values; i++) {
++        u32 nr = mux->data.base_nr ? (mux->data.base_nr + i) : 0;
++        unsigned int class = mux->data.classes ? mux->data.classes[i] : 0;
++
++        mux->adap[i] = i2c_add_mux_adapter(parent, &mux->dev, mux, nr,
++                           i, class,
++                           i2c_mux_mmio_select, deselect);
++        if (!mux->adap[i]) {
++            ret = -ENODEV;
++            printk("Failed to add adapter %d\n", i);
++            goto add_adapter_failed;
++        }
++    }
++
++    printk("%d port mux on %s adapter\n",
++         mux->data.n_values, parent->name);
++
++    return 0;
++
++add_adapter_failed:
++    for (; i > 0; i--)
++        i2c_del_mux_adapter(mux->adap[i - 1]);
++
++    iounmap(mux->iomem);
++/* Disabled
++    release_mem_region(mux->data.mmio_address, sizeof(mux->data.mmio_address));
++ */
++
++alloc_failed:
++    i2c_put_adapter(parent);
++
++    return ret;
++}
++
++void i2c_mux_mmio_exit(void)
++{
++    int i;
++
++    for (i = 0; i < mux->data.n_values; i++)
++        i2c_del_mux_adapter(mux->adap[i]);
++
++    i2c_put_adapter(mux->parent);
++
++    iounmap(mux->iomem);
++    /* Disabled
++    release_mem_region(mux->data.mmio_address,
++                    sizeof(mux->data.mmio_address));
++    */
++
++    kfree(mux);
++
++    return;
++}
++
++module_init(i2c_mux_mmio_init);
++module_exit(i2c_mux_mmio_exit);
++MODULE_DESCRIPTION("MMIO-based I2C multiplexer driver");
++MODULE_AUTHOR("Kevin Worth <kevin.worth@hp.com>");
++MODULE_LICENSE("GPL");
