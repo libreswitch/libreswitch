@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # Definitions
-SERVER_URL=http://$MAGMA_ARCHIVE_ADDRESS/archive/downloads
+SERVER_URL=https://$HALON_ARCHIVE_ADDRESS/archive/downloads
 CORKSCREW=corkscrew-2.0
 CORKSCREW_PACKAGE=$CORKSCREW.tar.gz
-export CURL_CA_BUNDLE=magma/certs/hp_ca_bundle.crt
-MAGMA_TMP=/tmp/magma-tmp-$USER/
+export CURL_CA_BUNDLE=tools/certs/openhalon.io.crt
+HALON_TMP=/tmp/halon-tmp-$USER/
 
 error () {
     echo
@@ -23,7 +23,7 @@ fi
 setup_corkscrew (){
     echo "Setting up Corkscrew"
     pushd . > /dev/null
-    cd $MAGMA_TMP
+    cd $HALON_TMP
     if [ ! -f $CORKSCREW_PACKAGE ] ; then
         echo curl $SERVER_URL/$CORKSCREW_PACKAGE 
         curl $SERVER_URL/$CORKSCREW_PACKAGE > $CORKSCREW_PACKAGE || exit 255
@@ -33,7 +33,7 @@ setup_corkscrew (){
     fi
     echo -n "  Building corkscrew..."
     cd $CORKSCREW
-    ./configure --prefix=$MAGMA_ROOT/magma/ >$REDIRECT 2>&1
+    ./configure --prefix=$HALON_ROOT/tools/ >$REDIRECT 2>&1
     make >$REDIRECT
     make install >$REDIRECT
     echo " done"
@@ -55,9 +55,9 @@ check_file () {
 
 check_python_version() {
    if [ -f /usr/bin/python2.6 ] ; then
-      ln -sf /usr/bin/python26 magma/bin/python
+      ln -sf /usr/bin/python26 tools/bin/python
    elif [ -f /usr/bin/python2.7 ] ; then
-     ln -sf /usr/bin/python2.7 magma/bin/python
+     ln -sf /usr/bin/python2.7 tools/bin/python
    else
      error "Please install Python 2.6 or higher"
    fi
@@ -82,7 +82,7 @@ sanity_checks (){
 }
 
 
-mkdir -p $MAGMA_TMP
+mkdir -p $HALON_TMP
 # Check we have everything we need
 sanity_checks
 

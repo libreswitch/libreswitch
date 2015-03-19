@@ -131,6 +131,7 @@ configure:
 	 ln -sf bblayers.conf-$(PLATFORM) build/conf/bblayers.conf
 	$(V) echo $(PLATFORM) > .platform
 	$(V) mkdir -p images
+	$(V) tools/bin/bootstrap.sh
 	$(V) $(ECHO) "\n$(GREEN)Configuration completed successfully!\n$(GRAY)"
 
 switch-platform: header _switch-platform
@@ -155,7 +156,7 @@ clean:: header
 
 distclean::
 	$(V)$(ECHO) "$(GREEN)Distcleaning...$(GRAY)"
-	$(V) rm -Rf .platform images build
+	$(V) rm -Rf .platform images build tools/bin/{corkscrew,python}
 	$(V)$(ECHO) "Distcleaning completed. You need to reconfigure to build again\n"
 
 include tools/Rules.make

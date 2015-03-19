@@ -2,3 +2,5 @@
 images/*
 .*.swp
 build
+tools/bin/python
+tools/bin/corkscrew
