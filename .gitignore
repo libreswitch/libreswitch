@@ -1,0 +1,4 @@
+.platform
+images/*
+.*.swp
+build

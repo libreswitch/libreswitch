@@ -1,6 +1,7 @@
 DESCRIPTION = "Package groups for Halon applications"
 LICENSE = "HP"
 PR = "r1"
+PACKAGE_ARCH = "${MACHINE_ARCH}"
 
 inherit packagegroup
 
