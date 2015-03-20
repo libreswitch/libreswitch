@@ -9,7 +9,7 @@ S = "${WORKDIR}/linux-3.8.4"
 PR = "r1"
 PV = "${KERNEL_RELEASE}"
 
-SRC_URI = "http://magma.austin.hp.com/archive/downloads/linux-3.8.4.tar.xz;name=kernel \
+SRC_URI = "http://archive.openhalon.io/linux-3.8.4.tar.xz;name=kernel \
    file://fix-make-headers-install-when-path-too-long.patch \
    file://fix-race-condition-enc28j60.patch \
 "
@@ -28,7 +28,7 @@ SRC_URI_append_powerpc = "\
 SRC_URI[kernel.md5sum] = "ad19f1be181408124a7f9d8cf57b97b4"
 SRC_URI[kernel.sha256sum] = "7e3bb07559ee9382ecf6babc5b5dab87f4fef6dbef3a9b014d361159b925b06b"
 
-do_magma_dts() {
+do_import_dts() {
    if test "${ARCH}" = "powerpc" ; then
       if test -n "${HALON_PLATFORM_DTS_FILE}" ; then
          echo "Updating in-kernel dts file with ${HALON_PLATFORM_DTS_FILE}"
@@ -42,4 +42,4 @@ do_install_append() {
    find ${D}/lib/modules -empty | xargs rm -rf
 }
 
-addtask do_magma_dts after do_patch before do_compile
+addtask do_import_dts after do_patch before do_compile
