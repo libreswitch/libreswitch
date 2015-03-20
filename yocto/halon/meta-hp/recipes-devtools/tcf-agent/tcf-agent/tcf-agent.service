@@ -1,11 +1,10 @@
 [Unit]
-Description=TCF Agent Service
+Description=Target Communication Framework agent
+After=network.target
 
 [Service]
-Type=simple
-ExecStart=/usr/sbin/tcf-agent -L- -l0
-
-ExecStop=/sbin/killall -9 tcf-agent
+Type=forking
+ExecStart=@SBINDIR@/tcf-agent -d -L- -l0
 
 [Install]
 WantedBy=multi-user.target
