@@ -1,7 +1,0 @@
-To compile the t32server:
-
-1. export CROSS_COMPILE=<cross_compiler>
-For example:
-export CROSS_COMPILE=/opt/arm-none-linux-gnueabi/bin/arm-none-linux-gnueabi-
-
-2. make
