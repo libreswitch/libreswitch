@@ -14,13 +14,14 @@
 
 PRODUCT?=halon
 
+export HALON_ARCHIVE_ADDRESS=archive.openhalon.io
+export HALON_SSTATE_ADDRESS=sstate.openhalon.io
+
 # Toolchain variables
 OE_HOST_SYSROOT=$(HALON_ROOT)/build/tmp/sysroots/$(shell uname -m)-linux/
 # Some toolchain dirs are named different than their toolchain prefix
 # For example ppc
 TOOLCHAIN_BIN_PATH=$(OE_HOST_SYSROOT)/usr/bin/$(TOOLCHAIN_DIR_PREFIX)
-
-SSTATE_DIR=$(shell if [ -w /opt/$(PRODUCT)/sstate ] ; then echo /opt/$(PRODUCT)/sstate ; fi)
 
 # Export this variables from the environment to simplify key management when using an agent
 export SSH_AGENT_PID
@@ -94,10 +95,9 @@ build/conf/local.conf: .platform
 	 sed \
 	   -e "s|##PRODUCT##|$(PRODUCT)|" \
 	   -e "s|##PLATFORM##|$(CONFIGURED_PLATFORM)|" \
+           -e "s|##HALON_SSTATE_ADDRESS##|$(HALON_SSTATE_ADDRESS)|" \
 	   -e "s|##HALON_ARCHIVE_ADDRESS##|$(HALON_ARCHIVE_ADDRESS)|" \
-	   -e "s|##SSTATE_DIR##|SSTATE_DIR = \"$(SSTATE_DIR)\"|" \
 	   tools/config/local.conf.in > $@
-	$(V) [ ! -z "$(SSTATE_DIR)" ] || sed -i -e "s|^SSTATE_DIR = |#SSTATE_DIR = |" $@
 
 header:: build/conf/site.conf build/conf/local.conf
 

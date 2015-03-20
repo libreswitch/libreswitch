@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Definitions
-SERVER_URL=https://$HALON_ARCHIVE_ADDRESS/archive/downloads
+SERVER_URL=http://$HALON_ARCHIVE_ADDRESS/
 CORKSCREW=corkscrew-2.0
 CORKSCREW_PACKAGE=$CORKSCREW.tar.gz
 export CURL_CA_BUNDLE=tools/certs/openhalon.io.crt

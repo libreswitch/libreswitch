@@ -198,15 +198,11 @@ BB_DISKMON_DIRS = "\
 # at the end as shown in the examples below. This will be substituted with the
 # correct path within the directory structure.
 SSTATE_MIRRORS ?= "\
-file://.* http://##HALON_ARCHIVE_ADDRESS##/archive/sstate/PATH"
+file://.* http://##HALON_SSTATE_ADDRESS##/PATH"
 
-SOURCE_MIRROR_URL ?= "http://##HALON_ARCHIVE_ADDRESS##/archive/downloads/"
+SOURCE_MIRROR_URL ?= "http://##HALON_ARCHIVE_ADDRESS##/"
 INHERIT += "own-mirrors" 
 BB_GENERATE_MIRROR_TARBALLS = "1"
-
-# This line will be enabled by halon if any of the directories above is found and
-# writable
-##SSTATE_DIR##
 
 # CONF_VERSION is increased each time build/conf/ changes incompatibly and is used to
 # track the version of this file when it was generated. This can safely be ignored if

@@ -52,8 +52,6 @@ define FATAL_ERROR
 	 exit 1
 endef
 
-export HALON_ARCHIVE_ADDRESS=archive.openhalon.io
-
 export HALON_ROOT=$(PWD)
 
 all:: header
