@@ -9,7 +9,7 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=c46082167a314d785d012a244748d803 \
 
 X11DEPENDS = "virtual/libx11"
 DEPENDS = "${@bb.utils.contains('DISTRO_FEATURES', 'x11', '${X11DEPENDS}', '', d)}"
-PR = "r8_magma"
+PR = "r8_hp"
 
 # We break down valgrind in smaller packages so that we can pull in only the 
 # tools that we really need. This is useful in RAM-bound file systems
