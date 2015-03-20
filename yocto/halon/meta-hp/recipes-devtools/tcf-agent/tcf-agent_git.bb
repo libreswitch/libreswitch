@@ -41,5 +41,9 @@ do_compile() {
 
 do_install() {
 	oe_runmake install INSTALLROOT=${D}
+        if ${@base_contains('DISTRO_FEATURES','systemd','true','false',d)}; then
+        	install -d ${D}${systemd_unitdir}/system
+        	install -m 0644 ${WORKDIR}/tcf-agent.service ${D}${systemd_unitdir}/system/tcf-agent.service
+    	fi
 }
 
