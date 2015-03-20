@@ -6,3 +6,5 @@ FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 SRC_URI += " \
         file://halon-bb.cfg \
 "
+
+SYSTEMD_SERVICE_${PN}-syslog = ""
