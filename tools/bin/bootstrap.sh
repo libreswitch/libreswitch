@@ -26,7 +26,7 @@ setup_corkscrew (){
     cd $HALON_TMP
     if [ ! -f $CORKSCREW_PACKAGE ] ; then
         echo curl $SERVER_URL/$CORKSCREW_PACKAGE 
-        curl $SERVER_URL/$CORKSCREW_PACKAGE > $CORKSCREW_PACKAGE || exit 255
+        curl $SERVER_URL/$CORKSCREW_PACKAGE > $CORKSCREW_PACKAGE || { rm -f $CORKSCREW_PACKAGE ; exit 255 ; }
     fi
     if [ ! -f $CORKSCREW/Makefile ] ; then
         tar xzf $CORKSCREW_PACKAGE || exit 255

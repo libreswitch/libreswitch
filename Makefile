@@ -126,9 +126,9 @@ configure:
 	    echo -e "  $(HALON_ROOT)/$$repo \\ \n\"" >> build/conf/bblayers.conf-$${repo##*platform-} ; \
 	 done ; \
 	 ln -sf bblayers.conf-$(PLATFORM) build/conf/bblayers.conf
-	$(V) echo $(PLATFORM) > .platform
 	$(V) mkdir -p images
 	$(V) tools/bin/bootstrap.sh
+	$(V) echo $(PLATFORM) > .platform
 	$(V) $(ECHO) "\n$(GREEN)Configuration completed successfully!\n$(GRAY)"
 
 switch-platform: header _switch-platform
