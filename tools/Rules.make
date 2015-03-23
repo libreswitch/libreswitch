@@ -183,7 +183,7 @@ devshell: header
 
 .PHONY: sdk _sdk
 sdk: header _sdk
-	$(V) ln -fs $(HALON_ROOT)/build/tmp/deploy/sdk/$(PRODUCT)-eglibc-`uname -m`-*-toolchain-*.sh images
+	$(V) ln -fs $(HALON_ROOT)/build/tmp/deploy/sdk/$(PRODUCT)-glibc-`uname -m`-*-toolchain-*.sh images
 
 _sdk: 
 	$(V) $(ECHO) "$(YELLOW)Building SDK...$(GRAY)\n"
