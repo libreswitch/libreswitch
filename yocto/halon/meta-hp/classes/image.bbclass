@@ -147,17 +147,6 @@ python () {
 
     d.setVar('IMAGE_FEATURES', ' '.join(list(remain_features)))
 
-    # Ensure we have the vendor list for complementary package handling
-    ml_vendor_list = ""
-    multilibs = d.getVar('MULTILIBS', True) or ""
-    for ext in multilibs.split():
-        eext = ext.split(':')
-        if len(eext) > 1 and eext[0] == 'multilib':
-            localdata = bb.data.createCopy(d)
-            vendor = localdata.getVar("TARGET_VENDOR_virtclass-multilib-" + eext[1], False)
-            ml_vendor_list += " " + vendor
-    d.setVar('MULTILIB_VENDORS', ml_vendor_list)
-
     check_image_features(d)
     initramfs_image = d.getVar('INITRAMFS_IMAGE', True) or ""
     if initramfs_image != "":
@@ -192,7 +181,9 @@ IMAGE_LINGUAS ?= "de-de fr-fr en-gb"
 
 LINGUAS_INSTALL ?= "${@" ".join(map(lambda s: "locale-base-%s" % s, d.getVar('IMAGE_LINGUAS', True).split()))}"
 
-PSEUDO_PASSWD = "${IMAGE_ROOTFS}"
+# Prefer image, but use the fallback files for lookups if the image ones
+# aren't yet available.
+PSEUDO_PASSWD = "${IMAGE_ROOTFS}:${STAGING_DIR_NATIVE}"
 
 do_rootfs[dirs] = "${TOPDIR}"
 do_rootfs[lockfiles] += "${IMAGE_ROOTFS}.lock"
@@ -230,6 +221,27 @@ read_only_rootfs_hook () {
 				echo "SSHD_OPTS='-f /etc/ssh/sshd_config_readonly'" >> ${IMAGE_ROOTFS}/etc/default/ssh
 			fi
 		fi
+	fi
+
+	if ${@bb.utils.contains("DISTRO_FEATURES", "systemd", "true", "false", d)}; then
+	    # Update user database files so that services don't fail for a read-only systemd system
+	    for conffile in ${IMAGE_ROOTFS}/usr/lib/sysusers.d/systemd.conf ${IMAGE_ROOTFS}/usr/lib/sysusers.d/systemd-remote.conf; do
+		[ -e $conffile ] || continue
+		grep -v "^#" $conffile | sed -e '/^$/d' | while read type name id comment; do
+		    if [ "$type" = "u" ]; then
+			useradd_params=""
+			[ "$id" != "-" ] && useradd_params="$useradd_params --uid $id"
+			[ "$comment" != "-" ] && useradd_params="$useradd_params --comment $comment"
+			useradd_params="$useradd_params --system $name"
+			eval useradd --root ${IMAGE_ROOTFS} $useradd_params || true
+		    elif [ "$type" = "g" ]; then
+			groupadd_params=""
+			[ "$id" != "-" ] && groupadd_params="$groupadd_params --gid $id"
+			groupadd_params="$groupadd_params --system $name"
+			eval groupadd --root ${IMAGE_ROOTFS} $groupadd_params || true
+		    fi
+		done
+	    done
 	fi
 }
 
@@ -448,6 +460,7 @@ do_compile[noexec] = "1"
 do_install[noexec] = "1"
 do_populate_sysroot[noexec] = "1"
 do_package[noexec] = "1"
+do_package_qa[noexec] = "1"
 do_packagedata[noexec] = "1"
 do_package_write_ipk[noexec] = "1"
 do_package_write_deb[noexec] = "1"
