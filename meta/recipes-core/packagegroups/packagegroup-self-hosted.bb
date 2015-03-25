@@ -7,7 +7,9 @@ DESCRIPTION = "Packages required to run the build system"
 PR = "r13"
 LICENSE = "MIT"
 
-inherit packagegroup
+inherit packagegroup  distro_features_check
+# rdepends on libx11-dev
+REQUIRED_DISTRO_FEATURES = "x11"
 
 PACKAGES = "\
     packagegroup-self-hosted \
@@ -29,6 +31,7 @@ RDEPENDS_packagegroup-self-hosted = "\
 # midori depends on webkit-gtk which could not build for mips64
 MIDORI = "midori"
 MIDORI_mips64 = ""
+MIDORI_mips64n32 = ""
 
 RDEPENDS_packagegroup-self-hosted-host-tools = "\
     connman \

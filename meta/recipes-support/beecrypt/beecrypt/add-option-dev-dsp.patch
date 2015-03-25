@@ -9,7 +9,7 @@ Signed-off-by: Zhang Xiao <xiao.zhang@windriver.com>
 @@ -106,6 +106,16 @@ AC_ARG_WITH(python,[  --with-python[[=AR
    fi
    ])
-
+ 
 +AC_ARG_WITH(dev-dsp,[  --with-dev-dsp          enables dev/dsp for entropy producing. auto for auto-detecting dev/dep on host. [[default=no]]],[
 +  if test "$withval" = yes; then
 +    AC_DEFINE([HAVE_DEV_DSP], 1)

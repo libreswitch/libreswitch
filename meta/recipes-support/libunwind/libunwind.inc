@@ -8,9 +8,10 @@ SRC_URI = "${SAVANNAH_NONGNU_MIRROR}/${BPN}/${BPN}-${PV}.tar.gz"
 inherit autotools
 
 PACKAGECONFIG ??= ""
-PACKAGECONFIG[lzma] = "--enable-minidebuginfo,--disable-minidebuginfo,lzma"
+PACKAGECONFIG[lzma] = "--enable-minidebuginfo,--disable-minidebuginfo,xz"
 
 EXTRA_OECONF_arm = "--enable-debug-frame"
+EXTRA_OECONF_aarch64 = "--enable-debug-frame"
 
 CFLAGS += "${ATOMICOPS}"
 ATOMICOPS_armv5 = "-DAO_USE_PTHREAD_DEFS=1"

@@ -467,12 +467,8 @@
             <filename><link linkend='var-MACHINE'>MACHINE</link></filename>
             for which you want to build, which package types you wish to use
             (<link linkend='var-PACKAGE_CLASSES'><filename>PACKAGE_CLASSES</filename></link>),
-            the location from which you want to access downloaded files
-            (<filename><link linkend='var-DL_DIR'>DL_DIR</link></filename>),
-            and how you want your host machine to use resources
-            (<link linkend='var-BB_NUMBER_THREADS'><filename>BB_NUMBER_THREADS</filename></link>
-            and
-            <link linkend='var-PARALLEL_MAKE'><filename>PARALLEL_MAKE</filename></link>).
+            and the location from which you want to access downloaded files
+            (<filename><link linkend='var-DL_DIR'>DL_DIR</link></filename>).
         </para>
 
         <para>
@@ -833,7 +829,7 @@
             Within this directory, the source is unpacked to
             <filename>linux-qemux86-standard-build</filename> and then patched by Quilt.
             (See the
-            "<ulink url='&YOCTO_DOCS_DEV_URL;#using-a-quilt-workflow'>Using a Quilt Flow</ulink>"
+            "<ulink url='&YOCTO_DOCS_DEV_URL;#using-a-quilt-workflow'>Using Quilt in Your Workflow</ulink>"
             section in the Yocto Project Development Manual for more information.)
             Within the <filename>linux-qemux86-standard-build</filename> directory,
             standard Quilt directories <filename>linux-3.0/patches</filename>

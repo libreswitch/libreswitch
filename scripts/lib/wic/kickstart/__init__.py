@@ -58,16 +58,13 @@ def read_kickstart(path):
         def __init__(self):
             superclass.__init__(self, mapping=commandMap[using_version])
 
-    ks = ksparser.KickstartParser(KSHandlers(), errorsAreFatal=False)
+    ks = ksparser.KickstartParser(KSHandlers(), errorsAreFatal=True)
 
     try:
         ks.readKickstart(path)
     except (kserrors.KickstartParseError, kserrors.KickstartError), err:
-        if msger.ask("Errors occured on kickstart file, skip and continue?"):
-            msger.warning("%s" % err)
-            pass
-        else:
-            raise errors.KsError("%s" % err)
+        msger.warning("Errors occurred when parsing kickstart file: %s\n" % path)
+        msger.error("%s" % err)
 
     return ks
 
@@ -77,7 +74,7 @@ def get_image_size(ks, default = None):
         if p.mountpoint == "/" and p.size:
             __size = p.size
     if __size > 0:
-        return int(__size) * 1024L * 1024L
+        return int(__size) * 1024L
     else:
         return default
 

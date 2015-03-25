@@ -33,8 +33,8 @@ logger      = logging.getLogger("BitBake")
 parselog    = logging.getLogger("BitBake.Parsing")
 
 class ConfigParameters(object):
-    def __init__(self):
-        self.options, targets = self.parseCommandLine()
+    def __init__(self, argv=sys.argv):
+        self.options, targets = self.parseCommandLine(argv)
         self.environment = self.parseEnvironment()
 
         self.options.pkgs_to_build = targets or []
@@ -46,7 +46,7 @@ class ConfigParameters(object):
         for key, val in self.options.__dict__.items():
             setattr(self, key, val)
 
-    def parseCommandLine(self):
+    def parseCommandLine(self, argv=sys.argv):
         raise Exception("Caller must implement commandline option parsing")
 
     def parseEnvironment(self):
@@ -69,14 +69,14 @@ class ConfigParameters(object):
             if bbpkgs:
                 self.options.pkgs_to_build.extend(bbpkgs.split())
 
-    def updateToServer(self, server):
+    def updateToServer(self, server, environment):
         options = {}
         for o in ["abort", "tryaltconfigs", "force", "invalidate_stamp", 
                   "verbose", "debug", "dry_run", "dump_signatures", 
                   "debug_domains", "extra_assume_provided", "profile"]:
             options[o] = getattr(self.options, o)
 
-        ret, error = server.runCommand(["updateConfig", options])
+        ret, error = server.runCommand(["updateConfig", options, environment])
         if error:
                 raise Exception("Unable to update the server configuration with local parameters: %s" % error)
 
@@ -139,6 +139,7 @@ class CookerConfiguration(object):
         self.dry_run = False
         self.tracking = False
         self.interface = []
+        self.writeeventlog = False
 
         self.env = {}
 

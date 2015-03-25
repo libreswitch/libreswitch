@@ -201,7 +201,7 @@ div.variablelist dl {
 .variablelist dl dt,
 .variablelist dl dt span.term {
   font-weight: normal;
-  width: 20em;
+  width: 0em;
   text-align: right;
 }
 
@@ -211,8 +211,9 @@ div.variablelist dl {
 
 .glossary dl dd,
 .variablelist dl dd {
-  margin-top: -1em;
-  margin-left: 25.5em;
+  margin-top: 0em;
+  margin-left: 15.5em;
+  margin-bottom: 2em;
 }
 
 .glossary dd p,
@@ -221,6 +222,9 @@ div.variablelist dl {
   margin-bottom: 1em;
 }
 
+.glossdeffirst {
+  text-indent: -70px;
+}
 
 div.calloutlist table td {
   padding: 0em 0em 0em 0em;

@@ -170,8 +170,8 @@ if __name__ == "__main__":
     "warnings.* site.* stat.* " +
     "UserDict.* UserList.* UserString.* " +
     "lib-dynload/binascii.so lib-dynload/_struct.so lib-dynload/time.so " +
-    "lib-dynload/xreadlines.so types.* platform.* ${bindir}/python* "  + 
-    "_weakrefset.* sysconfig.* config/Makefile " +
+    "lib-dynload/xreadlines.so types.* platform.* ${bindir}/python* "  +
+    "_weakrefset.* sysconfig.* _sysconfigdata.* config/Makefile " +
     "${includedir}/python${PYTHON_MAJMIN}/pyconfig*.h " +
     "${libdir}/python${PYTHON_MAJMIN}/sitecustomize.py ")
 
@@ -387,5 +387,12 @@ if __name__ == "__main__":
 
     m.addPackage( "${PN}-mailbox", "Python mailbox format support", "${PN}-core ${PN}-mime",
     "mailbox.*" )
+
+    m.addPackage( "${PN}-argparse", "Python command line argument parser", "${PN}-core ${PN}-codecs ${PN}-textutils",
+    "argparse.*" )
+
+    m.addPackage( "${PN}-contextlib", "Python utilities for with-statement" +
+    "contexts.", "${PN}-core",
+    "${libdir}/python${PYTHON_MAJMIN}/contextlib.*" )
 
     m.make()

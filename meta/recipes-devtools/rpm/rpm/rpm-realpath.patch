@@ -14,11 +14,11 @@ diff -urpN a/rpmio/rpmrpc.c b/rpmio/rpmrpc.c
 @@ -257,7 +257,9 @@ int Open(const char * path, int flags, m
      /* XXX if the open(2) fails, try to strip a possible chroot(2) prefix. */
      if (fdno < 0 && errno == ENOENT) {
-	const char *dbpath = rpmExpand("%{?_dbpath}/", NULL);
+ 	const char *dbpath = rpmExpand("%{?_dbpath}/", NULL);
 -	const char * fn = strstr(path + 1, dbpath);
 +	char resolved_dbpath[PATH_MAX];
 +	realpath(dbpath, resolved_dbpath);
 +	const char * fn = strstr(path + 1, resolved_dbpath);
-	if (fn)
-	    fdno = open(fn, flags, mode);
-	dbpath = _free(dbpath);
+ 	if (fn)
+ 	    fdno = open(fn, flags, mode);
+ 	dbpath = _free(dbpath);

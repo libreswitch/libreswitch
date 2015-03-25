@@ -673,10 +673,10 @@ DESCRIPTION
 
        The following are supported 'part' options:
 
-         --size: The minimum partition size in MBytes. Specify an
-                 integer value such as 500. Do not append the number
-                 with "MB". You do not need this option if you use
-                 --source.
+         --size: The minimum partition size. Specify an integer value
+                 such as 500. Multipliers k, M ang G can be used. If
+                 not specified, the size is in MB.
+                 You do not need this option if you use --source.
 
          --source: This option is a wic-specific option that names the
                    source of the data that will populate the
@@ -736,6 +736,24 @@ DESCRIPTION
          --align (in KBytes): This option is specific to wic and says
                               to start a partition on an x KBytes
                               boundary.
+
+         --no-table: This option is specific to wic. Space will be
+                     reserved for the partition and it will be
+                     populated but it will not be added to the
+                     partition table. It may be useful for
+                     bootloaders.
+
+         --extra-space: This option is specific to wic. It adds extra
+                        space after the space filled by the content
+                        of the partition. The final size can go
+                        beyond the size specified by --size.
+                        By default, 10MB.
+
+         --overhead-factor: This option is specific to wic. The
+                            size of the partition is multiplied by
+                            this factor. It has to be greater than or
+                            equal to 1.
+                            The default value is 1.3.
 
     * bootloader
 

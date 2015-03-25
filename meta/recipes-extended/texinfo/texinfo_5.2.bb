@@ -40,10 +40,15 @@ SRC_URI = "${GNU_MIRROR}/texinfo/${BP}.tar.gz \
 SRC_URI[md5sum] = "1b8f98b80a8e6c50422125e07522e8db"
 SRC_URI[sha256sum] = "6b8ca30e9b6f093b54fe04439e5545e564c63698a806a48065c0bba16994cf74"
 
-S = "${WORKDIR}/${BP}"
 tex_texinfo = "texmf/tex/texinfo"
 
 inherit gettext autotools
+
+do_configure_prepend () {
+	# autotools_do_configure updates po/Makefile.in.in, we also need
+	# update po_document.
+	cp -f ${STAGING_DATADIR_NATIVE}/gettext/po/Makefile.in.in ${S}/po_document/
+}
 
 do_compile_prepend() {
 	if [ -d tools ];then

@@ -49,7 +49,7 @@ do_install_append() {
         for i in `find ${D} -name "*.la"` ; do \
             sed -i -e s:${STAGING_LIBDIR}:${libdir}:g $i
         done
-
+        
         if test -e ${D}${bindir} ; then
             for i in ${D}${bindir}/* ; do \
                 sed -i -e s:${STAGING_BINDIR_NATIVE}:${bindir}:g $i

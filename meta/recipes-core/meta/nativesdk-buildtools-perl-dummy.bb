@@ -16,3 +16,4 @@ python populate_packages_prepend() {
     d.appendVar('RPROVIDES_${PN}', '${PERLPACKAGES}')
     d.appendVar('RCONFLICTS_${PN}', '${PERLPACKAGES}')
 }
+

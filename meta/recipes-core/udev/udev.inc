@@ -12,7 +12,7 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=b234ee4d69f5fce4486a80fdaf4a4263 \
 
 LDFLAGS += "-lrt"
 
-DEPENDS = "acl glib-2.0 libusb usbutils pciutils gperf-native libxslt-native util-linux"
+DEPENDS = "glib-2.0 libusb usbutils pciutils glib-2.0-native gperf-native libxslt-native util-linux"
 RPROVIDES_${PN} = "hotplug"
 
 SRC_URI = "${KERNELORG_MIRROR}/linux/utils/kernel/hotplug/udev-${PV}.tar.gz \
@@ -27,11 +27,12 @@ SRC_URI = "${KERNELORG_MIRROR}/linux/utils/kernel/hotplug/udev-${PV}.tar.gz \
            file://udev-cache \
            file://udev-cache.default \
            file://add-install-ptest.patch \
+           file://fix_rule-syntax-regex-ptest.patch \
            file://run-ptest \
            file://init"
 
 inherit autotools pkgconfig update-rc.d ptest
-RDEPENDS_${PN}-ptest += "make perl"
+RDEPENDS_${PN}-ptest += "make perl python"
 
 libexecdir = "${base_libdir}"
 EXTRA_OECONF = "--disable-introspection \

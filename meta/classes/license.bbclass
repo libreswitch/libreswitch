@@ -49,24 +49,33 @@ license_create_manifest() {
 
 		pkged_pv="$(sed -n 's/^PV: //p' ${filename})"
 		pkged_name="$(basename $(readlink ${filename}))"
-		pkged_lic="$(sed -n "/^LICENSE_${pkged_name}: /{ s/^LICENSE_${pkged_name}: //; s/[|&()*]/ /g; s/  */ /g; p }" ${filename})"
-		if [ -z ${pkged_lic} ]; then
+		pkged_lic="$(sed -n "/^LICENSE_${pkged_name}: /{ s/^LICENSE_${pkged_name}: //; p }" ${filename})"
+		pkged_size="$(sed -n "/^PKGSIZE_${pkged_name}: /{ s/^PKGSIZE_${pkged_name}: //; p }" ${filename})"
+		if [ -z "${pkged_lic}" ]; then
 			# fallback checking value of LICENSE
-			pkged_lic="$(sed -n "/^LICENSE: /{ s/^LICENSE: //; s/[|&()*]/ /g; s/  */ /g; p }" ${filename})"
+			pkged_lic="$(sed -n "/^LICENSE: /{ s/^LICENSE: //; p }" ${filename})"
 		fi
 
 		echo "PACKAGE NAME:" ${pkg} >> ${LICENSE_MANIFEST}
 		echo "PACKAGE VERSION:" ${pkged_pv} >> ${LICENSE_MANIFEST}
 		echo "RECIPE NAME:" ${pkged_pn} >> ${LICENSE_MANIFEST}
-		printf "LICENSE:" >> ${LICENSE_MANIFEST}
-		for lic in ${pkged_lic}; do
+		echo "LICENSE:" ${pkged_lic} >> ${LICENSE_MANIFEST}
+		echo "" >> ${LICENSE_MANIFEST}
+
+		# If the package doesn't contain any file, that is, its size is 0, the license
+		# isn't relevant as far as the final image is concerned. So doing license check
+		# doesn't make much sense, skip it.
+		if [ "$pkged_size" = "0" ]; then
+			continue
+		fi
+
+		lics="$(echo ${pkged_lic} | sed "s/[|&()*]/ /g" | sed "s/  */ /g" )"
+		for lic in ${lics}; do
 			# to reference a license file trim trailing + symbol
 			if ! [ -e "${LICENSE_DIRECTORY}/${pkged_pn}/generic_${lic%+}" ]; then
 				bbwarn "The license listed ${lic} was not in the licenses collected for ${pkged_pn}"
 			fi
-                        printf " ${lic}" >> ${LICENSE_MANIFEST}
 		done
-		printf "\n\n" >> ${LICENSE_MANIFEST}
 	done
 
 	# Two options here:
@@ -79,7 +88,7 @@ license_create_manifest() {
 		if [ "${COPY_LIC_DIRS}" = "1" ]; then
 			for pkg in ${INSTALLED_PKGS}; do
 				mkdir -p ${IMAGE_ROOTFS}/usr/share/common-licenses/${pkg}
-				pkged_pn="$(oe-pkgdata-util lookup-recipe ${PKGDATA_DIR} ${pkg})"
+				pkged_pn="$(oe-pkgdata-util -p ${PKGDATA_DIR} lookup-recipe ${pkg})"
 				for lic in `ls ${LICENSE_DIRECTORY}/${pkged_pn}`; do
 					# Really don't need to copy the generics as they're 
 					# represented in the manifest and in the actual pkg licenses
@@ -149,12 +158,12 @@ def copy_license_files(lic_files_paths, destdir):
             dst = os.path.join(destdir, basename)
             if os.path.exists(dst):
                 os.remove(dst)
-            if (os.stat(src).st_dev == os.stat(destdir).st_dev):
+            if os.access(src, os.W_OK) and (os.stat(src).st_dev == os.stat(destdir).st_dev):
                 os.link(src, dst)
             else:
                 shutil.copyfile(src, dst)
         except Exception as e:
-            bb.warn("Could not copy license file %s: %s" % (basename, e))
+            bb.warn("Could not copy license file %s to %s: %s" % (src, dst, e))
 
 def find_license_files(d):
     """
@@ -285,6 +294,31 @@ def canonical_license(d, license):
             lic += '+'
     return lic or license
 
+def expand_wildcard_licenses(d, wildcard_licenses):
+    """
+    Return actual spdx format license names if wildcard used. We expand
+    wildcards from SPDXLICENSEMAP flags and SRC_DISTRIBUTE_LICENSES values.
+    """
+    import fnmatch
+    licenses = []
+    spdxmapkeys = d.getVarFlags('SPDXLICENSEMAP').keys()
+    for wld_lic in wildcard_licenses:
+        spdxflags = fnmatch.filter(spdxmapkeys, wld_lic)
+        licenses += [d.getVarFlag('SPDXLICENSEMAP', flag) for flag in spdxflags]
+
+    spdx_lics = (d.getVar('SRC_DISTRIBUTE_LICENSES') or '').split()
+    for wld_lic in wildcard_licenses:
+        licenses += fnmatch.filter(spdx_lics, wld_lic)
+
+    licenses = list(set(licenses))
+    return licenses
+
+def incompatible_license_contains(license, truevalue, falsevalue, d):
+    license = canonical_license(d, license)
+    bad_licenses = (d.getVar('INCOMPATIBLE_LICENSE', True) or "").split()
+    bad_licenses = expand_wildcard_licenses(d, bad_licenses)
+    return truevalue if license in bad_licenses else falsevalue
+
 def incompatible_license(d, dont_want_licenses, package=None):
     """
     This function checks if a recipe has only incompatible licenses. It also
@@ -383,12 +417,37 @@ def check_license_flags(d):
             return unmatched_flag
     return None
 
+def check_license_format(d):
+    """
+    This function checks if LICENSE is well defined,
+        Validate operators in LICENSES.
+        No spaces are allowed between LICENSES.
+    """
+    pn = d.getVar('PN', True)
+    licenses = d.getVar('LICENSE', True)
+    from oe.license import license_operator, license_operator_chars, license_pattern
+
+    elements = filter(lambda x: x.strip(), license_operator.split(licenses))
+    for pos, element in enumerate(elements):
+        if license_pattern.match(element):
+            if pos > 0 and license_pattern.match(elements[pos - 1]):
+                bb.warn('%s: LICENSE value "%s" has an invalid format - license names ' \
+                        'must be separated by the following characters to indicate ' \
+                        'the license selection: %s' %
+                        (pn, licenses, license_operator_chars))
+        elif not license_operator.match(element):
+            bb.warn('%s: LICENSE value "%s" has an invalid separator "%s" that is not ' \
+                    'in the valid list of separators (%s)' %
+                    (pn, licenses, element, license_operator_chars))
+
 SSTATETASKS += "do_populate_lic"
 do_populate_lic[sstate-inputdirs] = "${LICSSTATEDIR}"
 do_populate_lic[sstate-outputdirs] = "${LICENSE_DIRECTORY}/"
 
 ROOTFS_POSTPROCESS_COMMAND_prepend = "write_package_manifest; license_create_manifest; "
 
+do_populate_lic_setscene[dirs] = "${LICSSTATEDIR}/${PN}"
+do_populate_lic_setscene[cleandirs] = "${LICSSTATEDIR}"
 python do_populate_lic_setscene () {
     sstate_setscene(d)
 }
