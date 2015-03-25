@@ -36,13 +36,14 @@ index c35e0ab..016e8d1 100644
 --- a/rpmdb/signature.c
 +++ b/rpmdb/signature.c
 @@ -529,7 +529,7 @@ int rpmCheckPassPhrase(const char * passPhrase)
-		(void) setenv("GNUPGHOME", gpg_path, 1);
-
-	    cmd = rpmExpand("%{?__gpg_check_password_cmd}", NULL);
+   		(void) setenv("GNUPGHOME", gpg_path, 1);
+ 
+ 	    cmd = rpmExpand("%{?__gpg_check_password_cmd}", NULL);
 -	    rc = argvSplit(&av, cmd, NULL);
 +	    rc = poptParseArgvString(cmd, NULL, (const char ***)&av);
-	    if (!rc)
-		rc = execve(av[0], (char *const *)av+1, environ);
-
---
+ 	    if (!rc)
+ 		rc = execve(av[0], (char *const *)av+1, environ);
+ 
+-- 
 1.9.1
+

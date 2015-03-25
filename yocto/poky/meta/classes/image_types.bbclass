@@ -13,7 +13,7 @@ def imagetypes_getdepends(d):
     deps = []
     ctypes = d.getVar('COMPRESSIONTYPES', True).split()
     for type in (d.getVar('IMAGE_FSTYPES', True) or "").split():
-        if type == "vmdk" or type == "live" or type == "iso" or type == "hddimg":
+        if type in ["vmdk", "live", "iso", "hddimg"]:
             type = "ext3"
         basetype = type
         for ctype in ctypes:
@@ -21,6 +21,8 @@ def imagetypes_getdepends(d):
                 basetype = type[:-len("." + ctype)]
                 adddep(d.getVar("COMPRESS_DEPENDS_%s" % ctype, True), deps)
                 break
+        for typedepends in (d.getVar("IMAGE_TYPEDEP_%s" % basetype, True) or "").split():
+            adddep(d.getVar('IMAGE_DEPENDS_%s' % typedepends, True) , deps)
         adddep(d.getVar('IMAGE_DEPENDS_%s' % basetype, True) , deps)
 
     depstr = ""
@@ -56,9 +58,14 @@ IMAGE_CMD_ext2 = "oe_mkext234fs ext2 ${EXTRA_IMAGECMD}"
 IMAGE_CMD_ext3 = "oe_mkext234fs ext3 ${EXTRA_IMAGECMD}"
 IMAGE_CMD_ext4 = "oe_mkext234fs ext4 ${EXTRA_IMAGECMD}"
 
+MIN_BTRFS_SIZE ?= "16384"
 IMAGE_CMD_btrfs () {
-	touch ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.rootfs.btrfs
-	mkfs.btrfs -b `expr ${ROOTFS_SIZE} \* 1024` ${EXTRA_IMAGECMD} -r ${IMAGE_ROOTFS} ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.rootfs.btrfs
+	if [ ${ROOTFS_SIZE} -gt ${MIN_BTRFS_SIZE} ]; then
+		dd if=/dev/zero of=${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.rootfs.btrfs count=${ROOTFS_SIZE} bs=1024
+		mkfs.btrfs ${EXTRA_IMAGECMD} -r ${IMAGE_ROOTFS} ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.rootfs.btrfs
+	else
+		bbfatal "Rootfs is too small for BTRFS (Rootfs Actual Size: ${ROOTFS_SIZE}, BTRFS Minimum Size: ${MIN_BTRFS_SIZE})"
+	fi
 }
 
 IMAGE_CMD_squashfs = "mksquashfs ${IMAGE_ROOTFS} ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.rootfs.squashfs ${EXTRA_IMAGECMD} -noappend"
@@ -134,7 +141,21 @@ IMAGE_DEPENDS_ubi = "mtd-utils-native"
 IMAGE_DEPENDS_ubifs = "mtd-utils-native"
 
 # This variable is available to request which values are suitable for IMAGE_FSTYPES
-IMAGE_TYPES = "jffs2 jffs2.sum cramfs ext2 ext2.gz ext2.bz2 ext3 ext3.gz ext2.lzma btrfs iso hddimg squashfs squashfs-xz squashfs-lzo ubi ubifs tar tar.gz tar.bz2 tar.xz tar.lz4 cpio cpio.gz cpio.xz cpio.lzma cpio.lz4 vmdk elf"
+IMAGE_TYPES = " \
+    jffs2 jffs2.sum \
+    cramfs \
+    ext2 ext2.gz ext2.bz2 ext2.lzma \
+    ext3 ext3.gz \
+    btrfs \
+    iso \
+    hddimg \
+    squashfs squashfs-xz squashfs-lzo \
+    ubi ubifs \
+    tar tar.gz tar.bz2 tar.xz tar.lz4 \
+    cpio cpio.gz cpio.xz cpio.lzma cpio.lz4 \
+    vmdk \
+    elf \
+"
 
 COMPRESSIONTYPES = "gz bz2 lzma xz lz4 sum"
 COMPRESS_CMD_lzma = "lzma -k -f -7 ${IMAGE_NAME}.rootfs.${type}"

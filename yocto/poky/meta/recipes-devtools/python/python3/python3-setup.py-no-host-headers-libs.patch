@@ -26,7 +26,8 @@ index f020b28..e8339cd 100644
              self.add_gcc_paths()
 -        if not cross_compiling:
              self.add_multiarch_paths()
-
+ 
          # Add paths specified in the environment variables LDFLAGS and
---
+-- 
 2.0.0
+

@@ -1,7 +1,7 @@
 The USB wacom device is missing a HID descriptor which causes it
 to fail to operate with recent kernels (e.g. 3.17).
 
-This patch adds a HID desriptor to the device, based upon one from
+This patch adds a HID desriptor to the device, based upon one from 
 real wcom device.
 
 Signed-off-by: Richard Purdie <richard.purdie@linuxfoundation.org>
@@ -16,12 +16,12 @@ Index: qemu-2.1.0/hw/usb/dev-wacom.c
 @@ -68,6 +68,89 @@
      [STR_SERIALNUMBER]     = "1",
  };
-
+ 
 +static const uint8_t qemu_tablet_hid_report_descriptor[] = {
 +    0x05, 0x01,		/* Usage Page (Generic Desktop) */
 +    0x09, 0x02,		/* Usage (Mouse) */
 +    0xa1, 0x01,		/* Collection (Application) */
-+    0x85, 0x01,		/*   Report ID (1) */
++    0x85, 0x01,		/*   Report ID (1) */ 
 +    0x09, 0x01,		/*   Usage (Pointer) */
 +    0xa1, 0x00,		/*   Collection (Physical) */
 +    0x05, 0x09,		/*     Usage Page (Button) */
@@ -48,7 +48,7 @@ Index: qemu-2.1.0/hw/usb/dev-wacom.c
 +    0x05, 0x0d,		/* Usage Page (Digitizer) */
 +    0x09, 0x01,		/* Usage (Digitizer) */
 +    0xa1, 0x01,		/* Collection (Application) */
-+    0x85, 0x02,		/*   Report ID (2) */
++    0x85, 0x02,		/*   Report ID (2) */ 
 +    0xa1, 0x00,		/*   Collection (Physical) */
 +    0x06, 0x00, 0xff,   /*   Usage Page (Vendor 0xff00) */
 +    0x09, 0x01, 	/*   Usage (Digitizer) */
@@ -59,14 +59,14 @@ Index: qemu-2.1.0/hw/usb/dev-wacom.c
 +    0x81, 0x02,		/*     Input (Data, Variable, Absolute) */
 +    0xc0, 		/*   End Collection */
 +    0x09, 0x01,		/*   Usage (Digitizer) */
-+    0x85, 0x02, 	/*   Report ID (2) */
++    0x85, 0x02, 	/*   Report ID (2) */ 
 +    0x95, 0x01,		/*   Report Count (1) */
 +    0xb1, 0x02,		/*   FEATURE (2) */
 +    0xc0,		/* End Collection */
 +    0x06, 0x00, 0xff,	/* Usage Page (Vendor 0xff00) */
 +    0x09, 0x01,		/* Usage (Digitizer) */
 +    0xa1, 0x01,		/* Collection (Application) */
-+    0x85, 0x02,   	/*   Report ID (2) */
++    0x85, 0x02,   	/*   Report ID (2) */ 
 +    0x05, 0x0d,		/*   Usage Page (Digitizer)  */
 +    0x09, 0x22, 	/*   Usage (Finger) */
 +    0xa1, 0x00,  	/*   Collection (Physical) */
@@ -95,7 +95,7 @@ Index: qemu-2.1.0/hw/usb/dev-wacom.c
 +    0x75, 0x08,		/*     Report Size (8) */
 +    0x95, 0x0d,		/*     Report Count (13) */
 +    0x81, 0x02,		/*     Input (Data, Variable, Absolute) */
-+    0xc0,		/*   End Collection */
++    0xc0,		/*   End Collection */ 
 +    0xc0,		/* End Collection */
 +};
 +
@@ -114,7 +114,7 @@ Index: qemu-2.1.0/hw/usb/dev-wacom.c
      },
 @@ -265,6 +350,15 @@
      }
-
+ 
      switch (request) {
 +    case InterfaceRequest | USB_REQ_GET_DESCRIPTOR:
 +        switch (value >> 8) {

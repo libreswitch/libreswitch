@@ -128,7 +128,7 @@ class DataNode(AstNode):
         if 'flag' in groupd and groupd['flag'] != None:
             flag = groupd['flag']
         elif groupd["lazyques"]:
-            flag = "defaultval"
+            flag = "_defaultval"
 
         loginfo['op'] = op
         loginfo['detail'] = groupd["value"]
@@ -139,7 +139,7 @@ class DataNode(AstNode):
             data.setVar(key, val, **loginfo)
 
 class MethodNode(AstNode):
-    tr_tbl = string.maketrans('/.+-@%', '______')
+    tr_tbl = string.maketrans('/.+-@%&', '_______')
 
     def __init__(self, filename, lineno, func_name, body):
         AstNode.__init__(self, filename, lineno)

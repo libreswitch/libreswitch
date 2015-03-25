@@ -19,6 +19,8 @@ SRC_URI += "file://acinclude.m4 \
             file://0012-Fix-musl-build-failures.patch \
             file://0001-e2fsprogs-fix-cross-compilation-problem.patch \
             file://misc-mke2fs.c-return-error-when-failed-to-populate-fs.patch \
+            file://cache_inode.patch \
+            file://CVE-2015-0247.patch \
 "
 
 SRC_URI[md5sum] = "3f8e41e63b432ba114b33f58674563f7"
@@ -63,9 +65,10 @@ do_install_append_class-target() {
 RDEPENDS_e2fsprogs = "e2fsprogs-badblocks"
 RRECOMMENDS_e2fsprogs = "e2fsprogs-mke2fs e2fsprogs-e2fsck"
 
-PACKAGES =+ "e2fsprogs-e2fsck e2fsprogs-mke2fs e2fsprogs-tune2fs e2fsprogs-badblocks"
+PACKAGES =+ "e2fsprogs-e2fsck e2fsprogs-mke2fs e2fsprogs-tune2fs e2fsprogs-badblocks e2fsprogs-resize2fs"
 PACKAGES =+ "libcomerr libss libe2p libext2fs"
 
+FILES_e2fsprogs-resize2fs = "${base_sbindir}/resize2fs*"
 FILES_e2fsprogs-e2fsck = "${base_sbindir}/e2fsck ${base_sbindir}/fsck.ext*"
 FILES_e2fsprogs-mke2fs = "${base_sbindir}/mke2fs ${base_sbindir}/mkfs.ext* ${sysconfdir}/mke2fs.conf"
 FILES_e2fsprogs-tune2fs = "${base_sbindir}/tune2fs ${base_sbindir}/e2label"
@@ -76,7 +79,7 @@ FILES_libe2p = "${base_libdir}/libe2p.so.*"
 FILES_libext2fs = "${libdir}/e2initrd_helper ${base_libdir}/libext2fs.so.*"
 FILES_${PN}-dev += "${datadir}/*/*.awk ${datadir}/*/*.sed ${base_libdir}/*.so"
 
-BBCLASSEXTEND = "native"
+BBCLASSEXTEND = "native nativesdk"
 
 inherit update-alternatives
 

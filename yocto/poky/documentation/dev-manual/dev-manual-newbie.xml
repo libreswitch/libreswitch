@@ -588,13 +588,6 @@
                         Directory.
                     </note>
                     </para></listitem>
-            <listitem><para id='build-system-term'><emphasis>Build System:</emphasis>
-                In the context of the Yocto Project,
-                this term refers to the OpenEmbedded build system used by the project.
-                This build system is based on the project known as "Poky."
-                For some historical information about Poky, see the
-                <link linkend='poky'>Poky</link> term.
-                </para></listitem>
             <listitem><para><emphasis>Classes:</emphasis> Files that provide for logic encapsulation
                 and inheritance so that commonly used patterns can be defined once and then easily used
                 in multiple recipes.
@@ -690,6 +683,23 @@
                 with OpenEmbedded (OE) that is shared between OE and the Yocto Project.
                 This Metadata is found in the <filename>meta</filename> directory of the
                 <link linkend='source-directory'>Source Directory</link>.</para></listitem>
+            <listitem><para id='build-system-term'><emphasis>OpenEmbedded Build System:</emphasis>
+                The build system specific to the Yocto Project.
+                The OpenEmbedded build system is based on another project known
+                as "Poky", which uses
+                <link linkend='bitbake-term'>BitBake</link> as the task
+                executor.
+                Throughout the Yocto Project documentation set, the
+                OpenEmbedded build system is sometimes referred to simply
+                as "the build system".
+                If other build systems, such as a host or target build system
+                are referenced, the documentation clearly states the
+                difference.
+                <note>
+                    For some historical information about Poky, see the
+                    <link linkend='poky'>Poky</link> term.
+                </note>
+                </para></listitem>
             <listitem><para><emphasis>Package:</emphasis>
                 In the context of the Yocto Project, this term refers to a
                 recipe's packaged output produced by BitBake (i.e. a
@@ -1028,9 +1038,10 @@
         </para>
 
         <para>
-            Some key tags are <filename>dylan-9.0.0</filename>,
-            <filename>dora-10.0.0</filename>, <filename>daisy-11.0.0</filename>,
-            and <filename>&DISTRO_NAME;-&POKYVERSION;</filename>.
+            Some key tags are <filename>dylan-9.0.4</filename>,
+            <filename>dora-10.0.4</filename>, <filename>daisy-11.0.2</filename>,
+            <filename>dizzy-12.0.0</filename>, and
+            <filename>&DISTRO_NAME;-&POKYVERSION;</filename>.
             These tags represent Yocto Project releases.
         </para>
 
@@ -1074,7 +1085,9 @@
             A good place to look for instruction on a minimal set of Git commands is
             <ulink url='http://git-scm.com/documentation'>here</ulink>.
             If you need to download Git, you can do so
-            <ulink url='http://git-scm.com/download'>here</ulink>.
+            <ulink url='http://git-scm.com/download'>here</ulink>, although
+            any reasonably current Linux distribution should already have an
+            installable package for Git.
         </para>
 
         <para>

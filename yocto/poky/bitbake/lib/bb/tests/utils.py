@@ -35,6 +35,10 @@ class VerCmpString(unittest.TestCase):
         self.assertTrue(result < 0)
         result = bb.utils.vercmp_string('1.1', '1_p2')
         self.assertTrue(result < 0)
+        result = bb.utils.vercmp_string('1.0', '1.0+1.1-beta1')
+        self.assertTrue(result < 0)
+        result = bb.utils.vercmp_string('1.1', '1.0+1.1-beta1')
+        self.assertTrue(result > 0)
 
     def test_explode_dep_versions(self):
         correctresult = {"foo" : ["= 1.10"]}
@@ -51,3 +55,36 @@ class VerCmpString(unittest.TestCase):
         result = bb.utils.explode_dep_versions2("foo ( =1.10 )")
         self.assertEqual(result, correctresult)
 
+    def test_vercmp_string_op(self):
+        compareops = [('1', '1', '=', True),
+                      ('1', '1', '==', True),
+                      ('1', '1', '!=', False),
+                      ('1', '1', '>', False),
+                      ('1', '1', '<', False),
+                      ('1', '1', '>=', True),
+                      ('1', '1', '<=', True),
+                      ('1', '0', '=', False),
+                      ('1', '0', '==', False),
+                      ('1', '0', '!=', True),
+                      ('1', '0', '>', True),
+                      ('1', '0', '<', False),
+                      ('1', '0', '>>', True),
+                      ('1', '0', '<<', False),
+                      ('1', '0', '>=', True),
+                      ('1', '0', '<=', False),
+                      ('0', '1', '=', False),
+                      ('0', '1', '==', False),
+                      ('0', '1', '!=', True),
+                      ('0', '1', '>', False),
+                      ('0', '1', '<', True),
+                      ('0', '1', '>>', False),
+                      ('0', '1', '<<', True),
+                      ('0', '1', '>=', False),
+                      ('0', '1', '<=', True)]
+
+        for arg1, arg2, op, correctresult in compareops:
+            result = bb.utils.vercmp_string_op(arg1, arg2, op)
+            self.assertEqual(result, correctresult, 'vercmp_string_op("%s", "%s", "%s") != %s' % (arg1, arg2, op, correctresult))
+
+        # Check that clearly invalid operator raises an exception
+        self.assertRaises(bb.utils.VersionStringException, bb.utils.vercmp_string_op, '0', '0', '$')

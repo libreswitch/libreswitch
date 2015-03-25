@@ -49,6 +49,9 @@ class Wic_PartData(Mic_PartData):
         self.source = kwargs.get("source", None)
         self.sourceparams = kwargs.get("sourceparams", None)
         self.rootfs = kwargs.get("rootfs-dir", None)
+        self.no_table = kwargs.get("no-table", False)
+        self.extra_space = kwargs.get("extra-space", "10M")
+        self.overhead_factor = kwargs.get("overhead-factor", 1.3)
         self.source_file = ""
         self.size = 0
 
@@ -61,6 +64,10 @@ class Wic_PartData(Mic_PartData):
                 retval += " --sourceparams=%s" % self.sourceparams
             if self.rootfs:
                 retval += " --rootfs-dir=%s" % self.rootfs
+        if self.no_table:
+            retval += " --no-table"
+        retval += " --extra-space=%d" % self.extra_space
+        retval += " --overhead-factor=%f" % self.overhead_factor
 
         return retval
 
@@ -99,7 +106,7 @@ class Wic_PartData(Mic_PartData):
 
     def get_extra_block_count(self, current_blocks):
         """
-        The --size param is reflected in self.size (in MB), and we already
+        The --size param is reflected in self.size (in kB), and we already
         have current_blocks (1k) blocks, calculate and return the
         number of (1k) blocks we need to add to get to --size, 0 if
         we're already there or beyond.
@@ -110,7 +117,7 @@ class Wic_PartData(Mic_PartData):
         if not self.size:
             return 0
 
-        requested_blocks = self.size * 1024
+        requested_blocks = self.size
 
         msger.debug("Requested blocks %d, current_blocks %d" % \
                     (requested_blocks, current_blocks))
@@ -171,7 +178,7 @@ class Wic_PartData(Mic_PartData):
         Handle an already-created partition e.g. xxx.ext3
         """
         rootfs = oe_builddir
-        du_cmd = "du -Lbms %s" % rootfs
+        du_cmd = "du -Lbks %s" % rootfs
         out = exec_cmd(du_cmd)
         rootfs_size = out.split()[0]
 
@@ -186,10 +193,15 @@ class Wic_PartData(Mic_PartData):
 
         Currently handles ext2/3/4, btrfs and vfat.
         """
-        pseudo = "export PSEUDO_PREFIX=%s/usr;" % native_sysroot
-        pseudo += "export PSEUDO_LOCALSTATEDIR=%s/../pseudo;" % rootfs_dir
-        pseudo += "export PSEUDO_PASSWD=%s;" % rootfs_dir
-        pseudo += "export PSEUDO_NOSYMLINKEXP=1;"
+        p_prefix = os.environ.get("PSEUDO_PREFIX", "%s/usr" % native_sysroot)
+        p_localstatedir = os.environ.get("PSEUDO_LOCALSTATEDIR",
+                                         "%s/../pseudo" % rootfs_dir)
+        p_passwd = os.environ.get("PSEUDO_PASSWD", rootfs_dir)
+        p_nosymlinkexp = os.environ.get("PSEUDO_NOSYMLINKEXP", "1")
+        pseudo = "export PSEUDO_PREFIX=%s;" % p_prefix
+        pseudo += "export PSEUDO_LOCALSTATEDIR=%s;" % p_localstatedir
+        pseudo += "export PSEUDO_PASSWD=%s;" % p_passwd
+        pseudo += "export PSEUDO_NOSYMLINKEXP=%s;" % p_nosymlinkexp
         pseudo += "%s/usr/bin/pseudo " % native_sysroot
 
         if self.fstype.startswith("ext"):
@@ -224,12 +236,11 @@ class Wic_PartData(Mic_PartData):
         actual_rootfs_size = int(out.split()[0])
 
         extra_blocks = self.get_extra_block_count(actual_rootfs_size)
-
-        if extra_blocks < IMAGE_EXTRA_SPACE:
-            extra_blocks = IMAGE_EXTRA_SPACE
+        if extra_blocks < self.extra_space:
+            extra_blocks = self.extra_space
 
         rootfs_size = actual_rootfs_size + extra_blocks
-        rootfs_size *= IMAGE_OVERHEAD_FACTOR
+        rootfs_size *= self.overhead_factor
 
         msger.debug("Added %d extra blocks to %s to get to %d total blocks" % \
                     (extra_blocks, self.mountpoint, rootfs_size))
@@ -240,15 +251,19 @@ class Wic_PartData(Mic_PartData):
 
         extra_imagecmd = "-i 8192"
 
-        mkfs_cmd = "mkfs.%s -F %s %s -d %s" % \
-            (self.fstype, extra_imagecmd, rootfs, image_rootfs)
+        label_str = ""
+        if (self.label):
+            label_str = "-L %s" % self.label
+
+        mkfs_cmd = "mkfs.%s -F %s %s %s -d %s" % \
+            (self.fstype, extra_imagecmd, rootfs, label_str, image_rootfs)
         (rc, out) = exec_native_cmd(pseudo + mkfs_cmd, native_sysroot)
         if rc:
             print "rootfs_dir: %s" % rootfs_dir
             msger.error("ERROR: mkfs.%s returned '%s' instead of 0 (which you probably don't want to ignore, use --debug for details) when creating filesystem from rootfs directory: %s" % (self.fstype, rc, rootfs_dir))
 
-        # get the rootfs size in the right units for kickstart (Mb)
-        du_cmd = "du -Lbms %s" % rootfs
+        # get the rootfs size in the right units for kickstart (kB)
+        du_cmd = "du -Lbks %s" % rootfs
         out = exec_cmd(du_cmd)
         rootfs_size = out.split()[0]
 
@@ -272,12 +287,11 @@ class Wic_PartData(Mic_PartData):
         actual_rootfs_size = int(out.split()[0])
 
         extra_blocks = self.get_extra_block_count(actual_rootfs_size)
-
-        if extra_blocks < IMAGE_EXTRA_SPACE:
-            extra_blocks = IMAGE_EXTRA_SPACE
+        if extra_blocks < self.extra_space:
+            extra_blocks = self.extra_space
 
         rootfs_size = actual_rootfs_size + extra_blocks
-        rootfs_size *= IMAGE_OVERHEAD_FACTOR
+        rootfs_size *= self.overhead_factor
 
         msger.debug("Added %d extra blocks to %s to get to %d total blocks" % \
                     (extra_blocks, self.mountpoint, rootfs_size))
@@ -286,14 +300,18 @@ class Wic_PartData(Mic_PartData):
             (rootfs, rootfs_size)
         exec_cmd(dd_cmd)
 
-        mkfs_cmd = "mkfs.%s -b %d -r %s %s" % \
-            (self.fstype, rootfs_size * 1024, image_rootfs, rootfs)
+        label_str = ""
+        if (self.label):
+            label_str = "-L %s" % self.label
+
+        mkfs_cmd = "mkfs.%s -b %d -r %s %s %s" % \
+            (self.fstype, rootfs_size * 1024, image_rootfs, label_str, rootfs)
         (rc, out) = exec_native_cmd(pseudo + mkfs_cmd, native_sysroot)
         if rc:
             msger.error("ERROR: mkfs.%s returned '%s' instead of 0 (which you probably don't want to ignore, use --debug for details) when creating filesystem from rootfs directory: %s" % (self.fstype, rc, rootfs_dir))
 
-        # get the rootfs size in the right units for kickstart (Mb)
-        du_cmd = "du -Lbms %s" % rootfs
+        # get the rootfs size in the right units for kickstart (kB)
+        du_cmd = "du -Lbks %s" % rootfs
         out = exec_cmd(du_cmd)
         rootfs_size = out.split()[0]
 
@@ -313,9 +331,8 @@ class Wic_PartData(Mic_PartData):
         blocks = int(out.split()[0])
 
         extra_blocks = self.get_extra_block_count(blocks)
-
-        if extra_blocks < IMAGE_EXTRA_SPACE:
-            extra_blocks = IMAGE_EXTRA_SPACE
+        if extra_blocks < self.extra_space:
+            extra_blocks = self.extra_space
 
         blocks += extra_blocks
 
@@ -330,7 +347,11 @@ class Wic_PartData(Mic_PartData):
         if blocks % 16 != 0:
             blocks += (16 - (blocks % 16))
 
-        dosfs_cmd = "mkdosfs -n boot -S 512 -C %s %d" % (rootfs, blocks)
+        label_str = "-n boot"
+        if (self.label):
+            label_str = "-n %s" % self.label
+
+        dosfs_cmd = "mkdosfs %s -S 512 -C %s %d" % (label_str, rootfs, blocks)
         exec_native_cmd(dosfs_cmd, native_sysroot)
 
         mcopy_cmd = "mcopy -i %s -s %s/* ::/" % (rootfs, image_rootfs)
@@ -341,8 +362,8 @@ class Wic_PartData(Mic_PartData):
         chmod_cmd = "chmod 644 %s" % rootfs
         exec_cmd(chmod_cmd)
 
-        # get the rootfs size in the right units for kickstart (Mb)
-        du_cmd = "du -Lbms %s" % rootfs
+        # get the rootfs size in the right units for kickstart (kB)
+        du_cmd = "du -Lbks %s" % rootfs
         out = exec_cmd(du_cmd)
         rootfs_size = out.split()[0]
 
@@ -361,8 +382,8 @@ class Wic_PartData(Mic_PartData):
                        (image_rootfs, rootfs)
         exec_native_cmd(pseudo + squashfs_cmd, native_sysroot)
 
-        # get the rootfs size in the right units for kickstart (Mb)
-        du_cmd = "du -Lbms %s" % rootfs
+        # get the rootfs size in the right units for kickstart (kB)
+        du_cmd = "du -Lbks %s" % rootfs
         out = exec_cmd(du_cmd)
         rootfs_size = out.split()[0]
 
@@ -395,13 +416,18 @@ class Wic_PartData(Mic_PartData):
         """
         fs = "%s/fs_%s.%s" % (cr_workdir, self.label, self.fstype)
 
-        dd_cmd = "dd if=/dev/zero of=%s bs=1M seek=%d count=0" % \
+        dd_cmd = "dd if=/dev/zero of=%s bs=1k seek=%d count=0" % \
             (fs, self.size)
         exec_cmd(dd_cmd)
 
         extra_imagecmd = "-i 8192"
 
-        mkfs_cmd = "mkfs.%s -F %s %s" % (self.fstype, extra_imagecmd, fs)
+        label_str = ""
+        if (self.label):
+            label_str = "-L %s" % self.label
+
+        mkfs_cmd = "mkfs.%s -F %s %s %s" % \
+            (self.fstype, extra_imagecmd, label_str, fs)
         (rc, out) = exec_native_cmd(mkfs_cmd, native_sysroot)
         if rc:
             msger.error("ERROR: mkfs.%s returned '%s' instead of 0 (which you probably don't want to ignore, use --debug for details)" % (self.fstype, rc))
@@ -417,16 +443,16 @@ class Wic_PartData(Mic_PartData):
         """
         fs = "%s/fs_%s.%s" % (cr_workdir, self.label, self.fstype)
 
-        dd_cmd = "dd if=/dev/zero of=%s bs=1M seek=%d count=0" % \
+        dd_cmd = "dd if=/dev/zero of=%s bs=1k seek=%d count=0" % \
             (fs, self.size)
         exec_cmd(dd_cmd)
 
-        mkfs_cmd = "mkfs.%s -b %d %s" % (self.fstype, self.size * 1024, rootfs)
-        (rc, out) = exec_native_cmd(mkfs_cmd, native_sysroot)
-        if rc:
-            msger.error("ERROR: mkfs.%s returned '%s' instead of 0 (which you probably don't want to ignore, use --debug for details)" % (self.fstype, rc))
+        label_str = ""
+        if (self.label):
+            label_str = "-L %s" % self.label
 
-        mkfs_cmd = "mkfs.%s -F %s %s" % (self.fstype, extra_imagecmd, fs)
+        mkfs_cmd = "mkfs.%s -b %d %s %s" % \
+            (self.fstype, self.size * 1024, label_str, fs)
         (rc, out) = exec_native_cmd(mkfs_cmd, native_sysroot)
         if rc:
             msger.error("ERROR: mkfs.%s returned '%s' instead of 0 (which you probably don't want to ignore, use --debug for details)" % (self.fstype, rc))
@@ -442,9 +468,13 @@ class Wic_PartData(Mic_PartData):
         """
         fs = "%s/fs_%s.%s" % (cr_workdir, self.label, self.fstype)
 
-        blocks = self.size * 1024
+        blocks = self.size
 
-        dosfs_cmd = "mkdosfs -n boot -S 512 -C %s %d" % (fs, blocks)
+        label_str = "-n boot"
+        if (self.label):
+            label_str = "-n %s" % self.label
+
+        dosfs_cmd = "mkdosfs %s -S 512 -C %s %d" % (label_str, fs, blocks)
         exec_native_cmd(dosfs_cmd, native_sysroot)
 
         chmod_cmd = "chmod 644 %s" % fs
@@ -474,8 +504,8 @@ class Wic_PartData(Mic_PartData):
 
         os.rmdir(tmpdir)
 
-        # get the rootfs size in the right units for kickstart (Mb)
-        du_cmd = "du -Lbms %s" % fs
+        # get the rootfs size in the right units for kickstart (kB)
+        du_cmd = "du -Lbks %s" % fs
         out = exec_cmd(du_cmd)
         fs_size = out.split()[0]
 
@@ -490,7 +520,7 @@ class Wic_PartData(Mic_PartData):
         """
         fs = "%s/fs.%s" % (cr_workdir, self.fstype)
 
-        dd_cmd = "dd if=/dev/zero of=%s bs=1M seek=%d count=0" % \
+        dd_cmd = "dd if=/dev/zero of=%s bs=1k seek=%d count=0" % \
             (fs, self.size)
         exec_cmd(dd_cmd)
 
@@ -510,6 +540,11 @@ class Wic_Partition(Mic_Partition):
     removedAttrs = Mic_Partition.removedAttrs
 
     def _getParser(self):
+        def overhead_cb (option, opt_str, value, parser):
+            if (value < 1):
+                raise OptionValueError("Option %s: invalid value: %r" % (option, value))
+            setattr(parser.values, option.dest, value)
+
         op = Mic_Partition._getParser(self)
         # use specified source file to fill the partition
         # and calculate partition size
@@ -521,4 +556,13 @@ class Wic_Partition(Mic_Partition):
         # use specified rootfs path to fill the partition
         op.add_option("--rootfs-dir", type="string", action="store",
                       dest="rootfs", default=None)
+        # wether to add the partition in the partition table
+        op.add_option("--no-table", dest="no_table", action="store_true",
+                      default=False)
+        # extra space beyond the partition size
+        op.add_option("--extra-space", dest="extra_space", action="store",
+                      type="size", nargs=1, default="10M")
+        op.add_option("--overhead-factor", dest="overhead_factor",
+                      action="callback", callback=overhead_cb, type="float",
+                      nargs=1, default=1.3)
         return op

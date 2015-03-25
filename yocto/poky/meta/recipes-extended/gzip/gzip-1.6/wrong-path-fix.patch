@@ -21,11 +21,11 @@ diff -urpN a/Makefile.am b/Makefile.am
 @@ -81,9 +81,8 @@ gzip.doc.gz: gzip.doc $(bin_PROGRAMS)
  SUFFIXES = .in
  .in:
-	$(AM_V_GEN)sed \
+ 	$(AM_V_GEN)sed \
 -		-e 's|/bin/sh|$(SHELL)|g' \
-		-e 's|[@]bindir@|'\''$(bindir)'\''|g' \
+ 		-e 's|[@]bindir@|'\''$(bindir)'\''|g' \
 -		-e 's|[@]GREP@|$(GREP)|g' \
 +		-e 's|[@]GREP@|$(base_bindir)/grep|g' \
-		-e 's|[@]VERSION@|$(VERSION)|g' \
-		$(srcdir)/$@.in >$@-t \
-	  && chmod a+x $@-t \
+ 		-e 's|[@]VERSION@|$(VERSION)|g' \
+ 		$(srcdir)/$@.in >$@-t \
+ 	  && chmod a+x $@-t \

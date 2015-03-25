@@ -11,9 +11,10 @@ Index: resolvconf-1.76/etc/resolvconf/update.d/libc
 +++ resolvconf-1.76/etc/resolvconf/update.d/libc
 @@ -16,7 +16,7 @@
  #
-
+ 
  set -e
 -PATH=/sbin:/bin
 +PATH=/sbin:/bin:/usr/bin
-
+ 
  [ -x /lib/resolvconf/list-records ] || exit 1
+ 

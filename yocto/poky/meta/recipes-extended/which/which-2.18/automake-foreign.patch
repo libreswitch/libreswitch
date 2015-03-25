@@ -22,6 +22,7 @@ index b30b6f5..bd3222c 100644
 +AM_INIT_AUTOMAKE([foreign])
  AM_CONFIG_HEADER(config.h)
  AM_MAINTAINER_MODE
-
---
+ 
+-- 
 1.7.1
+

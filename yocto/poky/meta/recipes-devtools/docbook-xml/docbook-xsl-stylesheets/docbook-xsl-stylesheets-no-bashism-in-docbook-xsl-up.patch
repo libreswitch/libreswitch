@@ -17,7 +17,8 @@ index aba0016..cc73aa2 100755
 -#!/bin/bash
 +#!/bin/sh
  # vim: number
-
+ 
  # docbook-xsl-update - Update environment to latest docbook-xsl snapshot
---
+-- 
 1.9.1
+

@@ -74,6 +74,22 @@ class DirectImageCreator(BaseImageCreator):
         self.kernel_dir = kernel_dir
         self.native_sysroot = native_sysroot
 
+    def __get_part_num(self, num, parts):
+        """calculate the real partition number, accounting for partitions not
+        in the partition table and logical partitions
+        """
+        realnum = 0
+        for n, p in enumerate(parts, 1):
+            if not p.no_table:
+                realnum += 1
+            if n == num:
+                if  p.no_table:
+                    return 0
+                if self._ptable_format == 'msdos' and realnum > 3:
+                    # account for logical partition numbering, ex. sda5..
+                    return realnum + 1
+                return realnum
+
     def __write_fstab(self, image_rootfs):
         """overriden to generate fstab (temporarily) in rootfs. This is called
         from _create, make sure it doesn't get called from
@@ -98,12 +114,16 @@ class DirectImageCreator(BaseImageCreator):
     def _update_fstab(self, fstab_lines, parts):
         """Assume partition order same as in wks"""
         for num, p in enumerate(parts, 1):
-            if not p.mountpoint or p.mountpoint == "/" or p.mountpoint == "/boot":
+            pnum = self.__get_part_num(num, parts)
+            if not p.mountpoint or p.mountpoint == "/" or p.mountpoint == "/boot" or pnum == 0:
                 continue
-            if self._ptable_format == 'msdos' and num > 3:
-                device_name = "/dev/" + p.disk + str(num + 1)
-            else:
-                device_name = "/dev/" + p.disk + str(num)
+
+            part = ''
+            # mmc device partitions are named mmcblk0p1, mmcblk0p2..
+            if p.disk.startswith('mmcblk'):
+                part = 'p'
+
+            device_name = "/dev/" + p.disk + part + str(pnum)
 
             opts = "defaults"
             if p.fsopts:
@@ -230,6 +250,8 @@ class DirectImageCreator(BaseImageCreator):
             if not self.ks.handler.bootloader.source and p.mountpoint == "/boot":
                 self.ks.handler.bootloader.source = p.source
 
+        fstab = self.__write_fstab(self.rootfs_dir.get("ROOTFS_DIR"))
+
         for p in parts:
             # need to create the filesystems in order to get their
             # sizes before we can add them and do the layout.
@@ -238,12 +260,9 @@ class DirectImageCreator(BaseImageCreator):
             # self.assemble() calls Image.assemble() which calls
             # __write_partitition() for each partition to dd the fs
             # into the partitions.
-            fstab = self.__write_fstab(self.rootfs_dir.get("ROOTFS_DIR"))
-
             p.prepare(self, self.workdir, self.oe_builddir, self.rootfs_dir,
                       self.bootimg_dir, self.kernel_dir, self.native_sysroot)
 
-            self._restore_fstab(fstab)
 
             self.__image.add_partition(int(p.size),
                                        p.disk,
@@ -254,7 +273,10 @@ class DirectImageCreator(BaseImageCreator):
                                        fsopts = p.fsopts,
                                        boot = p.active,
                                        align = p.align,
+                                       no_table = p.no_table,
                                        part_type = p.part_type)
+
+        self._restore_fstab(fstab)
 
         self.__image.layout_partitions(self._ptable_format)
 
@@ -342,10 +364,8 @@ class DirectImageCreator(BaseImageCreator):
                 if p.disk.startswith('mmcblk'):
                     part = 'p'
 
-                if self._ptable_format == 'msdos' and num > 3:
-                    rootdev = "/dev/%s%s%-d" % (p.disk, part, num + 1)
-                else:
-                    rootdev = "/dev/%s%s%-d" % (p.disk, part, num)
+                pnum = self.__get_part_num(num, parts)
+                rootdev = "/dev/%s%s%-d" % (p.disk, part, pnum)
                 root_part_uuid = p.part_type
 
         return (rootdev, root_part_uuid)

@@ -239,6 +239,66 @@ python () {
         d.appendVarFlag('do_package', 'deptask', " do_packagedata")
 }
 
+# Get a list of files from file vars by searching files under current working directory
+# The list contains symlinks, directories and normal files.
+def files_from_filevars(filevars):
+    import os,glob
+    cpath = oe.cachedpath.CachedPath()
+    files = []
+    for f in filevars:
+        if os.path.isabs(f):
+            f = '.' + f
+        if not f.startswith("./"):
+            f = './' + f
+        globbed = glob.glob(f)
+        if globbed:
+            if [ f ] != globbed:
+                files += globbed
+                continue
+        files.append(f)
+
+    for f in files:
+        if not cpath.islink(f):
+            if cpath.isdir(f):
+                newfiles = [ os.path.join(f,x) for x in os.listdir(f) ]
+                if newfiles:
+                    files += newfiles
+
+    return files
+
+# Called in package_<rpm,ipk,deb>.bbclass to get the correct list of configuration files
+def get_conffiles(pkg, d):
+    pkgdest = d.getVar('PKGDEST', True)
+    root = os.path.join(pkgdest, pkg)
+    cwd = os.getcwd()
+    os.chdir(root)
+
+    conffiles = d.getVar('CONFFILES_%s' % pkg, True);
+    if conffiles == None:
+        conffiles = d.getVar('CONFFILES', True)
+    if conffiles == None:
+        conffiles = ""
+    conffiles = conffiles.split()
+    conf_orig_list = files_from_filevars(conffiles)
+
+    # Remove links and directories from conf_orig_list to get conf_list which only contains normal files
+    conf_list = []
+    for f in conf_orig_list:
+        if os.path.isdir(f):
+            continue
+        if os.path.islink(f):
+            continue
+        if not os.path.exists(f):
+            continue
+        conf_list.append(f)
+
+    # Remove the leading './'
+    for i in range(0, len(conf_list)):
+        conf_list[i] = conf_list[i][1:]
+
+    os.chdir(cwd)
+    return conf_list
+
 def splitdebuginfo(file, debugfile, debugsrcdir, sourcefile, d):
     # Function to split a single file into two components, one is the stripped
     # target system binary, the other contains any debugging information. The
@@ -1009,26 +1069,9 @@ python populate_packages () {
             filesvar.replace("//", "/")
 
         origfiles = filesvar.split()
-        files = []
-        for file in origfiles:
-            if os.path.isabs(file):
-                file = '.' + file
-            if not file.startswith("./"):
-                file = './' + file
-            globbed = glob.glob(file)
-            if globbed:
-                if [ file ] != globbed:
-                    files += globbed
-                    continue
-            files.append(file)
+        files = files_from_filevars(origfiles)
 
         for file in files:
-            if not cpath.islink(file):
-                if cpath.isdir(file):
-                    newfiles =  [ os.path.join(file,x) for x in os.listdir(file) ]
-                    if newfiles:
-                        files += newfiles
-                        continue
             if (not cpath.islink(file)) and (not cpath.exists(file)):
                 continue
             if file in seen:
@@ -1392,31 +1435,10 @@ python package_do_shlibs() {
 
     pkgdest = d.getVar('PKGDEST', True)
 
-    shlibs_dirs = d.getVar('SHLIBSDIRS', True).split()
     shlibswork_dir = d.getVar('SHLIBSWORKDIR', True)
 
     # Take shared lock since we're only reading, not writing
     lf = bb.utils.lockfile(d.expand("${PACKAGELOCK}"))
-
-    def read_shlib_providers():
-        list_re = re.compile('^(.*)\.list$')
-        # Go from least to most specific since the last one found wins
-        for dir in reversed(shlibs_dirs):
-            bb.debug(2, "Reading shlib providers in %s" % (dir))
-            if not os.path.exists(dir):
-                continue
-            for file in os.listdir(dir):
-                m = list_re.match(file)
-                if m:
-                    dep_pkg = m.group(1)
-                    fd = open(os.path.join(dir, file))
-                    lines = fd.readlines()
-                    fd.close()
-                    for l in lines:
-                        s = l.strip().split(":")
-                        if s[0] not in shlib_provider:
-                            shlib_provider[s[0]] = {}
-                        shlib_provider[s[0]][s[1]] = (dep_pkg, s[2])
 
     def linux_so(file, needed, sonames, renames, pkgver):
         needs_ldconfig = False
@@ -1514,8 +1536,7 @@ python package_do_shlibs() {
         use_ldconfig = False
 
     needed = {}
-    shlib_provider = {}
-    read_shlib_providers()
+    shlib_provider = oe.package.read_shlib_providers(d)
 
     for pkg in packages.split():
         private_libs = d.getVar('PRIVATE_LIBS_' + pkg, True) or d.getVar('PRIVATE_LIBS', True) or ""
@@ -1887,7 +1908,7 @@ python package_depchains() {
 
 # Since bitbake can't determine which variables are accessed during package
 # iteration, we need to list them here:
-PACKAGEVARS = "FILES RDEPENDS RRECOMMENDS SUMMARY DESCRIPTION RSUGGESTS RPROVIDES RCONFLICTS PKG ALLOW_EMPTY pkg_postinst pkg_postrm INITSCRIPT_NAME INITSCRIPT_PARAMS DEBIAN_NOAUTONAME ALTERNATIVE PKGE PKGV PKGR USERADD_PARAM GROUPADD_PARAM CONFFILES"
+PACKAGEVARS = "FILES RDEPENDS RRECOMMENDS SUMMARY DESCRIPTION RSUGGESTS RPROVIDES RCONFLICTS PKG ALLOW_EMPTY pkg_postinst pkg_postrm INITSCRIPT_NAME INITSCRIPT_PARAMS DEBIAN_NOAUTONAME ALTERNATIVE PKGE PKGV PKGR USERADD_PARAM GROUPADD_PARAM CONFFILES SYSTEMD_SERVICE"
 
 def gen_packagevar(d):
     ret = []
