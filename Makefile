@@ -109,7 +109,7 @@ configure:
 	@$(ECHO) "Configuring for platform $(PLATFORM)...\n"
 	@$(ECHO) "\n$(GREEN)Configuring yocto...$(GRAY)"
 	$(V) \
-	 mkdir -p build/conf ; \
+	 mkdir -p build/conf ; rm build/conf/*.conf ; \
 	 sed -e "s|##HALON_YOCTO_ROOT##|$(HALON_ROOT)/yocto/poky|" tools/config/bblayers.conf.in > build/conf/bblayers.conf ; \
 	 for repo in yocto/*/meta* ; do \
             [[ "$$repo" =~ "yocto/poky" ]] && continue ; \
