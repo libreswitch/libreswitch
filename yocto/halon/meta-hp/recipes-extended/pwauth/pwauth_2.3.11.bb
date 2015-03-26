@@ -13,5 +13,6 @@ S = "${WORKDIR}/${PN}-${PV}"
 do_install() {
 	install -d ${D}/usr/bin
 	install -m 0755 pwauth ${D}/usr/bin
-	install -m 0755 unixgroup ${D}/usr/bin
+	# Avoid the perl dependency
+	#install -m 0755 unixgroup ${D}/usr/bin
 }

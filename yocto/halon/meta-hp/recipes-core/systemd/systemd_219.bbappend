@@ -20,10 +20,10 @@ do_install_append() {
     install -m 755 ${WORKDIR}/systemctl-alias.sh ${D}${sysconfdir}/profile.d/systemctl-alias.sh
 }
 
-pkg_postinst_udev-hwdb_prepend() {
-	# Abort script since causes problems for read-only fs
-	if test -n "$D"; then
-		exit 0;
-	fi
-}
+#pkg_postinst_udev-hwdb_prepend() {
+#	# Abort script since causes problems for read-only fs
+#	if test -n "$D"; then
+#		exit 0;
+#	fi
+#}
 

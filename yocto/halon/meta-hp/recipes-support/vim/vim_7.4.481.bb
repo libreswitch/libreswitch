@@ -10,11 +10,13 @@ SRC_URI = "hg://vim.googlecode.com/hg/;protocol=https;module=vim \
            file://disable_acl_header_check.patch;patchdir=.. \
            file://vim-add-knob-whether-elf.h-are-checked.patch;patchdir=.. \
 "
-SRCREV = "v7-4-258"
+SRCREV = "v7-4-481"
+SRC_URI[md5sum] = "02ba0a3e89b40323970590f6a4f9fc0f"
+SRC_URI[sha256sum] = "8958c00a77d7f3e6500b0e727b6d0e6efedcfba9af10f01cf4637e8ffe46a96f"
 
-S = "${WORKDIR}/${BPN}/src"
+S = "${WORKDIR}/vim/src"
 
-VIMDIR = "${BPN}${@d.getVar('PV',1).split('.')[0]}${@d.getVar('PV',1).split('.')[1]}"
+VIMDIR = "vim${@d.getVar('PV',1).split('.')[0]}${@d.getVar('PV',1).split('.')[1]}"
 
 inherit autotools update-alternatives
 inherit autotools-brokensep
@@ -59,7 +61,9 @@ EXTRA_OECONF = " \
     STRIP=/bin/true \
 "
 
-do_install_append() {
+do_install() {
+    autotools_do_install
+
     # Work around rpm picking up csh or awk or perl as a dep
     chmod -x ${D}${datadir}/${BPN}/${VIMDIR}/tools/vim132
     chmod -x ${D}${datadir}/${BPN}/${VIMDIR}/tools/mve.awk
@@ -67,6 +71,9 @@ do_install_append() {
 
     # Install example vimrc from runtime files
     install -m 0644 ../runtime/vimrc_example.vim ${D}/${datadir}/${BPN}/vimrc
+
+    # we use --with-features=big as default
+    mv ${D}${bindir}/${BPN} ${D}${bindir}/${BPN}.${BPN}
 }
 
 PARALLEL_MAKEINST = ""
@@ -93,10 +100,12 @@ FILES_${PN}-common = " \
     ${datadir}/${BPN}/${VIMDIR}/tools \
 "
 
+RDEPENDS_${PN} = "ncurses-terminfo-base"
 # Recommend that runtime data is installed along with vim
 RRECOMMENDS_${PN} = "${PN}-syntax ${PN}-help ${PN}-tutor ${PN}-vimrc ${PN}-common"
 
-ALTERNATIVE_${PN} = "vi"
-ALTERNATIVE_TARGET[vi] = "${bindir}/${BPN}"
+ALTERNATIVE_${PN} = "vi vim"
+ALTERNATIVE_TARGET = "${bindir}/${BPN}.${BPN}"
 ALTERNATIVE_LINK_NAME[vi] = "${base_bindir}/vi"
-ALTERNATIVE_PRIORITY[vi] = "100"
+ALTERNATIVE_LINK_NAME[vim] = "${bindir}/vim"
+ALTERNATIVE_PRIORITY = "100"
