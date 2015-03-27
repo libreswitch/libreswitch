@@ -1,4 +1,4 @@
 [gerrit]
 host=review.openhalon.io
 port=29418
-project=halon/halon-build.git
+project=openhalon.git
