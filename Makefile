@@ -165,7 +165,7 @@ clean:: header
 
 distclean::
 	$(V)$(ECHO) "$(GREEN)Distcleaning...$(GRAY)"
-	$(V) rm -Rf .platform images build tools/bin/{corkscrew,python}
+	$(V) rm -Rf .platform .devenv images src build tools/bin/{corkscrew,python}
 	$(V)$(ECHO) "Distcleaning completed. You need to reconfigure to build again\n"
 
 include tools/Rules.make

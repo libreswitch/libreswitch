@@ -60,6 +60,13 @@ define FATAL_ERROR
 	 exit 1
 endef
 
+# Parameters: first argument is the message
+define WARNING
+	$(ECHO) ; \
+	 $(ECHO) "$(YELLOW)WARNING:$(GRAY) $(1)" ; \
+	 $(ECHO) ;
+endef
+
 # Parameters: first argument is the recipe to bake
 define BITBAKE
 	cd $(BUILDDIR) ; umask 002 ; \
@@ -175,9 +182,6 @@ endif
 devshell: header 
 	$(V)unset MAKEOVERRIDES ; $(call BITBAKE, -c devshell $(RECIPE))
 
-devtool: header
-	$(V) $(call DEVTOOL, $(ARGS))
-
 .PHONY: sdk _sdk
 sdk: header _sdk
 	$(V) ln -fs $(BUILD_ROOT)/build/tmp/deploy/sdk/$(DISTRO)-glibc-`uname -m`-*-toolchain-*.sh images
@@ -230,4 +234,65 @@ ifneq ($(findstring onie-installer,$(MAKECMDGOALS)),)
   $(error ====== ONIE_INSTALLER_RECIPE variable is empty, please define it in your platform's Rules.make  =====)
  endif
 endif
+
+# Devenv code
+REVIEWUSER?=$(USER)
+setup-git-review:: .git/hooks/commit-msg
+	$(V) if which git-review > /dev/null ; then \
+	  git review -s ; \
+	else \
+	  $(call WARNING,git-review wasn't found... skipping his configuration) \
+	fi
+
+.git/hooks/commit-msg:
+	$(V) gitdir=$$(git rev-parse --git-dir); scp -p -P 29418 $(REVIEWUSER)@review.openhalon.io:hooks/commit-msg $${gitdir}/hooks/
+
+.PHONY: _devenv devenv
+
+
+devenv: header
+	$(V) $(ECHO) "$(YELLOW)Configuring development enviroment...$(GRAY)\n"
+	$(V)$(MAKE) _devenv
+
+devenv_clean:
+	$(V)$(call DEVTOOL, reset -a)
+	$(V)rm -Rf src .devenv
+
+define DEVENV_ADD
+	$(call DEVTOOL, modify --extract $(1) $(BUILD_ROOT)/src/$(1))
+endef
+
+ifneq ($(findstring devenv_add,$(MAKECMDGOALS)),)
+  ifeq ($(PACKAGE),)
+   $(error ====== PACKAGE variable is empty, please specify which recipe you want the devshell for  =====)
+  endif
+endif
+devenv_add:
+	$(V)$(call DEVENV_ADD,$(PACKAGE))
+
+ifneq ($(findstring devenv_rm,$(MAKECMDGOALS)),)
+  ifeq ($(PACKAGE),)
+   $(error ====== PACKAGE variable is empty, please specify which recipe you want the devshell for  =====)
+  endif
+endif
+devenv_rm:
+	$(V)$(call DEVTOOL,reset $(PACKAGE))
+	$(V)rm -Rf src/$(PACKAGE)
+
+devenv_status:
+	$(V)$(call DEVTOOL,status)
+
+_devenv: .devenv
+	$(V) while read recipe ; do \
+	  [[ $$recipe == \#* ]] && continue ; \
+	  $(call DEVENV_ADD,$$recipe) ; \
+	done <.devenv
+	
+export PACKAGES
+.devenv:
+	$(V) if [ -z "$$PACKAGES" ] ;  then \
+	  find yocto/*/meta* -name devenv.conf | xargs cat > $@ ; \
+	else \
+	  echo "$${PACKAGES// /$$'\n'}" > $@ ; \
+	fi  
 

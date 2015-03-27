@@ -1,5 +1,7 @@
 .platform
+.devenv
 images/*
+src/*
 .*.swp
 build
 tools/bin/python
