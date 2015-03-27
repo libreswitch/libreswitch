@@ -249,6 +249,7 @@ setup-git-review:: .git/hooks/commit-msg
 
 .PHONY: _devenv devenv
 
+-include src/Rules.make
 
 devenv: header
 	$(V) $(ECHO) "$(YELLOW)Configuring development enviroment...$(GRAY)\n"
@@ -259,12 +260,21 @@ devenv_clean:
 	$(V)rm -Rf src .devenv
 
 define DEVENV_ADD
-	$(call DEVTOOL, modify --extract $(1) $(BUILD_ROOT)/src/$(1))
+	$(call DEVTOOL, modify --extract $(1) $(BUILD_ROOT)/src/$(1)) ; \
+	pushd . > /dev/null ; \
+	cd $(BUILD_ROOT)/src/$(1) ; \
+	if [ -f .gitreview ] ; then \
+	  gitdir=$$(git rev-parse --git-dir); scp -p -P 29418 $(REVIEWUSER)@review.openhalon.io:hooks/commit-msg $${gitdir}/hooks/ ; \
+	  if which git-review > /dev/null ; then git review -s ; fi ; \
+	fi ; \
+	popd > /dev/null ; \
+	sed -e "s/##RECIPE##/$(1)/g" $(BUILD_ROOT)/tools/devenv-recipe-template.make >> $(BUILD_ROOT)/src/Rules.make ; \
+	echo $(1) >> .devenv
 endef
 
 ifneq ($(findstring devenv_add,$(MAKECMDGOALS)),)
   ifeq ($(PACKAGE),)
-   $(error ====== PACKAGE variable is empty, please specify which recipe you want the devshell for  =====)
+   $(error ====== PACKAGE variable is empty, please specify which package you want  =====)
   endif
 endif
 devenv_add:
@@ -272,27 +282,27 @@ devenv_add:
 
 ifneq ($(findstring devenv_rm,$(MAKECMDGOALS)),)
   ifeq ($(PACKAGE),)
-   $(error ====== PACKAGE variable is empty, please specify which recipe you want the devshell for  =====)
+   $(error ====== PACKAGE variable is empty, please specify which package you want =====)
   endif
 endif
 devenv_rm:
 	$(V)$(call DEVTOOL,reset $(PACKAGE))
 	$(V)rm -Rf src/$(PACKAGE)
+	$(V)sed -e "/#$(PACKAGE)/,/#END_$(PACKAGE)/d" src/Rules.make
 
 devenv_status:
-	$(V)$(call DEVTOOL,status)
+	$(V)if [ -f .devenv ] ; then \
+	  $(call DEVTOOL,status) ; \
+	else \
+	  $(ECHO) "devenv is not initialized\n" ; \
+	fi
 
-_devenv: .devenv
-	$(V) while read recipe ; do \
+export PACKAGES
+_devenv:
+	$(V) if [ -z "$$PACKAGES" ] ; then \
+	  PACKAGES=`find yocto/*/meta* -name devenv.conf | xargs cat` ; \
+	fi ; \
+	for recipe in $$PACKAGES ; do \
 	  [[ $$recipe == \#* ]] && continue ; \
 	  $(call DEVENV_ADD,$$recipe) ; \
-	done <.devenv
-	
-export PACKAGES
-.devenv:
-	$(V) if [ -z "$$PACKAGES" ] ;  then \
-	  find yocto/*/meta* -name devenv.conf | xargs cat > $@ ; \
-	else \
-	  echo "$${PACKAGES// /$$'\n'}" > $@ ; \
-	fi  
-
+	done
