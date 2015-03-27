@@ -1,11 +1,10 @@
 #!/bin/bash
 
 # Definitions
-SERVER_URL=http://$HALON_ARCHIVE_ADDRESS/
+SERVER_URL=http://archive.openhalon.io/
 CORKSCREW=corkscrew-2.0
 CORKSCREW_PACKAGE=$CORKSCREW.tar.gz
-export CURL_CA_BUNDLE=tools/certs/openhalon.io.crt
-HALON_TMP=/tmp/halon-tmp-$USER/
+BOOTSTRAP_TMP=/tmp/$DISTRO-tmp-$USER/
 
 error () {
     echo
@@ -23,7 +22,7 @@ fi
 setup_corkscrew (){
     echo "Setting up Corkscrew"
     pushd . > /dev/null
-    cd $HALON_TMP
+    cd $BOOTSTRAP_TMP
     if [ ! -f $CORKSCREW_PACKAGE ] ; then
         echo curl $SERVER_URL/$CORKSCREW_PACKAGE 
         curl $SERVER_URL/$CORKSCREW_PACKAGE > $CORKSCREW_PACKAGE || { rm -f $CORKSCREW_PACKAGE ; exit 255 ; }
@@ -33,7 +32,7 @@ setup_corkscrew (){
     fi
     echo -n "  Building corkscrew..."
     cd $CORKSCREW
-    ./configure --prefix=$HALON_ROOT/tools/ >$REDIRECT 2>&1
+    ./configure --prefix=$BUILD_ROOT/tools/ >$REDIRECT 2>&1
     make >$REDIRECT
     make install >$REDIRECT
     echo " done"
@@ -82,7 +81,7 @@ sanity_checks (){
 }
 
 
-mkdir -p $HALON_TMP
+mkdir -p $BOOTSTRAP_TMP
 # Check we have everything we need
 sanity_checks
 

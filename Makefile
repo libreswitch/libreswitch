@@ -14,6 +14,11 @@
 
 .PHONY: all clean configure distclean header switch-platform help
 
+DISTRO ?= openhalon
+export DISTRO
+# Pull distribution specific rules
+include yocto/$(DISTRO)/Rules.make
+
 # Useful variables
 SHELL=/bin/bash
 V=$(if $(VERBOSE),,@)
@@ -42,7 +47,7 @@ GRAY=\033[0m
 
 CONFIGURED_PLATFORM=$(shell if [ -f .platform ] ; then cat .platform ; else echo undefined ; fi)
 
-PLATFORMS = $(shell find yocto/* -name meta-platform* -printf "%P " | sed -e 's/meta-platform-//g')
+PLATFORMS = $(shell find yocto/$(DISTRO) -name meta-platform* -printf "%P " | sed -e 's/meta-platform-$(DISTRO)-//g')
 
 # Parameters: first argument is the fatal error message
 define FATAL_ERROR
@@ -52,20 +57,20 @@ define FATAL_ERROR
 	 exit 1
 endef
 
-export HALON_ROOT=$(PWD)
+export BUILD_ROOT=$(PWD)
 
 all:: header
 
 help:: header
-	@$(ECHO) "$$HALON_HELP_TEXT"
+	@$(ECHO) "$$HELP_TEXT"
 
-define HALON_HELP_TEXT
+define HELP_TEXT
 The following targets are available:
 
     $(YELLOW)configure$(GRAY)       : configs the project for specific platform hardware, and bootstraps the build system
     $(YELLOW)switch-platform$(GRAY) : change the project to a different platform 
     $(YELLOW)distclean$(GRAY)       : removes generated files, and returns to a configurable state
-    $(YELLOW)help$(GRAY)            : this, see also $(BLUE)https://wiki.openhalon.io/wiki/index.php/Getting_started_with_Halon$(GRAY)
+    $(YELLOW)help$(GRAY)            : this, see also $(BLUE)$(DISTRO_HELP_LINK)$(GRAY)
 
 After configuring the project, these additional targets are available:
 
@@ -82,50 +87,53 @@ Maintenance/development targets:
     $(YELLOW)devshell RECIPE= $(GRAY)   : start a devshell for RECIPE
 
 endef
-export HALON_HELP_TEXT
+export HELP_TEXT
 
 header:: .platform
-	@$(ECHO) "$(RED)Halon Build System$(GRAY)\n"
+	@$(ECHO) "$(RED)Build System for $(DISTRO)$(GRAY)\n"
 	@$(ECHO) "Platform: $(GREEN)$(CONFIGURED_PLATFORM)$(GRAY)"
 	@$(ECHO)
 
 .platform:
 ifneq ($(MAKECMDGOALS),help)
-	@$(call FATAL_ERROR,Halon is not configured; run make configure)
+	@$(call FATAL_ERROR,$(DISTRO) is not configured; run make configure)
 endif
 
 configure:
-	@$(ECHO) "$(RED)Halon Build System$(GRAY)"
+	@$(ECHO) "$(RED)Build System for $(DISTRO)$(GRAY)"
 	$(V) if [ -f .platform ] ; then \
-	    $(call FATAL_ERROR,Halon is already configured; you need to run distclean to change the configuration) ; \
+	    $(call FATAL_ERROR,$(DISTRO) is already configured; you need to run distclean to change the configuration) ; \
 	  fi
 	$(V)\
 	 if [ "$(PLATFORM)" == "" ] ; then \
 	    $(call FATAL_ERROR,Set the environment variable PLATFORM to select a platform) ; \
 	 fi ;\
-	 if ! [ -d yocto/*/meta-platform-$(PLATFORM) ] ; then \
+	 if ! [ -d yocto/*/meta-platform-$(DISTRO)-$(PLATFORM) ] ; then \
 	    $(call FATAL_ERROR,Unknown platform \"$(PLATFORM)\"; choose from {$(GREEN)$(PLATFORMS)$(GRAY)}) ; \
 	 fi ;
 	@$(ECHO) "Configuring for platform $(PLATFORM)...\n"
 	@$(ECHO) "\n$(GREEN)Configuring yocto...$(GRAY)"
 	$(V) \
-	 mkdir -p build/conf ; rm build/conf/*.conf ; \
-	 sed -e "s|##HALON_YOCTO_ROOT##|$(HALON_ROOT)/yocto/poky|" tools/config/bblayers.conf.in > build/conf/bblayers.conf ; \
+	 mkdir -p build/conf ; rm -f build/conf/*.conf ; \
+	 sed -e "s|##YOCTO_ROOT##|$(BUILD_ROOT)/yocto/poky|" tools/config/bblayers.conf.in > build/conf/bblayers.conf ; \
 	 for repo in yocto/*/meta* ; do \
             [[ "$$repo" =~ "yocto/poky" ]] && continue ; \
             repo_name=`basename $$repo` ; \
-            if [[ "$$repo_name" =~ meta-platform.* ]] ; then \
+            if [[ "$$repo_name" =~ meta-platform-.* ]] || [[ "$$repo_name" =~ meta-distro.* ]] ; then \
+                if [ "$$repo_name" == "meta-distro-$(DISTRO)" ] ; then \
+	           echo "  $(BUILD_ROOT)/$$repo \\" >> build/conf/bblayers.conf ; \
+	        fi ; \
                 continue ; \
 	    else \
-		echo "  $(HALON_ROOT)/$$repo \\" >> build/conf/bblayers.conf ; \
+		echo "  $(BUILD_ROOT)/$$repo \\" >> build/conf/bblayers.conf ; \
 	    fi ; \
 	 done ; \
-	 for repo in yocto/*/meta-platform* ; do \
+	 for repo in yocto/*/meta-platform-$(DISTRO)-* ; do \
             [[ "$$repo" =~ "^yocto/poky" ]] && continue ; \
 	    cp build/conf/bblayers.conf build/conf/bblayers.conf-$${repo##*platform-} ; \
-	    echo -e "  $(HALON_ROOT)/$$repo \\ \n\"" >> build/conf/bblayers.conf-$${repo##*platform-} ; \
+	    echo -e "  $(BUILD_ROOT)/$$repo \\ \n\"" >> build/conf/bblayers.conf-$${repo##*platform-} ; \
 	 done ; \
-	 ln -sf bblayers.conf-$(PLATFORM) build/conf/bblayers.conf
+	 ln -sf bblayers.conf-$(DISTRO)-$(PLATFORM) build/conf/bblayers.conf
 	$(V) mkdir -p images
 	$(V) tools/bin/bootstrap.sh
 	$(V) echo $(PLATFORM) > .platform
@@ -138,7 +146,7 @@ _switch-platform:
 	 if [ "$(PLATFORM)" == "" ] ; then \
             $(call FATAL_ERROR,Set the environment variable PLATFORM to select the new platform) ; \
          fi ;\
-	 if ! [ -d yocto/*/meta-platform-$(PLATFORM) ] ; then \
+	 if ! [ -d yocto/*/meta-platform-$(DISTRO)-$(PLATFORM) ] ; then \
             $(call FATAL_ERROR,Unknown platform \"$(PLATFORM)\"; choose from {$(GREEN)$(PLATFORMS)$(GRAY)}) ; \
          fi ; \
 	 $(ECHO) -n Switching to platform $(PLATFORM)... ; \

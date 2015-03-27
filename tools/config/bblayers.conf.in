@@ -7,11 +7,11 @@ BBPATH = "${TOPDIR}"
 BBFILES ?= ""
 
 BBLAYERS_NON_REMOVABLE ?= " \
-  ##HALON_YOCTO_ROOT##/meta \
-  ##HALON_YOCTO_ROOT##/meta-yocto \
+  ##YOCTO_ROOT##/meta \
+  ##YOCTO_ROOT##/meta-yocto \
 "
 
 BBLAYERS ?= " \
-  ##HALON_YOCTO_ROOT##/meta \
-  ##HALON_YOCTO_ROOT##/meta-yocto \
-  ##HALON_YOCTO_ROOT##/meta-yocto-bsp \
+  ##YOCTO_ROOT##/meta \
+  ##YOCTO_ROOT##/meta-yocto \
+  ##YOCTO_ROOT##/meta-yocto-bsp \
