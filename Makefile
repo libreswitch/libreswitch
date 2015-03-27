@@ -14,6 +14,9 @@
 
 .PHONY: all clean configure distclean header switch-platform help
 
+# This allows an overlay layer to basically override the whole environment
+-include yocto/*/.distro_override
+
 DISTRO ?= openhalon
 export DISTRO
 # Pull distribution specific rules
@@ -61,7 +64,8 @@ export BUILD_ROOT=$(PWD)
 
 all:: header
 
-help:: header
+help::
+	@$(ECHO) "$(RED)Build System for $(DISTRO)$(GRAY)\n"
 	@$(ECHO) "$$HELP_TEXT"
 
 define HELP_TEXT

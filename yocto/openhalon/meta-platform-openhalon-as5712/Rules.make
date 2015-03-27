@@ -8,7 +8,7 @@
 
 DISTRO_KERNEL_FILE = $(BASE_BZIMAGE_FILE)
 DISTRO_FS_FILE = $(BASE_CPIO_FS_FILE)
-DISTRO_PRODUCT_FS_TARGET = halon-disk-image
+DISTRO_PRODUCT_FS_TARGET = openhalon-disk-image
 ONIE_INSTALLER_RECIPE = halon-onie-installer
 ONIE_INSTALLER_FILE = onie-installer-x86_64-as5712_54x
 
