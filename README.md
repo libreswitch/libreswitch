@@ -1,1 +1,2 @@
-# Halon Build System
+# OpenHalon Build System
+
