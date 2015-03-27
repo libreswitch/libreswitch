@@ -16,6 +16,6 @@ DISTRO_HELP_LINK=https://wiki.openhalon.io/wiki/index.php/Getting_started_with_H
 
 DISTRO_ARCHIVE_ADDRESS?=archive.openhalon.io
 DISTRO_SSTATE_ADDRESS?=sstate.openhalon.io
-DISTRO_FS_TARGET = halon-image
+DISTRO_FS_TARGET = openhalon-image
 
 DISTRO_CA_BUNDLE = yocto/openhalon/certs/openhalon.io.crt
