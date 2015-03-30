@@ -117,7 +117,7 @@ kernel: header _kernel
 
 _KERNEL_TARGET ?= _kernel
 
-DISTRO_KERNEL_SYMBOLS_FILE ?= $(DISTRO_VMLINUX_FILE)
+DISTRO_KERNEL_SYMBOLS_FILE ?= $(BASE_VMLINUX_FILE)
 _kernel: 
 	$(V) $(ECHO) "$(YELLOW)Building kernel...$(GRAY)\n"
 	$(V)$(call BITBAKE,virtual/kernel)
@@ -142,7 +142,7 @@ _fs images/fs-$(CONFIGURED_PLATFORM):
 	$(V)ln -sf $(DISTRO_FS_FILE) images/`basename $(DISTRO_FS_FILE)`
 	$(V)for extra_fs in $(DISTRO_EXTRA_FS_FILES) ; do ln -sf $$extra_fs images/`basename $$extra_fs` ; done
 	@# If we have a tar.gz file, also link it, useful for docker images
-	$(V)if [ -f $(DISTRO_TARGZ_FS_FILE) ] ; then ln -sf $(DISTRO_TARGZ_FS_FILE) images/`basename $(DISTRO_TARGZ_FS_FILE)` ; fi
+	$(V)if [ -f $(BASE_TARGZ_FS_FILE) ] ; then ln -sf $(BASE_TARGZ_FS_FILE) images/`basename $(BASE_TARGZ_FS_FILE)` ; fi
 	$(V)ln -sf `basename $(DISTRO_FS_FILE)` images/fs-$(CONFIGURED_PLATFORM)
 	$(V)ln -sf `dirname $(DISTRO_FS_FILE)`/`basename $(DISTRO_FS_FILE) |  cut -d'.' -f1`.manifest images/`basename $(DISTRO_FS_FILE) | cut -d'.' -f1`.manifest
 	$(V) $(ECHO)
@@ -224,6 +224,7 @@ images/$(CONFIGURED_PLATFORM).itb:: $(DISTRO_PLATFORM_ITS_FILE) $(MKIMAGE)
 .PHONY: onie-installer
 onie-installer: header _onie-installer
 
+DISTRO_ONIE_INSTALLER_FILE?= $(BASE_ONIE_INSTALLER_FILE)
 _onie-installer::
 	$(V) $(ECHO) "$(YELLOW)Building ONIE Installer file ($(ONIE_INSTALLER_RECIPE))...$(GRAY)\n"
 	$(V)$(call BITBAKE,$(ONIE_INSTALLER_RECIPE))
