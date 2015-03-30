@@ -6,7 +6,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Proprietary;md5=0557f9d92cf58f2
 PR = "r0"
 PV = "0.2"
 
-IMAGE_NAME = "halon-disk-image"
+IMAGE_NAME = "openhalon-disk-image"
 
 SRC_URI = " \
     file://onie-installer-x86_64-as5712_54x.in \
