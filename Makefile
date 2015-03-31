@@ -61,6 +61,7 @@ endif
 CONFIGURED_PLATFORM=$(shell if [ -f .platform ] ; then cat .platform ; else echo undefined ; fi)
 
 PLATFORMS = $(shell find yocto/$(DISTRO) -name meta-platform* -printf "%P " | sed -e 's/meta-platform-$(DISTRO)-//g')
+PLATFORMS:=$(sort $(PLATFORMS))
 
 # Parameters: first argument is the fatal error message
 define FATAL_ERROR
@@ -87,29 +88,38 @@ help::
 	@$(ECHO) "$(RED)Build System for $(DISTRO)$(GRAY)\n"
 	@$(ECHO) "$$HELP_TEXT"
 
+ifeq ($(CONFIGURED_PLATFORM),undefined)
 define HELP_TEXT
-The following targets are available:
+The platform type is not configured.  To configure it, please run:
 
-    $(YELLOW)configure$(GRAY)       : configs the project for specific platform hardware, and bootstraps the build system
-    $(YELLOW)switch-platform$(GRAY) : change the project to a different platform 
-    $(YELLOW)distclean$(GRAY)       : removes generated files, and returns to a configurable state
-    $(YELLOW)help$(GRAY)            : this, see also $(BLUE)$(DISTRO_HELP_LINK)$(GRAY)
+    $(YELLOW)make configure PLATFORM=$(GRAY)<platform>
 
-After configuring the project, these additional targets are available:
+where <platform> is one of: $(GREEN)$(PLATFORMS)$(GRAY)
 
-    $(YELLOW)all$(GRAY)    : build the default targets for the platform
-    $(YELLOW)fs$(GRAY)     : build the File System (if the FS is decoupled from the kernel)
-    $(YELLOW)kernel$(GRAY) : build the Linux kernel
-    $(YELLOW)sdk$(GRAY)    : build the SDK installer for the platform
+endef
+else
+define HELP_TEXT
+Platform: $(GREEN)$(CONFIGURED_PLATFORM)$(GRAY)
 
-Maintenance/development targets:
+The following primary targets are available:
+
+    $(YELLOW)all$(GRAY)                 : build the default targets for the platform
+    $(YELLOW)fs$(GRAY)                  : build the File System (if the FS is decoupled from the kernel)
+    $(YELLOW)kernel$(GRAY)              : build the Linux kernel
+    $(YELLOW)sdk$(GRAY)                 : build the SDK installer for the platform
+
+Additional development/maintenance targets:
 
     $(YELLOW)bake RECIPE= $(GRAY)       : bitbake the specified RECIPE, e.g. RECIPE="-s" shows all package names
     $(YELLOW)clean$(GRAY)               : cleans the build but not the shared state
     $(YELLOW)cleansstate RECIPE= $(GRAY): clean RECIPE including shared state, keeps any download
+    $(YELLOW)distclean$(GRAY)           : removes generated files, and returns to a configurable state
     $(YELLOW)devshell RECIPE= $(GRAY)   : start a devshell for RECIPE
+    $(YELLOW)help$(GRAY)                : this, see also $(BLUE)$(DISTRO_HELP_LINK)$(GRAY)
+    $(YELLOW)switch-platform$(GRAY)     : change to a different platform
 
 endef
+endif
 export HELP_TEXT
 
 header:: .platform
@@ -119,7 +129,8 @@ header:: .platform
 
 .platform:
 ifneq ($(MAKECMDGOALS),help)
-	@$(call FATAL_ERROR,$(DISTRO) is not configured; run make configure)
+	@$(ECHO) "$$HELP_TEXT"
+	@$(call FATAL_ERROR,$(DISTRO) is not configured)
 endif
 
 $(eval $(call PARSE_ARGUMENTS,configure))
@@ -182,12 +193,13 @@ _switch-platform:
 
 clean:: header
 	$(V)$(ECHO) "Cleaning..."
-	$(V)rm -Rf build/{tmp,sstate-cache,cache,bitbake.lock}
+	$(V)rm -Rf build/{tmp,cache,bitbake.lock}
 	$(V)$(ECHO) "Cleaning completed.\n"
 
 distclean::
 	$(V)$(ECHO) "$(GREEN)Distcleaning...$(GRAY)"
-	$(V) rm -Rf .platform .devenv images src build tools/bin/{corkscrew,python}
+	$(V)rm -Rf .platform .devenv images src build tools/bin/{corkscrew,python}
+	$(V)find -type l -lname 'images/*' -print0 | xargs -r0 rm -f
 	$(V)$(ECHO) "Distcleaning completed. You need to reconfigure to build again\n"
 
 include tools/Rules.make

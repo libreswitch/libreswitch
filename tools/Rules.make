@@ -88,6 +88,7 @@ endef
 include tools/config/proxy.conf
 
 build/conf/site.conf: tools/config/site.conf.in tools/config/proxy.conf
+	$(V)mkdir -p $(dir $@)
 	$(V)cp tools/config/site.conf.in $@
 	$(V)if [ -n "$(GIT_PROXY_COMMAND)" ] ; then \
            sed -i -e "s|##GIT_PROXY_COMMAND##|GIT_PROXY_COMMAND = \"$(GIT_PROXY_COMMAND)\"|" $@ ; \
@@ -97,6 +98,7 @@ build/conf/site.conf: tools/config/site.conf.in tools/config/proxy.conf
 	 fi
 
 build/conf/local.conf: .platform
+	$(V)mkdir -p $(dir $@)
 	$(V)\
 	 sed \
 	   -e "s|##DISTRO##|$(DISTRO)|" \
