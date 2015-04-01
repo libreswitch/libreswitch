@@ -6,3 +6,6 @@ src/*
 build
 tools/bin/python
 tools/bin/corkscrew
+
+# Exclude halon enterprise layer
+yocto/halon
