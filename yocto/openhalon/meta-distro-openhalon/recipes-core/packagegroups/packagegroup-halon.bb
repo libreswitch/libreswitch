@@ -24,7 +24,6 @@ RDEPENDS_packagegroup-halon-base = "\
     mtd-utils \
     gptfdisk \
     packagegroup-base-serial \
-    init-ifupdown \
     lttng-tools lttng-modules lttng-ust babeltrace \
     kexec kdump \
     rsyslog \
