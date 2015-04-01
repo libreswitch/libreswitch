@@ -24,16 +24,17 @@ RDEPENDS_${PN}-ptest += "python-logging python-syslog python-argparse python-io 
 RDEPENDS_${PN} += "sed gawk grep"
 
 SRC_URI = "http://openvswitch.org/releases/openvswitch-2.3.1.tar.gz \
-	file://openvswitch-switch \
-	file://openvswitch-switch-setup \
-	file://openvswitch-controller \
-	file://openvswitch-controller-setup \
-	file://openvswitch-add-target-python-handling.patch \
-	file://openvswitch-add-target-perl-handling.patch \
-	file://openvswitch-add-more-target-python-substitutions.patch \
-	file://openvswitch-add-ptest.patch \
-	file://run-ptest \
-	"
+           file://openvswitch-switch \
+           file://openvswitch-switch-setup \
+           file://openvswitch-controller \
+           file://openvswitch-controller-setup \
+           file://openvswitch-add-target-python-handling.patch \
+           file://openvswitch-add-target-perl-handling.patch \
+           file://openvswitch-add-more-target-python-substitutions.patch \
+           file://openvswitch-add-ptest.patch \
+           file://run-ptest \
+           file://0001-Disable-git-hooks-that-cause-trouble-when-working-in.patch \
+           "
 
 SRC_URI[md5sum] = "c008c1de0a8b6363b37afa599105d6d6"
 SRC_URI[sha256sum] = "21174901c311d54703b4a7f498be0c42e5d2cc68bdecb0090dbb555e2af4bcd2"
