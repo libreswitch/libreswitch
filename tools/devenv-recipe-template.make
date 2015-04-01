@@ -16,7 +16,7 @@ ifneq ($(findstring ##RECIPE##-deploy,$(MAKECMDGOALS)),)
   endif
 endif
 ##RECIPE##-deploy:
-	$(V)$(call DEVTOOL, deploy ##RECIPE## $(TARGET)
+	$(V)$(call DEVTOOL, deploy ##RECIPE## $(TARGET))
 
 $(eval $(call PARSE_ARGUMENTS,##RECIPE##-deploy))
 TARGET?=$(EXTRA_ARGS)
@@ -26,5 +26,5 @@ ifneq ($(findstring ##RECIPE##-undeploy,$(MAKECMDGOALS)),)
   endif
 endif
 ##RECIPE##-undeploy:
-	$(V)$(call DEVTOOL, undeploy ##RECIPE## $(TARGET)
+	$(V)$(call DEVTOOL, undeploy ##RECIPE## $(TARGET))
 #END_##RECIPE##
