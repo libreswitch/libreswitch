@@ -60,6 +60,8 @@ RDEPENDS_packagegroup-halon-min = "\
     python-flask python-werkzeug python-itsdangerous python-jinja2 python-markupsafe \
     python-unixadmin \
     libevent \
+    util-linux-uuidgen \
+    iptables \
     "
 
 RDEPENDS_packagegroup-halon-min-debug = "\
