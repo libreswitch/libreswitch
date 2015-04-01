@@ -1,6 +1,6 @@
 
 ###RECIPE##
-.PHONY: ##RECIPE##
+.PHONY: ##RECIPE##-build ##RECIPE##-clean ##RECIPE##-deploy ##RECIPE##-undeploy
 
 ##RECIPE##-build:
 	$(V)$(call DEVTOOL, build ##RECIPE##)

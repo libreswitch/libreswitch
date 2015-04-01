@@ -319,6 +319,16 @@ devenv_status:
 	  $(ECHO) "devenv is not initialized\n" ; \
 	fi
 
+$(eval $(call PARSE_ARGUMENTS,devenv_update_recipe))
+PACKAGE?=$(EXTRA_ARGS)
+ifneq ($(findstring devenv_update_recipe,$(MAKECMDGOALS)),)
+  ifeq ($(PACKAGE),)
+   $(error ====== PACKAGE variable is empty, please specify which package you want =====)
+  endif
+endif
+devenv_update_recipe:
+	$(V)$(call DEVTOOL,update-recipe $(PACKAGE))
+
 export PACKAGES
 _devenv_init:
 	$(V) if [ -z "$$PACKAGES" ] ; then \
