@@ -125,6 +125,8 @@ configure:
             repo_name=`basename $$repo` ; \
             if [[ "$$repo_name" =~ meta-platform-.* ]] || [[ "$$repo_name" =~ meta-distro.* ]] ; then \
                 if [ "$$repo_name" == "meta-distro-$(DISTRO)" ] ; then \
+	           layer_dep=`cat $(BUILD_ROOT)/$$repo/.layer_dep 2>/dev/null` ; \
+	           test -z "$$layer_dep" || echo "  $(BUILD_ROOT)/$$layer_dep \\" >> build/conf/bblayers.conf ; \
 	           echo "  $(BUILD_ROOT)/$$repo \\" >> build/conf/bblayers.conf ; \
 	        fi ; \
                 continue ; \
@@ -135,6 +137,8 @@ configure:
 	 for repo in yocto/*/meta-platform-$(DISTRO)-* ; do \
             [[ "$$repo" =~ "^yocto/poky" ]] && continue ; \
 	    cp build/conf/bblayers.conf build/conf/bblayers.conf-$${repo##*platform-} ; \
+	    layer_dep=`cat $(BUILD_ROOT)/$$repo/.layer_dep 2>/dev/null` ; \
+	    test -z "$$layer_dep" || echo "  $(BUILD_ROOT)/$$layer_dep \\" >> build/conf/bblayers.conf-$${repo##*platform-} ; \
 	    echo -e "  $(BUILD_ROOT)/$$repo \\ \n\"" >> build/conf/bblayers.conf-$${repo##*platform-} ; \
 	 done ; \
 	 ln -sf bblayers.conf-$(DISTRO)-$(PLATFORM) build/conf/bblayers.conf

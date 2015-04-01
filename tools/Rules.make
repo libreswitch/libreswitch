@@ -277,7 +277,7 @@ devenv_clean:
 	$(V)rm -Rf src .devenv
 
 define DEVENV_ADD
-	$(call DEVTOOL, modify --extract $(1) $(BUILD_ROOT)/src/$(1)) ; \
+	grep  -q $(1) .devenv 2>/dev/null || $(call DEVTOOL, modify --extract $(1) $(BUILD_ROOT)/src/$(1)) ; \
 	pushd . > /dev/null ; \
 	cd $(BUILD_ROOT)/src/$(1) ; \
 	if [ -f .gitreview ] ; then \
