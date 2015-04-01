@@ -84,6 +84,15 @@ define DEVTOOL
 	 $(BUILD_ROOT)/yocto/poky/scripts/devtool $(1) || exit 1 
 endef
 
+define PARSE_ARGUMENTS
+ifeq ($(1),$(firstword $(MAKECMDGOALS)))
+  # use the rest as arguments for "$(1)"
+  EXTRA_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  # ...and turn them into do-nothing targets
+  $(eval $(EXTRA_ARGS)::;@:)
+endif
+endef
+
 # Rule to regenerate the site.conf file if proxies changed
 include tools/config/proxy.conf
 
@@ -148,6 +157,8 @@ _fs images/fs-$(CONFIGURED_PLATFORM):
 	$(V) $(ECHO)
 
 .PHONY: bake _bake
+$(eval $(call PARSE_ARGUMENTS,bake))
+RECIPE?=$(EXTRA_ARGS)
 ifneq ($(findstring bake,$(MAKECMDGOALS)),)
  ifeq ($(RECIPE),)
   $(error ====== RECIPE variable is empty, please specify which recipe you want to bake =====)
@@ -159,6 +170,8 @@ _bake:
 	$(V)$(call BITBAKE,$(RECIPE))
 
 .PHONY: cleansstate _cleansstate
+$(eval $(call PARSE_ARGUMENTS,cleansstate))
+RECIPE?=$(EXTRA_ARGS)
 ifneq ($(findstring cleansstate,$(MAKECMDGOALS)),)
  ifeq ($(RECIPE),)
   $(error ====== RECIPE variable is empty, please specify which recipe you want to clean =====)
@@ -169,6 +182,9 @@ cleansstate: header _cleansstate
 _cleansstate:
 	$(V)$(call BITBAKE,-c cleansstate $(RECIPE))
 
+.PHONY: devshell
+$(eval $(call PARSE_ARGUMENTS,devshell))
+RECIPE?=$(EXTRA_ARGS)
 ifneq ($(findstring devshell,$(MAKECMDGOALS)),)
  ifeq ($(RECIPE),)
   $(error ====== RECIPE variable is empty, please specify which recipe you want the devshell for  =====)
@@ -248,13 +264,13 @@ setup-git-review:: .git/hooks/commit-msg
 .git/hooks/commit-msg:
 	$(V) gitdir=$$(git rev-parse --git-dir); scp -p -P 29418 $(REVIEWUSER)@review.openhalon.io:hooks/commit-msg $${gitdir}/hooks/
 
-.PHONY: _devenv devenv
+.PHONY: _devenv_init devenv_init devenv_clean devenv_add devenv_rm  devenv_status
 
 -include src/Rules.make
 
-devenv: header
+devenv_init: header setup-git-review
 	$(V) $(ECHO) "$(YELLOW)Configuring development enviroment...$(GRAY)\n"
-	$(V)$(MAKE) _devenv
+	$(V)$(MAKE) _devenv_init
 
 devenv_clean:
 	$(V)$(call DEVTOOL, reset -a)
@@ -270,9 +286,11 @@ define DEVENV_ADD
 	fi ; \
 	popd > /dev/null ; \
 	sed -e "s/##RECIPE##/$(1)/g" $(BUILD_ROOT)/tools/devenv-recipe-template.make >> $(BUILD_ROOT)/src/Rules.make ; \
-	echo $(1) >> .devenv
+	echo $(1) >> $(BUILD_ROOT)/.devenv
 endef
 
+$(eval $(call PARSE_ARGUMENTS,devenv_add))
+PACKAGE?=$(EXTRA_ARGS)
 ifneq ($(findstring devenv_add,$(MAKECMDGOALS)),)
   ifeq ($(PACKAGE),)
    $(error ====== PACKAGE variable is empty, please specify which package you want  =====)
@@ -281,6 +299,8 @@ endif
 devenv_add:
 	$(V)$(call DEVENV_ADD,$(PACKAGE))
 
+$(eval $(call PARSE_ARGUMENTS,devenv_rm))
+PACKAGE?=$(EXTRA_ARGS)
 ifneq ($(findstring devenv_rm,$(MAKECMDGOALS)),)
   ifeq ($(PACKAGE),)
    $(error ====== PACKAGE variable is empty, please specify which package you want =====)
@@ -289,7 +309,8 @@ endif
 devenv_rm:
 	$(V)$(call DEVTOOL,reset $(PACKAGE))
 	$(V)rm -Rf src/$(PACKAGE)
-	$(V)sed -e "/#$(PACKAGE)/,/#END_$(PACKAGE)/d" src/Rules.make
+	$(V)sed -i -e "/#$(PACKAGE)/,/#END_$(PACKAGE)/d" src/Rules.make
+	$(V)sed -i -e "/$(PACKAGE)/d" .devenv
 
 devenv_status:
 	$(V)if [ -f .devenv ] ; then \
@@ -299,7 +320,7 @@ devenv_status:
 	fi
 
 export PACKAGES
-_devenv:
+_devenv_init:
 	$(V) if [ -z "$$PACKAGES" ] ; then \
 	  PACKAGES=`find yocto/*/meta* -name devenv.conf | xargs cat` ; \
 	fi ; \

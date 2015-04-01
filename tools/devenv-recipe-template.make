@@ -2,12 +2,14 @@
 ###RECIPE##
 .PHONY: ##RECIPE##
 
-##RECIPE##:
+##RECIPE##-build:
 	$(V)$(call DEVTOOL, build ##RECIPE##)
 
 ##RECIPE##-clean:
 	$(V)$(call BITBAKE, -c sstate ##RECIPE##)
 
+$(eval $(call PARSE_ARGUMENTS,##RECIPE##-deploy))
+TARGET?=$(EXTRA_ARGS)
 ifneq ($(findstring ##RECIPE##-deploy,$(MAKECMDGOALS)),)
   ifeq ($(TARGET),)
     $(error ====== TARGET variable is empty, please specify where to deploy =====)
@@ -16,6 +18,8 @@ endif
 ##RECIPE##-deploy:
 	$(V)$(call DEVTOOL, deploy ##RECIPE## $(TARGET)
 
+$(eval $(call PARSE_ARGUMENTS,##RECIPE##-deploy))
+TARGET?=$(EXTRA_ARGS)
 ifneq ($(findstring ##RECIPE##-undeploy,$(MAKECMDGOALS)),)
   ifeq ($(TARGET),)
     $(error ====== TARGET variable is empty, please specify where to undeploy from  =====)
