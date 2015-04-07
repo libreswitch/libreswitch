@@ -20,7 +20,7 @@ IMAGE_TYPEDEP_vmdk = "ext4"
 IMAGE_TYPES_MASKED += "vmdk"
 
 create_vmdk_image () {
-	qemu-img convert -O vmdk -o subformat=streamOptimized ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.hdddirect ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.vmdk
+	vmdktool -v ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.vmdk ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.hdddirect
 	ln -sf ${IMAGE_NAME}.vmdk ${DEPLOY_DIR_IMAGE}/${IMAGE_LINK_NAME}.vmdk
 }
 
@@ -31,5 +31,5 @@ python do_vmdkimg() {
 #addtask vmdkimg after do_bootimg before do_build
 addtask vmdkimg after do_bootdirectdisk before do_build
 
-do_vmdkimg[depends] += "qemu-native:do_populate_sysroot" 
+do_vmdkimg[depends] += "vmdktool-native:do_populate_sysroot" 
 
