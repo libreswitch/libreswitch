@@ -84,15 +84,6 @@ define DEVTOOL
 	 $(BUILD_ROOT)/yocto/poky/scripts/devtool $(1) || exit 1 
 endef
 
-define PARSE_ARGUMENTS
-ifeq ($(1),$(firstword $(MAKECMDGOALS)))
-  # use the rest as arguments for "$(1)"
-  EXTRA_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
-  # ...and turn them into do-nothing targets
-  $(eval $(EXTRA_ARGS)::;@:)
-endif
-endef
-
 # Rule to regenerate the site.conf file if proxies changed
 include tools/config/proxy.conf
 

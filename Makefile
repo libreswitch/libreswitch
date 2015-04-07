@@ -60,6 +60,15 @@ define FATAL_ERROR
 	 exit 1
 endef
 
+define PARSE_ARGUMENTS
+ifeq ($(1),$(firstword $(MAKECMDGOALS)))
+  # use the rest as arguments for "$(1)"
+  EXTRA_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  # ...and turn them into do-nothing targets
+  $(eval $(EXTRA_ARGS)::;@:)
+endif
+endef
+
 export BUILD_ROOT=$(PWD)
 
 all:: header
@@ -103,6 +112,8 @@ ifneq ($(MAKECMDGOALS),help)
 	@$(call FATAL_ERROR,$(DISTRO) is not configured; run make configure)
 endif
 
+$(eval $(call PARSE_ARGUMENTS,configure))
+PLATFORM?=$(EXTRA_ARGS)
 configure:
 	@$(ECHO) "$(RED)Build System for $(DISTRO)$(GRAY)"
 	$(V) if [ -f .platform ] ; then \
