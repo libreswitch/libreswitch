@@ -10,7 +10,7 @@ export https_proxy=$2
 sudo -E apt-get update
 sudo -E apt-get -y upgrade
 # Required for windows integration
-sudo -E apt-get -y smbclient cifs-utils
+sudo -E apt-get -y install smbclient cifs-utils
 # Required by yocto
 sudo -E apt-get -y install gawk wget git-core diffstat unzip texinfo gcc-multilib  build-essential chrpath screen curl device-tree-compiler xterm aptitude
 SCRIPT
@@ -49,8 +49,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.synced_folder $home, "/home/" + $user, type: $homemounttype 
 
   config.vm.provider "virtualbox" do |vb|
-     # Use VBoxManage to customize the VM. For example to change memory:
-     vb.customize ["modifyvm", :id, "--memory", "2048"]
+     vb.name = $user + "-dev"
+     vb.memory = 2048
+     vb.cpus = 4
   end
   config.vm.provision "shell" do |s|
     s.inline = $provisioning_script
