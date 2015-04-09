@@ -120,10 +120,7 @@ configure:
 	    $(call FATAL_ERROR,$(DISTRO) is already configured; you need to run distclean to change the configuration) ; \
 	  fi
 	$(V)\
-	 if [ "$(PLATFORM)" == "" ] ; then \
-	    $(call FATAL_ERROR,Set the environment variable PLATFORM to select a platform) ; \
-	 fi ;\
-	 if ! [ -d yocto/*/meta-platform-$(DISTRO)-$(PLATFORM) ] ; then \
+	 if ! [ -d yocto/*/meta-platform-$(DISTRO)-$(PLATFORM) ] || [ "$(PLATFORM)" == "" ] ; then \
 	    $(call FATAL_ERROR,Unknown platform \"$(PLATFORM)\"; choose from {$(GREEN)$(PLATFORMS)$(GRAY)}) ; \
 	 fi ;
 	@$(ECHO) "Configuring for platform $(PLATFORM)...\n"
