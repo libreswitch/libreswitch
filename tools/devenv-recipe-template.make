@@ -6,7 +6,7 @@
 	$(V)$(call DEVTOOL, build ##RECIPE##)
 
 ##RECIPE##-clean:
-	$(V)$(call BITBAKE, -c sstate ##RECIPE##)
+	$(V)$(call BITBAKE, -c cleansstate ##RECIPE##)
 
 $(eval $(call PARSE_ARGUMENTS,##RECIPE##-deploy))
 TARGET?=$(EXTRA_ARGS)
