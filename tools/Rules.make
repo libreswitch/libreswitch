@@ -330,3 +330,40 @@ _devenv_init:
 	  [[ $$recipe == \#* ]] && continue ; \
 	  $(call DEVENV_ADD,$$recipe) ; \
 	done
+
+## Support commands
+## Use with caution!!!!
+
+$(eval $(call PARSE_ARGUMENTS,share_screen_with))
+USERTOSHARE?=$(EXTRA_ARGS)
+ifneq ($(findstring share_screen_with,$(MAKECMDGOALS)),)
+  ifeq ($(USERTOSHARE),)
+   $(error ====== USERTOSHARE variable is empty, please specify an user =====)
+  endif
+endif
+share_screen_with:
+	$(V)$(ECHO) "Enabling shared console with user: $(USERTOSHARE)..."
+	$(V)$(ECHO) "  Enabling suid in screen binary and fixing permissions, may need root password..."
+	$(V)sudo chmod +s `which screen`
+	$(V)sudo chmod g-w /var/run/screen
+	$(V)$(ECHO) "  Starting shared screen session..."
+	$(V) screen -d -m -S shared-with-$(USERTOSHARE) ; \
+	 sleep 1 ; \
+	 screen -x shared-with-$(USERTOSHARE) -X multiuser on ; \
+	 screen -x shared-with-$(USERTOSHARE) -X acladd $(USERTOSHARE) ; \
+	 screen -x shared-with-$(USERTOSHARE) -r
+	$(V)$(ECHO) "  Disabling suid and restoring permissions..."
+	$(V)sudo chmod -s `which screen`
+	$(V)sudo chmod g+w /var/run/screen
+
+$(eval $(call PARSE_ARGUMENTS,attach_screen_with))
+USERTOSHARE?=$(EXTRA_ARGS)
+ifneq ($(findstring attach_screen_with,$(MAKECMDGOALS)),)
+  ifeq ($(USERTOSHARE),)
+    $(error ====== USERTOSHARE variable is empty, please specify an user =====)
+  endif
+endif
+attach_screen_with:
+	$(V)$(ECHO) "Attaching to a shared screen by user: $(USERTOSHARE)..."
+	$(V)screen -x $(USERTOSHARE)/shared-with-$(USER)
+	$(V)$(ECHO) "Leaving shared screen"
