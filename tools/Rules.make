@@ -88,12 +88,13 @@ endef
 include tools/config/proxy.conf
 
 build/conf/site.conf: tools/config/site.conf.in tools/config/proxy.conf
-	$(V)\
-	 sed \
-	   -e "s|##BUILD_ROOT##|$(BUILD_ROOT)|" \
-           -e "s|##PROXY_PORT##|$(PROXY_PORT)|" \
-	   -e "s|##PROXY##|$(PROXY)|" \
-	   tools/config/site.conf.in > $@
+	$(V)cp tools/config/site.conf.in $@
+	$(V)if [ -n "$(GIT_PROXY_COMMAND)" ] ; then \
+           sed -i -e "s|##GIT_PROXY_COMMAND##|GIT_PROXY_COMMAND = \"$(GIT_PROXY_COMMAND)\"|" $@ ; \
+	 fi
+	$(V)if [ -n "$(PROXY)" ] ; then \
+	   sed -i -e "s|##ALL_PROXY##|ALL_PROXY = \"http://$(PROXY):$(PROXY_PORT)\"|" $@ ; \
+	 fi
 
 build/conf/local.conf: .platform
 	$(V)\
