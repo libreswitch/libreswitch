@@ -248,7 +248,11 @@ endif
 
 # Devenv code
 REVIEWUSER?=$(USER)
-setup-git-review:: .git/hooks/commit-msg
+setup-git-review:
+	$(V) $(ECHO) "$(YELLOW)Setting up git-review system...$(GRAY)\n"
+	$(V)$(MAKE) _setup-git-review
+
+_setup-git-review:: .git/hooks/commit-msg
 	$(V) if which git-review > /dev/null ; then \
 	  git review -s ; \
 	else \
@@ -276,7 +280,7 @@ define DEVENV_ADD
 	cd $(BUILD_ROOT)/src/$(1) ; \
 	if [ -f .gitreview ] ; then \
 	  gitdir=$$(git rev-parse --git-dir); scp -p -P 29418 $(REVIEWUSER)@review.openhalon.io:hooks/commit-msg $${gitdir}/hooks/ ; \
-	  if which git-review > /dev/null ; then git review -s ; fi ; \
+	  if which git-review > /dev/null ; then echo git review -s ; fi ; \
 	fi ; \
 	popd > /dev/null ; \
 	sed -e "s/##RECIPE##/$(1)/g" $(BUILD_ROOT)/tools/devenv-recipe-template.make >> $(BUILD_ROOT)/src/Rules.make ; \
