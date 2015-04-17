@@ -35,7 +35,6 @@ RDEPENDS_packagegroup-halon-base = "\
     valgrind-helgrind \
     sudo \
     pwauth \
-    ${@base_contains("MACHINE_FEATURES", "bcmsdk", "bcmsdk-drivers bcmsdk-config", "",d)} \
 "
 
 RDEPENDS_packagegroup-halon-base_append_arm = "\
