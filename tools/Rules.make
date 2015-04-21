@@ -36,6 +36,8 @@ export LD_LIBRARY_PATH:=$(BUILD_ROOT)/tools/lib:$(LD_LIBRARY_PATH)
 # Some well known locations
 KERNEL_STAGING_DIR=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^STAGING_KERNEL_DIR=/ { gsub(/"/, "", $$2); print $$2 }')
 DISTRO_VERSION=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^DISTRO_VERSION=/ { gsub(/"/, "", $$2); print $$2 }')
+# Used to identify the valid layers 
+YOCTO_LAYERS=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F'=' '/^BBLAYERS=/ { print $$2 }')
 BASE_UIMAGE_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/uImage
 BASE_IMAGE_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/Image
 BASE_ZIMAGE_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/zImage
@@ -262,15 +264,20 @@ _setup-git-review:: .git/hooks/commit-msg
 .git/hooks/commit-msg:
 	$(V) gitdir=$$(git rev-parse --git-dir); scp -p -P 29418 $(REVIEWUSER)@review.openhalon.io:hooks/commit-msg $${gitdir}/hooks/
 
-.PHONY: _devenv_init devenv_init devenv_clean devenv_add devenv_rm  devenv_status
+.PHONY: _devenv_init devenv_init devenv_clean devenv_add devenv_rm  devenv_status devenv_defaults dev_header
 
 -include src/Rules.make
 
-devenv_init: header setup-git-review
+dev_header: header
+	$(V) flock -n $(BUILDDIR)/bitbake.lock echo -n || \
+	   { echo "Bitbake is currently running... can't proceed further, aborting" ; \
+             exit 255 ; }
+
+devenv_init: dev_header setup-git-review
 	$(V) $(ECHO) "$(YELLOW)Configuring development enviroment...$(GRAY)\n"
 	$(V)$(MAKE) _devenv_init
 
-devenv_clean:
+devenv_clean: dev_header
 	$(V)$(call DEVTOOL, reset -a)
 	$(V)rm -Rf src .devenv
 
@@ -294,7 +301,7 @@ ifneq ($(findstring devenv_add,$(MAKECMDGOALS)),)
    $(error ====== PACKAGE variable is empty, please specify which package you want  =====)
   endif
 endif
-devenv_add:
+devenv_add: dev_header
 	$(V)$(call DEVENV_ADD,$(PACKAGE))
 
 $(eval $(call PARSE_ARGUMENTS,devenv_rm))
@@ -304,13 +311,13 @@ ifneq ($(findstring devenv_rm,$(MAKECMDGOALS)),)
    $(error ====== PACKAGE variable is empty, please specify which package you want =====)
   endif
 endif
-devenv_rm:
+devenv_rm: dev_header
 	$(V)$(call DEVTOOL,reset $(PACKAGE))
 	$(V)rm -Rf src/$(PACKAGE)
 	$(V)sed -i -e "/#$(PACKAGE)/,/#END_$(PACKAGE)/d" src/Rules.make
 	$(V)sed -i -e "/$(PACKAGE)/d" .devenv
 
-devenv_status:
+devenv_status: dev_header
 	$(V)if [ -f .devenv ] ; then \
 	  $(call DEVTOOL,status) ; \
 	else \
@@ -324,13 +331,30 @@ ifneq ($(findstring devenv_update_recipe,$(MAKECMDGOALS)),)
    $(error ====== PACKAGE variable is empty, please specify which package you want =====)
   endif
 endif
-devenv_update_recipe:
+devenv_update_recipe: dev_header
 	$(V)$(call DEVTOOL,update-recipe $(PACKAGE))
 
-export PACKAGES
-_devenv_init:
+export YOCTO_LAYERS
+devenv_defaults: dev_header
+	$(V)$(ECHO) "List of default devenv packages for $(CONFIGURED_PLATFORM) platform..."
 	$(V) if [ -z "$$PACKAGES" ] ; then \
-	  PACKAGES=`find yocto/*/meta* -name devenv.conf | xargs cat` ; \
+          for layer in $$YOCTO_LAYERS ; do \
+	    test -d $$layer || continue ; \
+	    PACKAGES="$$PACKAGES `find $$layer -name devenv.conf | xargs cat`" ; \
+          done ; \
+	fi ; \
+	for recipe in $$PACKAGES ; do \
+	  [[ $$recipe == \#* ]] && continue ; \
+	  $(ECHO) "  * $$recipe" ; \
+	done
+
+export PACKAGES
+_devenv_init: dev_header
+	$(V) if [ -z "$$PACKAGES" ] ; then \
+          for layer in $$YOCTO_LAYERS ; do \
+	    test -d $$layer || continue ; \
+	    PACKAGES="$$PACKAGES `find $$layer -name devenv.conf | xargs cat`" ; \
+          done ; \
 	fi ; \
 	for recipe in $$PACKAGES ; do \
 	  [[ $$recipe == \#* ]] && continue ; \
