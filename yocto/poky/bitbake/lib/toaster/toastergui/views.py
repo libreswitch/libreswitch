@@ -1554,7 +1554,7 @@ dependencies.  The return value is a dictionary consisting of two other
 lists: a list of 'runtime' dependencies, that is, having RDEPENDS
 values in source package's recipe, and a list of other dependencies, that is
 the list of possible recipe variables as found in OTHER_DEPENDS_BASE plus
-the RRECOMENDS or TRECOMENDS value.
+the RRECOMMENDS or TRECOMMENDS value.
 The lists are built in the sort order specified for the package runtime
 dependency views.
 """
@@ -3330,7 +3330,10 @@ if toastermain.settings.MANAGED:
                     },
                     ]
             }
-        return render(request, template, context)
+
+        response = render(request, template, context)
+        _save_parameters_cookies(response, pagesize, orderby, request)
+        return response
 
     def buildrequestdetails(request, pid, brid):
         template = "buildrequestdetails.html"

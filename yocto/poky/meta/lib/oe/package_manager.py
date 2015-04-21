@@ -446,6 +446,8 @@ class DpkgPkgsList(PkgsList):
         if format == "file":
             tmp_output = ""
             for line in tuple(output.split('\n')):
+                if not line.strip():
+                    continue
                 pkg, pkg_file, pkg_arch = line.split()
                 full_path = os.path.join(self.rootfs_dir, pkg_arch, pkg_file)
                 if os.path.exists(full_path):
@@ -937,8 +939,10 @@ class RpmPM(PackageManager):
         #
         if self.rpm_version == 4:
             scriptletcmd = "$2 $3 $4\n"
+            scriptpath = "$3"
         else:
             scriptletcmd = "$2 $1/$3 $4\n"
+            scriptpath = "$1/$3"
 
         SCRIPTLET_FORMAT = "#!/bin/bash\n" \
             "\n" \
@@ -956,10 +960,10 @@ class RpmPM(PackageManager):
             "    mkdir -p $1/etc/rpm-postinsts\n" \
             "    num=100\n" \
             "    while [ -e $1/etc/rpm-postinsts/${num}-* ]; do num=$((num + 1)); done\n" \
-            "    name=`head -1 $1/$3 | cut -d\' \' -f 2`\n" \
+            "    name=`head -1 " + scriptpath + " | cut -d\' \' -f 2`\n" \
             '    echo "#!$2" > $1/etc/rpm-postinsts/${num}-${name}\n' \
             '    echo "# Arg: $4" >> $1/etc/rpm-postinsts/${num}-${name}\n' \
-            "    cat $1/$3 >> $1/etc/rpm-postinsts/${num}-${name}\n" \
+            "    cat " + scriptpath + " >> $1/etc/rpm-postinsts/${num}-${name}\n" \
             "    chmod +x $1/etc/rpm-postinsts/${num}-${name}\n" \
             "  else\n" \
             '    echo "Error: pre/post remove scriptlet failed"\n' \

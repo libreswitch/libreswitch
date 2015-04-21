@@ -33,8 +33,13 @@
         <revhistory>
             <revision>
                 <revnumber>1.8</revnumber>
-                <date>October 2015</date>
+                <date>April 2015</date>
                 <revremark>Released with the Yocto Project 1.8 Release.</revremark>
+            </revision>
+            <revision>
+                <revnumber>1.9</revnumber>
+                <date>October 2015</date>
+                <revremark>Released with the Yocto Project 1.9 Release.</revremark>
             </revision>
        </revhistory>
 
