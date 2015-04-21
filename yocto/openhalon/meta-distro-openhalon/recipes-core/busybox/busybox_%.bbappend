@@ -7,4 +7,4 @@ SRC_URI += " \
         file://halon-bb.cfg \
 "
 
-SYSTEMD_SERVICE_${PN}-syslog = ""
+SYSTEMD_PACKAGES_remove = "${PN}-syslog"
