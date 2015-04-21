@@ -1,2 +1,0 @@
-# OpenHalon Build System
-
