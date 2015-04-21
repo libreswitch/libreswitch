@@ -130,6 +130,11 @@ def _get_recipe_file(cooker, pn):
             logger.error("Unable to find any recipe file matching %s" % pn)
     return recipefile
 
+def _parse_recipe(fn, cooker, d):
+    """Parse an individual recipe along with is appends"""
+    import bb.cache
+    envdata = bb.cache.Cache.loadDataFull(fn, cooker.collection.get_file_appends(fn), d)
+    return envdata
 
 def extract(args, config, basepath, workspace):
     import bb
@@ -141,7 +146,7 @@ def extract(args, config, basepath, workspace):
     if not recipefile:
         # Error already logged
         return -1
-    rd = oe.recipeutils.parse_recipe(recipefile, tinfoil.config_data)
+    rd = _parse_recipe(recipefile, tinfoil.cooker, tinfoil.config_data)
 
     srctree = os.path.abspath(args.srctree)
     initial_rev = _extract_source(srctree, args.keep_temp, args.branch, rd)
@@ -312,6 +317,7 @@ def _check_preserve(config, recipename):
     return False
 
 
+
 def modify(args, config, basepath, workspace):
     import bb
     import oe.recipeutils
@@ -331,7 +337,8 @@ def modify(args, config, basepath, workspace):
     if not recipefile:
         # Error already logged
         return -1
-    rd = oe.recipeutils.parse_recipe(recipefile, tinfoil.config_data)
+
+    rd = _parse_recipe(recipefile, tinfoil.cooker, tinfoil.config_data)
 
     if not _check_compatible_recipe(args.recipename, rd):
         return -1
@@ -422,7 +429,7 @@ def update_recipe(args, config, basepath, workspace):
     if not recipefile:
         # Error already logged
         return -1
-    rd = oe.recipeutils.parse_recipe(recipefile, tinfoil.config_data)
+    rd = parse_recipe(recipefile, tinfoil.cooker, tinfoil.config_data)
 
     orig_src_uri = rd.getVar('SRC_URI', False) or ''
     if args.mode == 'auto':
