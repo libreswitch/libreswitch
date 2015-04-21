@@ -349,7 +349,7 @@ devenv_defaults: dev_header
 	done
 
 export PACKAGES
-_devenv_init: dev_header
+_devenv_init:
 	$(V) if [ -z "$$PACKAGES" ] ; then \
           for layer in $$YOCTO_LAYERS ; do \
 	    test -d $$layer || continue ; \
