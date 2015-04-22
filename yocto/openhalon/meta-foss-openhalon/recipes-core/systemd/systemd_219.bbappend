@@ -20,6 +20,11 @@ do_install_append() {
     install -m 755 ${WORKDIR}/systemctl-alias.sh ${D}${sysconfdir}/profile.d/systemctl-alias.sh
 }
 
+# We use systemd core dump
+EXTRA_OECONF_remove = "--disable-coredump"
+
+FILES_${PN} += "${bindir}/coredumpctl"
+
 #pkg_postinst_udev-hwdb_prepend() {
 #	# Abort script since causes problems for read-only fs
 #	if test -n "$D"; then
