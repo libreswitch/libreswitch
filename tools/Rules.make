@@ -36,7 +36,7 @@ export LD_LIBRARY_PATH:=$(BUILD_ROOT)/tools/lib:$(LD_LIBRARY_PATH)
 # Some well known locations
 KERNEL_STAGING_DIR=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^STAGING_KERNEL_DIR=/ { gsub(/"/, "", $$2); print $$2 }')
 DISTRO_VERSION=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^DISTRO_VERSION=/ { gsub(/"/, "", $$2); print $$2 }')
-# Used to identify the valid layers 
+# Used to identify the valid layers  
 YOCTO_LAYERS=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F'=' '/^BBLAYERS=/ { print $$2 }')
 BASE_UIMAGE_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/uImage
 BASE_IMAGE_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/Image
@@ -334,10 +334,10 @@ endif
 devenv_update_recipe: dev_header
 	$(V)$(call DEVTOOL,update-recipe $(PACKAGE))
 
-export YOCTO_LAYERS
 devenv_defaults: dev_header
 	$(V)$(ECHO) "List of default devenv packages for $(CONFIGURED_PLATFORM) platform..."
 	$(V) if [ -z "$$PACKAGES" ] ; then \
+          YOCTO_LAYERS=$(YOCTO_LAYERS) ; \
           for layer in $$YOCTO_LAYERS ; do \
 	    test -d $$layer || continue ; \
 	    PACKAGES="$$PACKAGES `find $$layer -name devenv.conf | xargs cat`" ; \
@@ -351,6 +351,7 @@ devenv_defaults: dev_header
 export PACKAGES
 _devenv_init:
 	$(V) if [ -z "$$PACKAGES" ] ; then \
+	  YOCTO_LAYERS=$(YOCTO_LAYERS) ; \
           for layer in $$YOCTO_LAYERS ; do \
 	    test -d $$layer || continue ; \
 	    PACKAGES="$$PACKAGES `find $$layer -name devenv.conf | xargs cat`" ; \
