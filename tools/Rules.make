@@ -275,6 +275,7 @@ dev_header: header
 
 devenv_init: dev_header setup-git-review
 	$(V) $(ECHO) "$(YELLOW)Configuring development enviroment...$(GRAY)\n"
+	$(V) $(call BITBAKE,meta-ide-support)
 	$(V)$(MAKE) _devenv_init
 
 devenv_clean: dev_header
