@@ -24,7 +24,7 @@ end
 if OS.windows? then
   $user = ENV['USERNAME']
   $home = ENV['HOMEPATH']
-  $homemounttype = "smb"
+  $homemounttype = "virtualbox"
 else
   $user = ENV['USER']
   $home = ENV['HOME']
