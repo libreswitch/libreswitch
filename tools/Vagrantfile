@@ -5,14 +5,114 @@
 VAGRANTFILE_API_VERSION = "2"
 
 $provisioning_script = <<SCRIPT
+if test -n "$1" ; then
+  # Exporting the proxies for this session
+  export http_proxy=$1
+  export https_proxy=$2
+  # Exporting the proxies permanently for all the users
+  cat >> /etc/profile <<EOF
 export http_proxy=$1
 export https_proxy=$2
-sudo -E apt-get update
-sudo -E apt-get -y upgrade
-# Required for windows integration
-sudo -E apt-get -y install smbclient cifs-utils
+EOF
+fi
+apt-get update
+apt-get -y upgrade
 # Required by yocto
-sudo -E apt-get -y install gawk wget git-core diffstat unzip texinfo gcc-multilib  build-essential chrpath screen curl device-tree-compiler xterm aptitude
+apt-get -y install gawk wget git git-core diffstat unzip texinfo gcc-multilib  build-essential chrpath screen curl device-tree-compiler xterm aptitude socat git-review
+# Developer tools
+apt-get -y install vagrant strace linux-tools-common uncrustify doxygen cmake cmake-curses-gui manpages-posix-dev  manpages-dev 
+# Eclipse environment
+apt-get install -y openjdk-7-jre
+echo "Downloading eclipse Luna... could take some time..."
+wget -nv http://archive.openhalon.io/eclipse-cpp-luna-SR2-linux-gtk-x86_64.tar.gz
+tar xzf eclipse-cpp-luna-SR2-linux-gtk-x86_64.tar.gz -C /opt/
+rm eclipse-cpp-luna-SR2-linux-gtk-x86_64.tar.gz
+# Install Eclipse plugins
+/opt/eclipse/eclipse -application org.eclipse.equinox.p2.director \
+-noSplash \
+-repository \
+http://download.eclipse.org/releases/luna \
+-installIUs \
+org.eclipse.egit.feature.group,\
+org.eclipse.jgit.feature.group,\
+org.eclipse.mylyn_feature.feature.group,\
+org.eclipse.linuxtools.gcov.feature.group,\
+org.eclipse.linuxtools.cdt.libhover.devhelp.feature.feature.group,\
+org.eclipse.linuxtools.lttng2.control.feature.group,\
+org.eclipse.linuxtools.lttng2.ust.feature.group,\
+org.eclipse.linuxtools.lttng2.kernel.feature.group,\
+org.eclipse.linuxtools.oprofile.feature.feature.group,\
+org.eclipse.linuxtools.perf.feature.feature.group,\
+org.eclipse.linuxtools.systemtap.feature.group,\
+org.eclipse.linuxtools.valgrind.feature.group,\
+org.eclipse.tcf.te.tcf.feature.feature.group,\
+org.eclipse.tcf.te.terminals.feature.feature.group,\
+org.eclipse.tcf.te.tcf.launch.cdt.feature.feature.group,\
+org.eclipse.tcf.rse.feature.feature.group,\
+org.eclipse.tcf.cdt.feature.feature.group,\
+org.eclipse.cdt.build.crossgcc.feature.group,\
+org.eclipse.cdt.debug.ui.memory.feature.group,\
+org.eclipse.cdt.autotools.feature.group,\
+org.eclipse.linuxtools.callgraph.feature.feature.group,\
+org.eclipse.linuxtools.cdt.libhover.feature.feature.group,\
+org.eclipse.wst.xml_ui.feature.feature.group 
+# Install Yocto plugin
+/opt/eclipse/eclipse -application org.eclipse.equinox.p2.director \
+-noSplash \
+-repository \
+http://downloads.yoctoproject.org/releases/eclipse-plugin/1.8/luna/ \
+-installIUs \
+org.yocto.sdk.feature.group,org.yocto.doc.feature.group
+# Remote X server
+apt-get install -y software-properties-common
+add-apt-repository -y ppa:x2go/stable
+apt-get update
+apt-get install -y x2goserver x2goserver-xsession
+# Setup certificate for openhalon site until we get out or our own CA
+cat > /usr/local/share/ca-certificates/openhalon.io.crt <<EOF
+-----BEGIN CERTIFICATE-----
+MIIDSzCCAjOgAwIBAgIJAI67unfu/qnJMA0GCSqGSIb3DQEBBQUAMDwxCzAJBgNV
+BAYTAlVTMRMwEQYDVQQIDApDYWxpZm9ybmlhMRgwFgYDVQQKDA9IZXdsZXR0LVBh
+Y2thcmQwHhcNMTUwMzEzMTQxNTQzWhcNMTcxMjMxMTQxNTQzWjA8MQswCQYDVQQG
+EwJVUzETMBEGA1UECAwKQ2FsaWZvcm5pYTEYMBYGA1UECgwPSGV3bGV0dC1QYWNr
+YXJkMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxfwNlsw7ajA71AG/
+hIJXQERRD1sd3ZFF24k+pd0WBxerHz8XykZ8qcf6aGOjhVtgQEhMVIn7LDuaGja/
+pr0AccUVL0AGPFWhC4eBjuG4k/A1RfBEuFq9claj7jsFCf/lqns1ImnWoA0PNZCI
+LRx9OGyMQ4D4WumHImb61mr/PMJXuumybYnXXvAeO7sGXD3r831Om+4gV4Jd8Vis
+5wWIj7VFdEqpLCBU/Y6wWdYWqST19V98C5sFLhWCdUtHik8IZfr7DhFwjGeCByMc
+2E/AId5ynPdEZzzVg2+Cx0BglVgdiabbdTQIGp+IAADDzTMU+TpzquQQaRAudWCI
+O9o7MQIDAQABo1AwTjAdBgNVHQ4EFgQUw8SYa+Zq/nqBm90yQdCFxhr2nvswHwYD
+VR0jBBgwFoAUw8SYa+Zq/nqBm90yQdCFxhr2nvswDAYDVR0TBAUwAwEB/zANBgkq
+hkiG9w0BAQUFAAOCAQEAgV1HggFV3jXI2wi36JrsODwWckwG8O284H7l7K7uFq94
+j65bwg050UWpNsTLmD+k07u24ChlZEfnBc4TttJTeG5iYynasAhLxBHksE9sn3CK
+eue2+kZJxjzNy3xQbcgYwgljRJKDng7p6OCK1EnZfjbOtXKLrovxO5tKQHBZXvkk
+GGtFSy/QgwylniY3eBtsHSAzpgbJ1dYTWR0w8RU5KBlWTAc/NgXwE0eXpF08uf7v
+XzzmD6B/89SHYqUFkEgfmQIJo1OU9i1bU0P5PptIvN824sKb0jTlMFQphuuU9RZx
+fvVWlkkyp0Mdtqw8li2VsEUoEIX7XcZivSxR6YYs+g==
+-----END CERTIFICATE-----
+EOF
+update-ca-certificates 
+
+if test -n "$1" ; then
+  proxyhost=`echo $http_proxy | awk -F: '{ print substr($2,3); }'`
+  proxyport=`echo $http_proxy | awk -F: '{ print $3 }'`
+  cat > /home/vagrant/.ssh/config <<EOF
+Host *.openhalon.io
+  ProxyCommand socat - PROXY:$proxyhost:%h:%p,proxyport=$proxyport
+EOF
+fi
+cat > /home/vagrant/.gitconfig <<EOF
+[alias]
+	br = branch
+	st = status
+
+[color]
+	ui = auto
+
+[branch]
+	autosetuprebase = always
+EOF
+
 SCRIPT
 
 module OS
@@ -37,7 +137,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.hostname = $user + "-dev"
 
   # Make the machine appear as another machine in the network
-  config.vm.network "public_network"
+  #config.vm.network "public_network"
   # Create a private network used for NFS shared folders
   config.vm.network "private_network", type: "dhcp"
 
