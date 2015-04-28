@@ -178,6 +178,27 @@ cleansstate: header _cleansstate
 _cleansstate:
 	$(V)$(call BITBAKE,-c cleansstate $(RECIPE))
 
+CONTAINER_NAME?=openhalon
+.PHONY: deploy_container
+deploy_container:
+	$(V) if ! which lxc-create > /dev/null ; then \
+	  $(call FATAL_ERROR,LXC does not seems installed, could not find lxc-create) ; \
+	fi
+	$(V) if ! test -f images/`basename $(BASE_TARGZ_FS_FILE)` ; then \
+	  $(call FATAL_ERROR,Your platform has not generated a .tar.gz file that can be used to create the container) ; \
+	fi
+	$(V) $(ECHO) "Exporting an lxc-container with name '$(CONTAINER_NAME)' may ask for admin password..."
+	$(V) $(ECHO) -n "Checking that no container with the same name already exists..."
+	$(V) if sudo lxc-info -n $(CONTAINER_NAME) >/dev/null 2>&1 ; then \
+	  echo ; \
+	  $(call FATAL_ERROR, A container '$(CONTAINER_NAME)' already exists... aborting.\nYou may remove it with 'sudo lxc-destroy -n $(CONTAINER_NAME)') ; \
+	else \
+	  echo done ; \
+	fi
+	$(V) export OPENHALON_IMAGE=$(BUILD_ROOT)/images/`basename $(BASE_TARGZ_FS_FILE)` ; \
+	sudo -E lxc-create -n $(CONTAINER_NAME) -t $(BUILD_ROOT)/tools/lxc/lxc-openhalon
+	$(V) $(ECHO) "Exporting completed.\nRun with 'sudo lxc-start -n $(CONTAINER_NAME)'"
+
 .PHONY: devshell
 $(eval $(call PARSE_ARGUMENTS,devshell))
 RECIPE?=$(EXTRA_ARGS)
