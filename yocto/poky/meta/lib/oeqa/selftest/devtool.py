@@ -150,10 +150,10 @@ class DevtoolTests(oeSelfTest):
         result = runCmd('tar xfv libftdi1-1.1.tar.bz2', cwd=tempdir)
         srcdir = os.path.join(tempdir, 'libftdi1-1.1')
         self.assertTrue(os.path.isfile(os.path.join(srcdir, 'CMakeLists.txt')), 'Unable to find CMakeLists.txt in source directory')
-        # Test devtool add
+        # Test devtool add (and use -V so we test that too)
         self.track_for_cleanup(workspacedir)
         self.add_command_to_tearDown('bitbake-layers remove-layer */workspace')
-        result = runCmd('devtool add libftdi %s' % srcdir)
+        result = runCmd('devtool add libftdi %s -V 1.1' % srcdir)
         self.assertTrue(os.path.exists(os.path.join(workspacedir, 'conf', 'layer.conf')), 'Workspace directory not created')
         # Test devtool status
         result = runCmd('devtool status')
@@ -370,6 +370,11 @@ class DevtoolTests(oeSelfTest):
         recipefile = get_bb_var('FILE', testrecipe)
         src_uri = get_bb_var('SRC_URI', testrecipe)
         self.assertIn('git://', src_uri, 'This test expects the %s recipe to be a git recipe' % testrecipe)
+        patches = []
+        for entry in src_uri.split():
+            if entry.startswith('file://') and entry.endswith('.patch'):
+                patches.append(entry[7:].split(';')[0])
+        self.assertGreater(len(patches), 0, 'The %s recipe does not appear to contain any patches, so this test will not be effective' % testrecipe)
         result = runCmd('git status . --porcelain', cwd=os.path.dirname(recipefile))
         self.assertEqual(result.output.strip(), "", '%s recipe is not clean' % testrecipe)
         # First, modify a recipe
@@ -397,19 +402,22 @@ class DevtoolTests(oeSelfTest):
         result = runCmd('git status . --porcelain', cwd=os.path.dirname(recipefile))
         self.assertNotEqual(result.output.strip(), "", '%s recipe should be modified' % testrecipe)
         status = result.output.splitlines()
-        self.assertEqual(len(status), 3, 'Less/more files modified than expected. Entire status:\n%s' % result.output)
         for line in status:
-            if line.endswith('add-exclusion-to-mkfs-jffs2-git-2.patch'):
-                self.assertEqual(line[:3], ' D ', 'Unexpected status in line: %s' % line)
-            elif line.endswith('fix-armv7-neon-alignment.patch'):
-                self.assertEqual(line[:3], ' D ', 'Unexpected status in line: %s' % line)
-            elif re.search('%s_[^_]*.bb$' % testrecipe, line):
-                self.assertEqual(line[:3], ' M ', 'Unexpected status in line: %s' % line)
+            for patch in patches:
+                if line.endswith(patch):
+                    self.assertEqual(line[:3], ' D ', 'Unexpected status in line: %s' % line)
+                    break
             else:
-                raise AssertionError('Unexpected modified file in status: %s' % line)
+                if re.search('%s_[^_]*.bb$' % testrecipe, line):
+                    self.assertEqual(line[:3], ' M ', 'Unexpected status in line: %s' % line)
+                else:
+                    raise AssertionError('Unexpected modified file in status: %s' % line)
         result = runCmd('git diff %s' % os.path.basename(recipefile), cwd=os.path.dirname(recipefile))
         addlines = ['SRCREV = ".*"', 'SRC_URI = "git://git.infradead.org/mtd-utils.git"']
-        removelines = ['SRCREV = ".*"', 'SRC_URI = "git://git.infradead.org/mtd-utils.git \\\\', 'file://add-exclusion-to-mkfs-jffs2-git-2.patch \\\\', 'file://fix-armv7-neon-alignment.patch \\\\', '"']
+        srcurilines = src_uri.split()
+        srcurilines[0] = 'SRC_URI = "' + srcurilines[0]
+        srcurilines.append('"')
+        removelines = ['SRCREV = ".*"'] + srcurilines
         for line in result.output.splitlines():
             if line.startswith('+++') or line.startswith('---'):
                 continue
