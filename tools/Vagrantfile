@@ -181,6 +181,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   end
   config.vm.provision "shell" do |s|
     s.inline = $provisioning_script
-    s.args = ENV['http_proxy'], ENV['https_proxy']
+    s.args = ENV.has_key?('http_proxy') ? ENV['http_proxy'] : "", ENV.has_key?('https_proxy') ? ENV['https_proxy'] : ""
   end
 end
