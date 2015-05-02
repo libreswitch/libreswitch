@@ -5,6 +5,7 @@
 VAGRANTFILE_API_VERSION = "2"
 
 $provisioning_script = <<SCRIPT
+set -ex
 if test -n "$1" ; then
   # Exporting the proxies for this session
   export http_proxy=$1
@@ -16,6 +17,7 @@ export https_proxy=$2
 EOF
 fi
 # System additions and upgrades
+sed -i '/^deb/s/ universe/ universe multiverse/' /etc/apt/sources.list
 apt-get -y install dnsmasq && until host archive.ubuntu.com &>/dev/null ; do sleep .1 ; done
 apt-get update
 apt-get -y dist-upgrade
@@ -24,7 +26,7 @@ apt-get -y dist-upgrade
 apt-get -y install gawk wget git git-core diffstat unzip texinfo gcc-multilib  build-essential chrpath screen curl device-tree-compiler xterm aptitude socat git-review
 
 # Developer tools
-apt-get -y install vagrant strace linux-tools-common uncrustify doxygen cmake cmake-curses-gui manpages-posix-dev  manpages-dev
+apt-get -y install vagrant strace linux-tools-common uncrustify doxygen cmake cmake-curses-gui manpages-posix-dev manpages-dev zlib1g-dev
 
 # Eclipse environment
 apt-get install -y openjdk-7-jre
@@ -121,8 +123,12 @@ EOF
 
 # Clean up
 apt-get -y autoremove
-
 for i in 0 1 ; do ip addr show dev eth$i ; done
+set +x
+if [ -a /var/run/reboot-required ] ; then
+  echo ; echo Run \\"vagrant reload\\" to use the new machine
+  poweroff
+fi
 
 SCRIPT
 
@@ -171,9 +177,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         cpus = `nproc`.to_i
         # meminfo shows KB and we need to convert to MB
         mem = `grep 'MemTotal' /proc/meminfo | sed -e 's/MemTotal://' -e 's/ kB//'`.to_i / 1024 / 4
-     else # sorry Windows folks, I can't help you
-        cpus = 4
-        mem = 2048
+     else # Assume windows
+        cpus = ENV['NUMBER_OF_PROCESSORS']
+        mem = /([0-9]+)/.match(`wmic os get TotalVisibleMemorySize`).captures[0].to_i / 1024 / 4
      end
      vb.name = $user + "-dev"
      vb.memory = mem
