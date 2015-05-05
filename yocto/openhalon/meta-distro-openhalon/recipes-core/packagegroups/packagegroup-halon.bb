@@ -29,7 +29,6 @@ RDEPENDS_packagegroup-halon-base = "\
     rsyslog \
     iproute2 \
     vim \
-    systemd-dev \
     valgrind \
     valgrind-memcheck \
     valgrind-helgrind \
@@ -44,19 +43,7 @@ RDEPENDS_packagegroup-halon-base_append_arm = "\
 
 RDEPENDS_packagegroup-halon-min = "\
     python \
-    python-datetime python-netclient python-threading python-misc python-json \
     yaml-cpp \
-    redis-py \
-    python-compile \
-    python-email \
-    python-distutils \
-    python-shell \
-    python-pexpect \
-    python-unittest \
-    python-subprocess \
-    python-jsonschema \
-    python-flask python-werkzeug python-itsdangerous python-jinja2 python-markupsafe \
-    python-unixadmin \
     libevent \
     util-linux-uuidgen \
     iptables \
