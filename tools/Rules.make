@@ -270,7 +270,12 @@ ifneq ($(findstring onie-installer,$(MAKECMDGOALS)),)
 endif
 
 # Devenv code
+GITREVIEWUSER:=$(shell git config --get gitreview.username)
+ifneq ($(GITREVIEWUSER),)
+ REVIEWUSER?=$(GITREVIEWUSER)
+endif
 REVIEWUSER?=$(USER)
+
 setup-git-review:
 	$(V) $(ECHO) "$(YELLOW)Setting up git-review system...$(GRAY)\n"
 	$(V)$(MAKE) _setup-git-review

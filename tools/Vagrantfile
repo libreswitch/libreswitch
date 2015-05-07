@@ -16,6 +16,14 @@ export http_proxy=$1
 export https_proxy=$2
 EOF
 fi
+
+# Make swap
+fallocate -l 2G /swapfile
+chmod 600 /swapfile
+mkswap /swapfile  
+swapon /swapfile
+echo "/swapfile none swap defaults 0 0" >>/etc/fstab
+
 # System additions and upgrades
 sed -i '/^deb/s/ universe/ universe multiverse/' /etc/apt/sources.list
 apt-get -y install dnsmasq && until host archive.ubuntu.com &>/dev/null ; do sleep .1 ; done
@@ -120,11 +128,12 @@ cat > /home/vagrant/.gitconfig <<EOF
 [branch]
 	autosetuprebase = always
 EOF
+chown vagrant:vagrant /home/vagrant/.gitconfig
 
 # Clean up
+set +x
 apt-get -y autoremove
 for i in 0 1 ; do ip addr show dev eth$i ; done
-set +x
 if [ -a /var/run/reboot-required ] ; then
   echo ; echo Run \\"vagrant reload\\" to use the new machine
   poweroff
