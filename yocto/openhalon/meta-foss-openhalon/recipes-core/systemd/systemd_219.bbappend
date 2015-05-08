@@ -12,7 +12,10 @@ ALTERNATIVE_PRIORITY[systemd-def-target] ?= "1"
 
 FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 
-SRC_URI += "file://systemctl-alias.sh"
+SRC_URI += "file://systemctl-alias.sh \
+    file://silent-fsck-on-boot.patch \
+"
+
 FILES_${PN} += "${sysconfdir}/profile.d/"
 
 do_install_append() {
