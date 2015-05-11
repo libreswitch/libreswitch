@@ -34,12 +34,8 @@ menuentry 'Halon Development -- NFS root' {
         set root=(hd0,gptHALON_BOOT_PART_NUM)
         echo
         echo "============================================"
-        echo
-        echo 'Please enter the IP address of the NFS host:'
-        read ipaddress
-        echo
-        echo 'Please enter the path of the nfs root:'
-        read rootpath
+        set ipaddress=@@NFSROOTIP@@
+        set rootpath=@@NFSROOTPATH@@
         echo
         echo "Loading Halon kernel from disk, root from NFS at ${ipaddress}:${rootpath}..."
         linux /boot/bzImage console=ttyS1,115200n8 root=/dev/nfs nfsroot=${ipaddress}:${rootpath},nolock ip=dhcp usb-storage.quirks=14af:af01:blopsw quiet

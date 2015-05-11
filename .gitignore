@@ -6,6 +6,7 @@ src/*
 build
 tools/bin/python
 tools/bin/corkscrew
+nfsroot*
 
 # Exclude halon enterprise layer
 yocto/halon

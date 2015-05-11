@@ -29,7 +29,7 @@ ifneq ($(VERBOSE),)
  export VERBOSE
 endif
 export BUILDDIR=$(BUILD_ROOT)/build
-export BB_ENV_EXTRAWHITE=MACHINE DISTRO TCMODE TCLIBC HTTP_PROXY http_proxy HTTPS_PROXY https_proxy FTP_PROXY ftp_proxy ALL_PROXY all_proxy NO_PROXY no_proxy SSH_AGENT_PID SSH_AUTH_SOCK BB_SRCREV_POLICY SDKMACHINE BB_NUMBER_THREADS BB_NO_NETWORK PARALLEL_MAKE GIT_PROXY_COMMAND SOCKS5_PASSWD SOCKS5_USER SCREENDIR STAMPS_DIR PLATFORM_DTS_FILE BUILD_ROOT
+export BB_ENV_EXTRAWHITE=MACHINE DISTRO TCMODE TCLIBC HTTP_PROXY http_proxy HTTPS_PROXY https_proxy FTP_PROXY ftp_proxy ALL_PROXY all_proxy NO_PROXY no_proxy SSH_AGENT_PID SSH_AUTH_SOCK BB_SRCREV_POLICY SDKMACHINE BB_NUMBER_THREADS BB_NO_NETWORK PARALLEL_MAKE GIT_PROXY_COMMAND SOCKS5_PASSWD SOCKS5_USER SCREENDIR STAMPS_DIR PLATFORM_DTS_FILE BUILD_ROOT NFSROOTPATH NFSROOTIP
 export PATH:=$(BUILD_ROOT)/yocto/poky/scripts:$(BUILD_ROOT)/yocto/poky/bitbake/bin:$(BUILD_ROOT)/tools/bin:$(PATH)
 export LD_LIBRARY_PATH:=$(BUILD_ROOT)/tools/lib:$(LD_LIBRARY_PATH)
 
@@ -66,7 +66,7 @@ endef
 define WARNING
 	$(ECHO) ; \
 	 $(ECHO) "$(YELLOW)WARNING:$(GRAY) $(1)" ; \
-	 $(ECHO) ;
+	 $(ECHO)
 endef
 
 # Parameters: first argument is the recipe to bake
@@ -199,6 +199,31 @@ deploy_container:
 	sudo -E lxc-create -n $(CONTAINER_NAME) -t $(BUILD_ROOT)/tools/lxc/lxc-openhalon
 	$(V) $(ECHO) "Exporting completed.\nRun with 'sudo lxc-start -n $(CONTAINER_NAME)'"
 
+.PHONY: deploy_nfsroot
+NFSROOTPATH?=$(BUILD_ROOT)/nfsroot-${CONFIGURED_PLATFORM}
+export NFSROOTPATH
+deploy_nfsroot:
+	$(V) if ! which exportfs > /dev/null ; then \
+	  $(call FATAL_ERROR,Missing exportfs utility, unable to export rootfs. Did you install the NFS server package?) ; \
+	fi
+	$(V) $(ECHO) "Exporting NFS directory, may ask for admin password..."
+	$(V) if ! sudo exportfs | grep -q $(NFSROOTPATH) ; then \
+	  sudo exportfs -o rw,no_root_squash,sync,no_subtree_check,insecure *:$(NFSROOTPATH) ; \
+	fi
+	$(V) if ! test -f images/`basename $(BASE_TARGZ_FS_FILE)` ; then \
+	  $(call FATAL_ERROR,Your platform has not generated a .tar.gz file that can be used to deploy the NFS root) ; \
+	fi
+	$(V) if [ -d $(NFSROOTPATH) ] ; then \
+	  $(call WARNING,previous deployed nfsroot directory exists at $(NFSROOTPATH), wipping out before re-deploying) ; \
+	  $(ECHO) "Press any key to continue wipping out previous nfsroot, or ctrl+c to abort..." ; \
+	  read ; \
+	  rm -Rf $(NFSROOTPATH) ; \
+	fi
+	$(V) mkdir -p $(NFSROOTPATH)
+	$(V) $(ECHO) -n "Extracting the NFS root into $(NFSROOTPATH)... "
+	$(V) tar -xzf images/`basename $(BASE_TARGZ_FS_FILE)` -C $(NFSROOTPATH)
+	$(V) $(ECHO) done
+
 .PHONY: devshell
 $(eval $(call PARSE_ARGUMENTS,devshell))
 RECIPE?=$(EXTRA_ARGS)
@@ -284,7 +309,7 @@ _setup-git-review:: .git/hooks/commit-msg
 	$(V) if which git-review > /dev/null ; then \
 	  git review -s ; \
 	else \
-	  $(call WARNING,git-review wasn't found... skipping his configuration) \
+	  $(call WARNING,git-review wasn't found... skipping his configuration) ; \
 	fi
 
 .git/hooks/commit-msg:

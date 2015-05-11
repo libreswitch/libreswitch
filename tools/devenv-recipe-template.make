@@ -27,4 +27,10 @@ ifneq ($(findstring ##RECIPE##-undeploy,$(MAKECMDGOALS)),)
 endif
 ##RECIPE##-undeploy:
 	$(V)$(call DEVTOOL, undeploy-target -s ##RECIPE## $(TARGET))
+
+##RECIPE##-deploy-nfs:
+	$(V)$(call DEVTOOL, deploy-target -s ##RECIPE## $(NFSROOTPATH))
+
+##RECIPE##-undeploy-nfs:
+	$(V)$(call DEVTOOL, undeploy-target -s ##RECIPE## $(NFSROOTPATH))
 #END_##RECIPE##
