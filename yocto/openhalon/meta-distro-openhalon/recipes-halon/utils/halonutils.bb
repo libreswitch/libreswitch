@@ -10,7 +10,7 @@ CFLAGS += "-DHALON"
 # For debugging/development purposes
 EXTERNALSRC_BUILD="${S}/build"
 
-SRCREV = "7059b8d0e53c15d1dc003bebe23e47a05148a970"
+SRCREV = "${AUTOREV}"
 
 S = "${WORKDIR}/git"
 
