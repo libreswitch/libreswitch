@@ -206,18 +206,18 @@ deploy_nfsroot:
 	$(V) if ! which exportfs > /dev/null ; then \
 	  $(call FATAL_ERROR,Missing exportfs utility, unable to export rootfs. Did you install the NFS server package?) ; \
 	fi
-	$(V) if ! test -f images/`basename $(BASE_TARGZ_FS_FILE)` ; then \
+	$(V) if ! test -f images/$(notdir $(BASE_TARGZ_FS_FILE)) ; then \
 	  $(call FATAL_ERROR,Your platform has not generated a .tar.gz file that can be used to deploy the NFS root) ; \
 	fi
 	$(V) if [ -d $(NFSROOTPATH) ] ; then \
-	  $(call WARNING,previous deployed nfsroot directory exists at $(NFSROOTPATH), wipping out before re-deploying) ; \
+	  $(call WARNING,Removing previous deployed nfsroot directory at $(NFSROOTPATH) before re-deploying) ; \
 	  $(ECHO) "Press any key to continue wipping out previous nfsroot, or ctrl+c to abort..." ; \
 	  read ; \
 	  rm -Rf $(NFSROOTPATH) ; \
 	fi
 	$(V) mkdir -p $(NFSROOTPATH)
 	$(V) $(ECHO) -n "Extracting the NFS root into $(NFSROOTPATH)... "
-	$(V) tar -xzf images/`basename $(BASE_TARGZ_FS_FILE)` -C $(NFSROOTPATH)
+	$(V) tar -xzf images/$(notdir $(BASE_TARGZ_FS_FILE)) -C $(NFSROOTPATH)
 	$(V) $(ECHO) done
 	$(V) $(ECHO) "Exporting NFS directory, may ask for admin password..."
 	$(V) if ! sudo exportfs | grep -q $(NFSROOTPATH) ; then \
