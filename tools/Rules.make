@@ -206,10 +206,6 @@ deploy_nfsroot:
 	$(V) if ! which exportfs > /dev/null ; then \
 	  $(call FATAL_ERROR,Missing exportfs utility, unable to export rootfs. Did you install the NFS server package?) ; \
 	fi
-	$(V) $(ECHO) "Exporting NFS directory, may ask for admin password..."
-	$(V) if ! sudo exportfs | grep -q $(NFSROOTPATH) ; then \
-	  sudo exportfs -o rw,no_root_squash,sync,no_subtree_check,insecure *:$(NFSROOTPATH) ; \
-	fi
 	$(V) if ! test -f images/`basename $(BASE_TARGZ_FS_FILE)` ; then \
 	  $(call FATAL_ERROR,Your platform has not generated a .tar.gz file that can be used to deploy the NFS root) ; \
 	fi
@@ -223,6 +219,10 @@ deploy_nfsroot:
 	$(V) $(ECHO) -n "Extracting the NFS root into $(NFSROOTPATH)... "
 	$(V) tar -xzf images/`basename $(BASE_TARGZ_FS_FILE)` -C $(NFSROOTPATH)
 	$(V) $(ECHO) done
+	$(V) $(ECHO) "Exporting NFS directory, may ask for admin password..."
+	$(V) if ! sudo exportfs | grep -q $(NFSROOTPATH) ; then \
+	  sudo exportfs -o rw,no_root_squash,sync,no_subtree_check,insecure *:$(NFSROOTPATH) ; \
+	fi
 
 .PHONY: devshell
 $(eval $(call PARSE_ARGUMENTS,devshell))
