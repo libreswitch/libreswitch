@@ -49,6 +49,10 @@ Supported SRC_URI options are:
    referring to commit which is valid in tag instead of branch.
    The default is "0", set nobranch=1 if needed.
 
+- preserve_origin
+   Point the cloned repo remote origin towards the repo in the SRC_URI.
+   The default is "0", set with preserve_origin=1 if needed.
+
 """
 
 #Copyright (C) 2005 Richard Purdie
@@ -108,6 +112,8 @@ class Git(FetchMethod):
         ud.rebaseable = ud.parm.get("rebaseable","0") == "1"
 
         ud.nobranch = ud.parm.get("nobranch","0") == "1"
+
+        ud.preserve_origin = ud.parm.get("preserve_origin","0") == "1"
 
         # bareclone implies nocheckout
         ud.bareclone = ud.parm.get("bareclone","0") == "1"
@@ -284,6 +290,24 @@ class Git(FetchMethod):
                 runfetchcmd("%s checkout-index -q -f -a" % ud.basecmd, d)
             else:
                 runfetchcmd("%s checkout %s" % (ud.basecmd, ud.revisions[ud.names[0]]), d)
+
+        if ud.preserve_origin:
+            if ud.user:
+                username = ud.user + '@'
+            else:
+                username = ""
+
+            repourl = "%s://%s%s%s" % (ud.proto, username, ud.host, ud.path)
+            runfetchcmd("%s remote rm origin" % ud.basecmd, d)
+            runfetchcmd("%s remote add origin %s" % (ud.basecmd, repourl), d)
+            fetch_cmd = "%s fetch --all" % (ud.basecmd)
+            if ud.proto.lower() != 'file':
+                bb.fetch2.check_network_access(d, fetch_cmd, ud.url)
+            runfetchcmd(fetch_cmd, d)
+            branches = ud.parm.get("branch", "master").split(',')
+            for branch in branches:
+                runfetchcmd("%s branch --set-upstream-to=origin/%s %s" % (ud.basecmd, branch, branch), d)
+
         return True
 
     def clean(self, ud, d):
