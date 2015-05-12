@@ -4,14 +4,10 @@ LIC_FILES_CHKSUM = "file://CMakeLists.txt;beginline=0;endline=14;md5=9bf02f5d4de
 
 DEPENDS = "systemd"
 
-SRC_URI = "git://git.openhalon.io/openhalon/halonutils;protocol=https"
-
-CFLAGS += "-DHALON"
-# For debugging/development purposes
-EXTERNALSRC_BUILD="${S}/build"
+SRC_URI = "git://git.openhalon.io/openhalon/halonutils;protocol=https;preserve_origin=1"
 
 SRCREV = "${AUTOREV}"
 
 S = "${WORKDIR}/git"
 
-inherit cmake
+inherit cmake halon
