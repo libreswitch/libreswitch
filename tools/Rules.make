@@ -315,7 +315,7 @@ _setup-git-review:: .git/hooks/commit-msg
 .git/hooks/commit-msg:
 	$(V) gitdir=$$(git rev-parse --git-dir); scp -p -P 29418 $(REVIEWUSER)@review.openhalon.io:hooks/commit-msg $${gitdir}/hooks/
 
-.PHONY: _devenv_init devenv_init devenv_clean devenv_add devenv_rm  devenv_status devenv_defaults dev_header
+.PHONY: devenv_init devenv_clean devenv_add devenv_rm  devenv_status devenv_defaults dev_header
 
 -include src/Rules.make
 
@@ -323,11 +323,15 @@ dev_header: header
 	$(V) flock -n $(BUILDDIR)/bitbake.lock echo -n || \
 	   { echo "Bitbake is currently running... can't proceed further, aborting" ; \
              exit 255 ; }
+	$(V) if ! [ -f .devenv ] ; then \
+	  $(call FATAL_ERROR, devenv is not initialized, use 'devenv_init') ; \
+	fi
 
-devenv_init: dev_header setup-git-review
+devenv_init:
 	$(V) $(ECHO) "$(YELLOW)Configuring development enviroment...$(GRAY)\n"
 	$(V) $(call BITBAKE,meta-ide-support)
-	$(V)$(MAKE) _devenv_init
+	$(V) touch .devenv
+	$(V) $(MAKE) setup-git-review
 
 devenv_clean: dev_header
 	$(V)$(call DEVTOOL, reset -a)
@@ -341,6 +345,7 @@ define DEVENV_ADD
 	  gitdir=$$(git rev-parse --git-dir); scp -p -P 29418 $(REVIEWUSER)@review.openhalon.io:hooks/commit-msg $${gitdir}/hooks/ ; \
 	  if which git-review > /dev/null ; then echo git review -s ; fi ; \
 	fi ; \
+	git checkout -q master ; \
 	popd > /dev/null ; \
 	sed -e "s/##RECIPE##/$(1)/g" $(BUILD_ROOT)/tools/devenv-recipe-template.make >> $(BUILD_ROOT)/src/Rules.make ; \
 	echo $(1) >> $(BUILD_ROOT)/.devenv
@@ -356,6 +361,22 @@ endif
 devenv_add: dev_header
 	$(V)$(call DEVENV_ADD,$(PACKAGE))
 
+ifeq (devenv_import,$(firstword $(MAKECMDGOALS)))
+  PACKAGE := $(wordlist 2, 2,$(MAKECMDGOALS))
+  IMPORTED_SRC := $(wordlist 3, 3,$(MAKECMDGOALS))
+  $(eval $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))::;@:)
+  ifeq ($(PACKAGE),)
+   $(error ====== PACKAGE variable is empty, please specify which package you want  =====)
+  endif
+  ifeq ($(IMPORTED_SRC),)
+   $(error ====== IMPORTED_SRC variable is empty, please specify the source to import  =====)
+  endif
+endif
+devenv_import:
+	$(V) grep  -q $(PACKAGE) .devenv 2>/dev/null || $(call DEVTOOL, modify $(PACKAGE) $(IMPORTED_SRC)) ; \
+	sed -e "s/##RECIPE##/$(PACKAGE)/g" $(BUILD_ROOT)/tools/devenv-recipe-template.make >> $(BUILD_ROOT)/src/Rules.make ; \
+	echo $(PACKAGE) >> $(BUILD_ROOT)/.devenv
+
 $(eval $(call PARSE_ARGUMENTS,devenv_rm))
 PACKAGE?=$(EXTRA_ARGS)
 ifneq ($(findstring devenv_rm,$(MAKECMDGOALS)),)
@@ -370,11 +391,7 @@ devenv_rm: dev_header
 	$(V)sed -i -e "/$(PACKAGE)/d" .devenv
 
 devenv_status: dev_header
-	$(V)if [ -f .devenv ] ; then \
-	  $(call DEVTOOL,status) ; \
-	else \
-	  $(ECHO) "devenv is not initialized\n" ; \
-	fi
+	$(V) $(call DEVTOOL,status)
 
 $(eval $(call PARSE_ARGUMENTS,devenv_update_recipe))
 PACKAGE?=$(EXTRA_ARGS)
@@ -385,34 +402,6 @@ ifneq ($(findstring devenv_update_recipe,$(MAKECMDGOALS)),)
 endif
 devenv_update_recipe: dev_header
 	$(V)$(call DEVTOOL,update-recipe $(PACKAGE))
-
-devenv_defaults: dev_header
-	$(V)$(ECHO) "List of default devenv packages for $(CONFIGURED_PLATFORM) platform..."
-	$(V) if [ -z "$$PACKAGES" ] ; then \
-          YOCTO_LAYERS=$(YOCTO_LAYERS) ; \
-          for layer in $$YOCTO_LAYERS ; do \
-	    test -d $$layer || continue ; \
-	    PACKAGES="$$PACKAGES `find $$layer -name devenv.conf | xargs cat`" ; \
-          done ; \
-	fi ; \
-	for recipe in $$PACKAGES ; do \
-	  [[ $$recipe == \#* ]] && continue ; \
-	  $(ECHO) "  * $$recipe" ; \
-	done
-
-export PACKAGES
-_devenv_init:
-	$(V) if [ -z "$$PACKAGES" ] ; then \
-	  YOCTO_LAYERS=$(YOCTO_LAYERS) ; \
-          for layer in $$YOCTO_LAYERS ; do \
-	    test -d $$layer || continue ; \
-	    PACKAGES="$$PACKAGES `find $$layer -name devenv.conf | xargs cat`" ; \
-          done ; \
-	fi ; \
-	for recipe in $$PACKAGES ; do \
-	  [[ $$recipe == \#* ]] && continue ; \
-	  $(call DEVENV_ADD,$$recipe) ; \
-	done
 
 ## Support commands
 ## Use with caution!!!!

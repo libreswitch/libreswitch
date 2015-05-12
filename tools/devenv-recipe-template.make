@@ -8,6 +8,9 @@
 ##RECIPE##-clean:
 	$(V)$(call BITBAKE, -c cleansstate ##RECIPE##)
 
+##RECIPE##-reconfigure:
+	$(V)$(call BITBAKE, -f -c configure ##RECIPE##)
+
 $(eval $(call PARSE_ARGUMENTS,##RECIPE##-deploy))
 TARGET?=$(EXTRA_ARGS)
 ifneq ($(findstring ##RECIPE##-deploy,$(MAKECMDGOALS)),)
