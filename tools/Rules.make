@@ -72,18 +72,18 @@ endef
 # Parameters: first argument is the recipe to bake
 define BITBAKE
 	cd $(BUILDDIR) ; umask 002 ; \
-	 $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake $(1) || exit 1 
+	 $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake $(1)
 endef
 
 # Parameters: first argument is the recipe to bake
 define BITBAKE_NO_FAILURE
 	cd $(BUILDDIR) ; umask 002 ; \
-	 $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake $(1)
+	 $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake $(1) || exit 1
 endef
 
 define DEVTOOL
 	 cd $(BUILDDIR) ; umask 002 ; \
-	 $(BUILD_ROOT)/yocto/poky/scripts/devtool $(1) || exit 1 
+	 $(BUILD_ROOT)/yocto/poky/scripts/devtool $(1)
 endef
 
 # Rule to regenerate the site.conf file if proxies changed
