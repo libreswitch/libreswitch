@@ -1,0 +1,17 @@
+# (C) Copyright 2015 Hewlett-Packard Development Company, L.P.
+
+[Unit]
+Description=Halon Fan Daemon
+After=sysd.service
+
+[Service]
+Type=forking
+CPUSchedulingPolicy=rr
+CPUSchedulingPriority=7
+ExecStartPre=/bin/rm -f /var/run/openvswitch/fand.pid
+ExecStart=/usr/bin/fand --detach --pidfile=/var/run/openvswitch/fand.pid -vSYSLOG:INFO
+PIDFile=/var/run/openvswitch/fand.pid
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target
