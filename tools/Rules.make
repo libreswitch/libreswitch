@@ -327,7 +327,7 @@ dev_header: header
 	  $(call FATAL_ERROR, devenv is not initialized, use 'devenv_init') ; \
 	fi
 
-devenv_init:
+devenv_init: header
 	$(V) $(ECHO) "$(YELLOW)Configuring development enviroment...$(GRAY)\n"
 	$(V) $(call BITBAKE,meta-ide-support)
 	$(V) touch .devenv
