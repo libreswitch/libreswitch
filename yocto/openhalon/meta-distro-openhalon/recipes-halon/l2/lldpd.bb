@@ -18,6 +18,9 @@ inherit halon autotools systemd pkgconfig
 #
 # Works good enough without autoreconf
 do_configure() {
+	cd ${S}
+        autoreconf -fi
+        cd ${B}
 	oe_runconf
 }
 
