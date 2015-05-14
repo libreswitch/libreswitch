@@ -1,7 +1,7 @@
 # (C) Copyright 2015 Hewlett-Packard Development Company, L.P.
 
 [Unit]
-Description=Halon Vland Daemon
+Description=Halon VLAN Daemon
 After=ovsdb-server.service
 
 [Service]
