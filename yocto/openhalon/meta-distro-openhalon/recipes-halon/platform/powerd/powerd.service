@@ -2,7 +2,7 @@
 
 [Unit]
 Description=Halon Power Supply Management Daemon
-After=ovsdb-server.service
+After=sysd.service
 
 [Service]
 Type=forking
