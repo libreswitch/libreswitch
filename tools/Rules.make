@@ -407,6 +407,17 @@ endif
 devenv_update_recipe: dev_header
 	$(V)$(call DEVTOOL,update-recipe $(PACKAGE))
 
+$(eval $(call PARSE_ARGUMENTS,devenv_patch_recipe))
+PACKAGE?=$(EXTRA_ARGS)
+ifneq ($(findstring devenv_patch_recipe,$(MAKECMDGOALS)),)
+  ifeq ($(PACKAGE),)
+   $(error ====== PACKAGE variable is empty, please specify which package you want =====)
+  endif
+endif
+devenv_patch_recipe: dev_header
+	$(V)$(call DEVTOOL,update-recipe -m patch $(PACKAGE))
+
+
 ## Support commands
 ## Use with caution!!!!
 
