@@ -338,17 +338,21 @@ devenv_clean: dev_header
 	$(V)rm -Rf src .devenv
 
 define DEVENV_ADD
-	grep  -q $(1) .devenv 2>/dev/null || $(call DEVTOOL, modify --extract $(1) $(BUILD_ROOT)/src/$(1)) ; \
-	pushd . > /dev/null ; \
-	cd $(BUILD_ROOT)/src/$(1) ; \
-	if [ -f .gitreview ] ; then \
-	  gitdir=$$(git rev-parse --git-dir); scp -p -P 29418 $(REVIEWUSER)@review.openhalon.io:hooks/commit-msg $${gitdir}/hooks/ ; \
-	  if which git-review > /dev/null ; then echo git review -s ; fi ; \
-	fi ; \
-	git checkout -q master ; \
-	popd > /dev/null ; \
-	sed -e "s/##RECIPE##/$(1)/g" $(BUILD_ROOT)/tools/devenv-recipe-template.make >> $(BUILD_ROOT)/src/Rules.make ; \
-	echo $(1) >> $(BUILD_ROOT)/.devenv
+	if ! grep -q $(1) .devenv 2>/dev/null ; then \
+	  $(call DEVTOOL, modify --extract $(1) $(BUILD_ROOT)/src/$(1)) ; \
+	  pushd . > /dev/null ; \
+	  cd $(BUILD_ROOT)/src/$(1) ; \
+	  if [ -f .gitreview ] ; then \
+	    gitdir=$$(git rev-parse --git-dir); scp -p -P 29418 $(REVIEWUSER)@review.openhalon.io:hooks/commit-msg $${gitdir}/hooks/ ; \
+	    if which git-review > /dev/null ; then echo git review -s ; fi ; \
+	  fi ; \
+	  git checkout -q master ; \
+	  popd > /dev/null ; \
+	  sed -e "s/##RECIPE##/$(1)/g" $(BUILD_ROOT)/tools/devenv-recipe-template.make >> $(BUILD_ROOT)/src/Rules.make ; \
+	  echo $(1) >> $(BUILD_ROOT)/.devenv ; \
+	else \
+	  $(ECHO) "$(YELLOW)$(1)$(GRAY) is already in your devenv" ; \
+	fi ;
 endef
 
 $(eval $(call PARSE_ARGUMENTS,devenv_add))
@@ -359,7 +363,7 @@ ifneq ($(findstring devenv_add,$(MAKECMDGOALS)),)
   endif
 endif
 devenv_add: dev_header
-	$(V)$(call DEVENV_ADD,$(PACKAGE))
+	$(V)$(foreach P, $(PACKAGE), $(call DEVENV_ADD,$(P)))
 
 ifeq (devenv_import,$(firstword $(MAKECMDGOALS)))
   PACKAGE := $(wordlist 2, 2,$(MAKECMDGOALS))
