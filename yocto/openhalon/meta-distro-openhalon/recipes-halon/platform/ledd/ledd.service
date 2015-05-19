@@ -2,7 +2,7 @@
 
 [Unit]
 Description=Halon LED Daemon
-After=ovsdb-server.service
+After=sysd.service
 
 [Service]
 Type=forking
