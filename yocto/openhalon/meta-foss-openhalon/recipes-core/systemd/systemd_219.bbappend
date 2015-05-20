@@ -14,6 +14,7 @@ FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 
 SRC_URI += "file://systemctl-alias.sh \
     file://silent-fsck-on-boot.patch \
+    file://revert-ipv6ll-address-setting.patch \
 "
 
 FILES_${PN} += "${sysconfdir}/profile.d/"
