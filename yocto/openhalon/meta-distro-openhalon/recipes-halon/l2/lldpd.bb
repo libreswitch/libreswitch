@@ -7,7 +7,12 @@ DEPENDS = "halonutils config-yaml halon-ovsdb libevent openssl"
 SRC_URI = "git://git.openhalon.io/openhalon/lldpd;protocol=http;preserve_origin=1 \ 
 	  file://lldpd.service \
 "
+
 SRCREV="${AUTOREV}"
+
+# When using AUTOREV, we need to force the package version to the revision of git
+# in order to avoid stale shared states.
+PV = "git${SRCPV}"
 
 S = "${WORKDIR}/git"
 

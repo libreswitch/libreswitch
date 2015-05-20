@@ -10,6 +10,10 @@ SRC_URI = "git://git.openhalon.io/openhalon/cfgd;protocol=http;preserve_origin=1
 
 SRCREV="${AUTOREV}"
 
+# When using AUTOREV, we need to force the package version to the revision of git
+# in order to avoid stale shared states.
+PV = "git${SRCPV}"
+
 S = "${WORKDIR}/git"
 
 do_install_prepend() {
