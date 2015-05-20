@@ -36,7 +36,7 @@ export LD_LIBRARY_PATH:=$(BUILD_ROOT)/tools/lib:$(LD_LIBRARY_PATH)
 # Some well known locations
 KERNEL_STAGING_DIR=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^STAGING_KERNEL_DIR=/ { gsub(/"/, "", $$2); print $$2 }')
 DISTRO_VERSION=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^DISTRO_VERSION=/ { gsub(/"/, "", $$2); print $$2 }')
-# Used to identify the valid layers  
+# Used to identify the valid layers
 YOCTO_LAYERS=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F'=' '/^BBLAYERS=/ { print $$2 }')
 BASE_UIMAGE_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/uImage
 BASE_IMAGE_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/Image
@@ -123,7 +123,7 @@ kernel: header _kernel
 _KERNEL_TARGET ?= _kernel
 
 DISTRO_KERNEL_SYMBOLS_FILE ?= $(BASE_VMLINUX_FILE)
-_kernel: 
+_kernel:
 	$(V) $(ECHO) "$(YELLOW)Building kernel...$(GRAY)\n"
 	$(V)$(call BITBAKE,virtual/kernel)
 	$(V)if test -f $(DISTRO_KERNEL_FILE) ; then ln -sf $(DISTRO_KERNEL_FILE) images/kernel-$(CONFIGURED_PLATFORM).bin ; fi
@@ -162,7 +162,7 @@ ifneq ($(findstring bake,$(MAKECMDGOALS)),)
 endif
 bake: header _bake
 
-_bake: 
+_bake:
 	$(V)$(call BITBAKE,$(RECIPE))
 
 .PHONY: cleansstate _cleansstate
@@ -237,14 +237,14 @@ endif
 # in recent versions of Yocto (Dora and up), it doesn't like to be called
 # when the MAKEOVERRIDES variable is set, therefore causing the devshell
 # to fail. Unsetting it manually
-devshell: header 
+devshell: header
 	$(V)unset MAKEOVERRIDES ; $(call BITBAKE, -c devshell $(RECIPE))
 
 .PHONY: sdk _sdk
 sdk: header _sdk
 	$(V) ln -fs $(BUILD_ROOT)/build/tmp/deploy/sdk/$(DISTRO)-glibc-`uname -m`-*-toolchain-*.sh images
 
-_sdk: 
+_sdk:
 	$(V) $(ECHO) "$(YELLOW)Building SDK...$(GRAY)\n"
 	$(V)$(call BITBAKE,meta-toolchain-$(DISTRO))
 
@@ -263,7 +263,7 @@ MKIMAGE=tools/bin/mkimage
 $(MKIMAGE): build/tmp/sysroots/$(HOST_ARCH)-linux/usr/bin/uboot-mkimage
 	$(V) ln -sf $(BUILD_ROOT)/build/tmp/sysroots/$(HOST_ARCH)-linux/usr/bin/mkimage $@
 
-build/tmp/sysroots/$(HOST_ARCH)-linux/usr/bin/uboot-mkimage: 
+build/tmp/sysroots/$(HOST_ARCH)-linux/usr/bin/uboot-mkimage:
 	$(V)$(ECHO) " Building mkimage..."
 	$(V)$(call BITBAKE,u-boot-mkimage-native)
 
@@ -377,8 +377,9 @@ ifeq (devenv_import,$(firstword $(MAKECMDGOALS)))
   endif
 endif
 devenv_import:
-	$(V) grep  -q $(PACKAGE) .devenv 2>/dev/null || $(call DEVTOOL, modify $(PACKAGE) $(IMPORTED_SRC)) ; \
-	sed -e "s/##RECIPE##/$(PACKAGE)/g" $(BUILD_ROOT)/tools/devenv-recipe-template.make >> $(BUILD_ROOT)/src/Rules.make ; \
+	$(V) grep  -q $(PACKAGE) .devenv 2>/dev/null || $(call DEVTOOL, modify $(PACKAGE) $(IMPORTED_SRC)) && \
+	mkdir -p $(BUILD_ROOT)/src && \
+	sed -e "s/##RECIPE##/$(PACKAGE)/g" $(BUILD_ROOT)/tools/devenv-recipe-template.make >> $(BUILD_ROOT)/src/Rules.make && \
 	echo $(PACKAGE) >> $(BUILD_ROOT)/.devenv
 
 $(eval $(call PARSE_ARGUMENTS,devenv_rm))
