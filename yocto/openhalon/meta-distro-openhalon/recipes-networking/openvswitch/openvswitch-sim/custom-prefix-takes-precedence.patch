@@ -1,0 +1,13 @@
+Index: openvswitch-2.3.1/utilities/ovs-ctl.in
+===================================================================
+--- openvswitch-2.3.1.orig/utilities/ovs-ctl.in
++++ openvswitch-2.3.1/utilities/ovs-ctl.in
+@@ -22,7 +22,7 @@ esac
+ for dir in "$sbindir" "$bindir" /sbin /bin /usr/sbin /usr/bin; do
+     case :$PATH: in
+         *:$dir:*) ;;
+-        *) PATH=$PATH:$dir ;;
++        *) PATH=$dir:$PATH ;;
+     esac
+ done
+ 

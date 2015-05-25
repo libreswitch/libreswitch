@@ -6,10 +6,10 @@ LICENSE = "Apache-2"
 
 DEPENDS += "bridge-utils openssl python perl"
 
-RDEPENDS_${PN} += "util-linux-uuidgen util-linux-libuuid coreutils \
+RDEPENDS_${PN} += "util-linux-uuidgen util-linux-libuuid coreutils initscripts \
 	       python perl perl-module-strict ${PN}-switch ${PN}-controller ovsdb"
-RDEPENDS_${PN}-controller = "${PN} lsb ${PN}-pki"
-RDEPENDS_${PN}-switch = "${PN} openssl procps util-linux-uuidgen"
+RDEPENDS_${PN}-controller = "${PN} lsb ${PN}-pki ovsdb"
+RDEPENDS_${PN}-switch = "${PN} openssl procps util-linux-uuidgen ovsdb"
 RDEPENDS_${PN}-pki = "${PN}"
 RDEPENDS_${PN}-brcompat = "${PN} ${PN}-switch"
 RRECOMMENDS_${PN} += "kernel-module-openvswitch"
@@ -34,12 +34,13 @@ SRC_URI = "http://openvswitch.org/releases/openvswitch-2.3.1.tar.gz \
            file://openvswitch-add-ptest.patch \
            file://run-ptest \
            file://0001-Disable-git-hooks-that-cause-trouble-when-working-in.patch \
+           file://custom-prefix-takes-precedence.patch \
            "
 
 SRC_URI[md5sum] = "c008c1de0a8b6363b37afa599105d6d6"
 SRC_URI[sha256sum] = "21174901c311d54703b4a7f498be0c42e5d2cc68bdecb0090dbb555e2af4bcd2"
 
-S = "${WORKDIR}/${PN}-${PV}"
+S = "${WORKDIR}/openvswitch-${PV}"
 
 LIC_FILES_CHKSUM = "file://COPYING;md5=5973c953e3c8a767cf0808ff8a0bac1b"
 
@@ -48,8 +49,18 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=5973c953e3c8a767cf0808ff8a0bac1b"
 # distro layers can enable with EXTRA_OECONF_pn_openvswitch += ""
 # EXTRA_OECONF = "--with-linux=${STAGING_KERNEL_DIR} KARCH=${TARGET_ARCH}"
 
-EXTRA_OECONF += "TARGET_PYTHON=${bindir}/python \
-                 TARGET_PERL=${bindir}/perl \
+# Changing the default location to /opt to avoid conflict with the OVS 
+# infrastructure used by Halon
+PKG_CONFIG_DIR := "${STAGING_DIR_HOST}${libdir}/pkgconfig"
+OVS_PREFIX="/opt/openvswitch"
+sys_bindir := "${bindir}"
+orig_prefix := "${prefix}"
+prefix="${OVS_PREFIX}"
+exec_prefix="${OVS_PREFIX}"
+
+EXTRA_OECONF += "TARGET_PYTHON=${sys_bindir}/python \
+                 TARGET_PERL=${sys_bindir}/perl \
+                 --with-rundir=${localstatedir}/run/openvswitch-sim \
                 "
 
 ALLOW_EMPTY_${PN}-pki = "1"
@@ -57,6 +68,7 @@ PACKAGES =+ "${PN}-controller ${PN}-switch ${PN}-brcompat ${PN}-pki ovsdb"
 
 PROVIDES = "${PACKAGES}"
 
+FILES_${PN} += "${datadir}/openvswitch"
 FILES_${PN}-controller = "${sysconfdir}/init.d/openvswitch-controller \
 	${sysconfdir}/default/openvswitch-controller \
 	${sysconfdir}/openvswitch-controller \
@@ -67,6 +79,7 @@ FILES_${PN}-brcompat = "${sbindir}/ovs-brcompatd"
 FILES_${PN}-switch = "${sysconfdir}/init.d/openvswitch-switch \
 		   ${sysconfdir}/default/openvswitch-switch \
 		   "
+
 FILES_ovsdb = "/run /var/run /var/log /var/volatile ${bindir}/ovsdb* ${sbindir}/ovsdb-server ${datadir}/ovsdbmonitor ${sysconfdir}/openvswitch/"
 
 inherit autotools update-rc.d ptest
@@ -93,7 +106,9 @@ do_install_append() {
 	install -d ${D}/${sysconfdir}/init.d/
 	install -m 755 ${WORKDIR}/openvswitch-controller ${D}/${sysconfdir}/init.d/openvswitch-controller
 	install -m 755 ${WORKDIR}/openvswitch-switch ${D}/${sysconfdir}/init.d/openvswitch-switch
-	true || rm -fr ${D}/${datadir}/${PN}/pki
+        sed -i -e "s?${orig_prefix}/?${prefix}/?g" ${D}/${sysconfdir}/init.d/openvswitch-controller
+        sed -i -e "s?${orig_prefix}/?${prefix}/?g" ${D}/${sysconfdir}/init.d/openvswitch-switch
+	true || rm -fr ${D}/${datadir}/openvswitch/pki
 }
 
 pkg_postinst_${PN}-pki () {
@@ -101,8 +116,8 @@ pkg_postinst_${PN}-pki () {
 	if [ "x$D" != "x" ]; then
 		exit 1
 	fi
-	if test ! -d $D/${datadir}/${PN}/pki; then
-		ovs-pki init --dir=$D/${datadir}/${PN}/pki
+	if test ! -d $D/${datadir}/openvswitch/pki; then
+		ovs-pki init --dir=$D/${datadir}/openvswitch/pki
 	fi
 }
 
@@ -112,18 +127,18 @@ pkg_postinst_${PN}-controller () {
 		exit 1
 	fi
 
-	if test ! -d $D/${datadir}/${PN}/pki; then
-		ovs-pki init --dir=$D/${datadir}/${PN}/pki
+	if test ! -d $D/${datadir}/openvswitch/pki; then
+		ovs-pki init --dir=$D/${datadir}/openvswitch/pki
 	fi
 
 	cd $D/${sysconfdir}/openvswitch-controller
 	if ! test -e cacert.pem; then
-		ln -s $D/${datadir}/${PN}/pki/switchca/cacert.pem cacert.pem
+		ln -s $D/${datadir}/openvswitch/pki/switchca/cacert.pem cacert.pem
 	fi
 	if ! test -e privkey.pem || ! test -e cert.pem; then
 		oldumask=$(umask)
 		umask 077
-		ovs-pki req+sign --dir=$D/${datadir}/${PN}/pki tmp controller >/dev/null
+		ovs-pki req+sign --dir=$D/${datadir}/openvswitch/pki tmp controller >/dev/null
 		mv tmp-privkey.pem privkey.pem
 		mv tmp-cert.pem cert.pem
 		mv tmp-req.pem req.pem
