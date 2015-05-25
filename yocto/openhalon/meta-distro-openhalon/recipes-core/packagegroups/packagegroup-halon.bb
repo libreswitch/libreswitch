@@ -29,6 +29,7 @@ RDEPENDS_packagegroup-halon-base = "\
     rsyslog \
     iproute2 \
     vim \
+    tzdata-posix \
     valgrind \
     valgrind-memcheck \
     valgrind-helgrind \
