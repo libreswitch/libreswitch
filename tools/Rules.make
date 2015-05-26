@@ -184,6 +184,12 @@ deploy_container:
 	$(V) if ! which lxc-create > /dev/null ; then \
 	  $(call FATAL_ERROR,LXC does not seems installed, could not find lxc-create) ; \
 	fi
+	$(V) if ! lsmod | grep -q openvswitch ; then \
+	  $(call FATAL_ERROR,OpenVswitch module not running on the host machine... please load the openvswitch kernel module) ; \
+	fi
+	$(V) if ! which ovs-vsctl > /dev/null ; then \
+	  $(call FATAL_ERROR,ovs-vsctl tool not available, please install the openvswitch tools) ; \
+	fi
 	$(V) if ! test -f images/`basename $(BASE_TARGZ_FS_FILE)` ; then \
 	  $(call FATAL_ERROR,Your platform has not generated a .tar.gz file that can be used to create the container) ; \
 	fi
@@ -196,7 +202,8 @@ deploy_container:
 	  echo done ; \
 	fi
 	$(V) export OPENHALON_IMAGE=$(BUILD_ROOT)/images/`basename $(BASE_TARGZ_FS_FILE)` ; \
-	sudo -E lxc-create -n $(CONTAINER_NAME) -t $(BUILD_ROOT)/tools/lxc/lxc-openhalon
+	export BUILD_ROOT ; \
+	sudo -E lxc-create -n $(CONTAINER_NAME) -f /dev/null -t $(BUILD_ROOT)/tools/lxc/lxc-openhalon
 	$(V) $(ECHO) "Exporting completed.\nRun with 'sudo lxc-start -n $(CONTAINER_NAME)'"
 
 .PHONY: deploy_nfsroot

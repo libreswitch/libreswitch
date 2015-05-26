@@ -42,7 +42,10 @@ lxc.autodev = 1
 lxc.kmsg = 0
 lxc.cap.drop = sys_module mac_admin mac_override sys_time
 
-lxc.network.type = empty
+lxc.network.type = veth
+lxc.network.flags = up
+lxc.network.script.up = $BUILD_ROOT/tools/lxc/lxc-ifup
+lxc.network.script.down = $BUILD_ROOT/tools/lxc/lxc-ifdown 
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 lxc.aa_profile = unconfined

@@ -1,0 +1,4 @@
+#!/bin/bash
+ovsBr='lxcbr'
+ovs-vsctl --may-exist add-br ${ovsBr}
+ovs-vsctl --may-exist add-port ${ovsBr} $5
