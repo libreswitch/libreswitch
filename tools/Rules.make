@@ -52,6 +52,7 @@ BASE_HDDIMG_FS_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(DIS
 BASE_OVA_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(DISTRO_FS_TARGET)-$(CONFIGURED_PLATFORM).ova
 BASE_BOX_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(DISTRO_FS_TARGET)-$(CONFIGURED_PLATFORM).box
 BASE_ONIE_INSTALLER_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(ONIE_INSTALLER_FILE)
+BASE_DOCKER_IMAGE = openhalon/${CONFIGURED_PLATFORM}
 
 # Some makefile macros
 
@@ -206,6 +207,28 @@ deploy_container:
 	export BUILD_ROOT ; \
 	sudo -E lxc-create -n $(CONTAINER_NAME) -f /dev/null -t $(BUILD_ROOT)/tools/lxc/lxc-openhalon
 	$(V) $(ECHO) "Exporting completed.\nRun with 'sudo lxc-start -n $(CONTAINER_NAME)'"
+
+.PHONY: export_docker_image
+$(eval $(call PARSE_ARGUMENTS, export_docker_image))
+DOCKER_IMAGE:=$(EXTRA_ARGS)
+ifeq ($(DOCKER_IMAGE),)
+DOCKER_IMAGE=$(BASE_DOCKER_IMAGE)
+endif
+export_docker_image:
+	$(V) if ! which docker > /dev/null ; then \
+	    $(call FATAL_ERROR, Docker is not installed. \
+	                        Could not find 'docker' command.) ; \
+	fi
+	$(V) if docker images $(DOCKER_IMAGE) | grep $(DOCKER_IMAGE) >/dev/null ; then \
+	    $(call FATAL_ERROR, Docker image '$(DOCKER_IMAGE)' is already created.\n \
+	                       \tYou can remove it using - docker rmi $(DOCKER_IMAGE)) ; \
+	fi
+	$(V) if ! test -f images/`basename $(BASE_TARGZ_FS_FILE)` ; then \
+	    $(call FATAL_ERROR, Unable to find $(BASE_TARGZ_FS_FILE)\n \
+	                       \tRun 'make' at the top level to create root-fs.) ; \
+	fi
+	$(V) $(ECHO) "Exporting '$(BASE_TARGZ_FS_FILE)' as a Docker Container Image '$(DOCKER_IMAGE)'"
+	$(V) /bin/cat $(BASE_TARGZ_FS_FILE) | docker import - $(DOCKER_IMAGE)
 
 .PHONY: deploy_nfsroot
 NFSROOTPATH?=$(BUILD_ROOT)/nfsroot-${CONFIGURED_PLATFORM}
