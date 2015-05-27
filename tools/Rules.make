@@ -36,6 +36,7 @@ export LD_LIBRARY_PATH:=$(BUILD_ROOT)/tools/lib:$(LD_LIBRARY_PATH)
 # Some well known locations
 KERNEL_STAGING_DIR=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^STAGING_KERNEL_DIR=/ { gsub(/"/, "", $$2); print $$2 }')
 DISTRO_VERSION=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^DISTRO_VERSION=/ { gsub(/"/, "", $$2); print $$2 }')
+STAGING_DIR_TARGET=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^STAGING_DIR_TARGET=/ { gsub(/"/, "", $$2); print $$2 }')
 # Used to identify the valid layers
 YOCTO_LAYERS=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F'=' '/^BBLAYERS=/ { print $$2 }')
 BASE_UIMAGE_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/uImage
@@ -322,7 +323,7 @@ _setup-git-review:: .git/hooks/commit-msg
 .git/hooks/commit-msg:
 	$(V) gitdir=$$(git rev-parse --git-dir); scp -p -P 29418 $(REVIEWUSER)@review.openhalon.io:hooks/commit-msg $${gitdir}/hooks/
 
-.PHONY: devenv_init devenv_clean devenv_add devenv_rm  devenv_status devenv_defaults dev_header
+.PHONY: devenv_init devenv_clean devenv_add devenv_rm devenv_status devenv_cscope devenv_import dev_header
 
 -include src/Rules.make
 
@@ -339,6 +340,15 @@ devenv_init: header
 	$(V) $(call BITBAKE,meta-ide-support)
 	$(V) touch .devenv
 	$(V) $(MAKE) setup-git-review
+
+devenv_cscope: header
+	$(V) if !  which cscope > /dev/null ; then \
+	  $(call FATAL_ERROR,Could not find cscope in your path, please install it.) ; \
+	fi
+	$(V) $(ECHO) "$(YELLOW)Updating cscope indexes for development environment...$(GRAY)\n"
+	$(V)find $(STAGING_DIR_TARGET)/usr/include -type f -name "*.[chxsS]" -print > $(BUILD_ROOT)/src/cscope.files
+	$(V)find $(BUILD_ROOT)/src -type f -name "*.[chxsS]" -print >> $(BUILD_ROOT)/src/cscope.files
+	$(V)cd $(BUILD_ROOT)/src/ ; cscope -b -q -k
 
 devenv_clean: dev_header
 	$(V)$(call DEVTOOL, reset -a)
