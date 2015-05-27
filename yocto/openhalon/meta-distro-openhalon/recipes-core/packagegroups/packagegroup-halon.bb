@@ -35,6 +35,7 @@ RDEPENDS_packagegroup-halon-base = "\
     valgrind-helgrind \
     sudo \
     pwauth \
+    halon-init \
 "
 
 RDEPENDS_packagegroup-halon-base_append_arm = "\

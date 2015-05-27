@@ -2,14 +2,14 @@
 
 [Unit]
 Description=Halon Zebra Daemon
-After=ovsdb-server.service
+After=ovsdb-server.service halon-init.service
 
 [Service]
 Type=forking
 CPUSchedulingPolicy=rr
 CPUSchedulingPriority=3
 ExecStartPre=/bin/rm -f /var/run/openvswitch/zebra.pid
-ExecStart=/usr/sbin/zebra --detach --pidfile -vSYSLOG:INFO
+ExecStart=/sbin/ip netns exec swns /usr/sbin/zebra --detach --pidfile -vSYSLOG:INFO
 PIDFile=/var/run/openvswitch/zebra.pid
 Restart=on-abort
 
