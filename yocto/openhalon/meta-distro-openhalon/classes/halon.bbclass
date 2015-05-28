@@ -10,7 +10,7 @@ CFLAGS += "-DHALON"
 EXTRA_OECMAKE="-DCMAKE_BUILD_TYPE=Debug"
 
 # Add debug directory for packages
-PACKAGE_DEBUG_SPLIT_STYLE="debug-file-directory"
+PACKAGE_DEBUG_SPLIT_STYLE??="debug-file-directory"
 
 # For debugging/development purposes on devtool
-EXTERNALSRC_BUILD="${S}/build"
+EXTERNALSRC_BUILD??="${S}/build"
