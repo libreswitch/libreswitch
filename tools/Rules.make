@@ -373,11 +373,13 @@ devenv_list_all: header
 	$(V)$(ECHO) "List of available devenv packages for $(CONFIGURED_PLATFORM) platform:"
 	$(V) for layer in $$YOCTO_LAYERS ; do \
 	   test -d $$layer || continue ; \
-	   PACKAGES="$$PACKAGES `find $$layer -name devenv.conf | xargs cat`" ; \
+	   DEVCONFS="$$DEVCONFS `find $$layer -name devenv.conf`" ; \
 	 done ; \
-	 for recipe in $$PACKAGES ; do \
-	   [[ $$recipe == \#* ]] && continue ; \
-	   $(ECHO) "  * $$recipe" ; \
+	 for devconf in $$DEVCONFS ; do \
+	   while read recipe ; do \
+	     [[ $$recipe == \#* ]] && continue ; \
+	     $(ECHO) "  * $$recipe" ; \
+	   done < $$devconf ; \
 	done
 
 devenv_cscope: header
