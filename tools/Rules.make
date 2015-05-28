@@ -346,7 +346,7 @@ _setup-git-review:: .git/hooks/commit-msg
 .git/hooks/commit-msg:
 	$(V) gitdir=$$(git rev-parse --git-dir); scp -p -P 29418 $(REVIEWUSER)@review.openhalon.io:hooks/commit-msg $${gitdir}/hooks/
 
-.PHONY: devenv_init devenv_clean devenv_add devenv_rm devenv_status devenv_cscope devenv_import dev_header
+.PHONY: devenv_init devenv_clean devenv_add devenv_rm devenv_status devenv_cscope devenv_list_all devenv_import dev_header
 
 -include src/Rules.make
 
@@ -363,6 +363,22 @@ devenv_init: header
 	$(V) $(call BITBAKE,meta-ide-support)
 	$(V) touch .devenv
 	$(V) $(MAKE) setup-git-review
+
+# We try to export this symbol only when the target is invoked, since the expansion
+# can cause to trigger bitbake before is configured in other cases
+ifneq ($(findstring devenv_list_all,$(MAKECMDGOALS)),)
+  export YOCTO_LAYERS
+endif
+devenv_list_all: header
+	$(V)$(ECHO) "List of available devenv packages for $(CONFIGURED_PLATFORM) platform:"
+	$(V) for layer in $$YOCTO_LAYERS ; do \
+	   test -d $$layer || continue ; \
+	   PACKAGES="$$PACKAGES `find $$layer -name devenv.conf | xargs cat`" ; \
+	 done ; \
+	 for recipe in $$PACKAGES ; do \
+	   [[ $$recipe == \#* ]] && continue ; \
+	   $(ECHO) "  * $$recipe" ; \
+	done
 
 devenv_cscope: header
 	$(V) if !  which cscope > /dev/null ; then \
