@@ -1,0 +1,11 @@
+# (C) Copyright 2015 Hewlett-Packard Development Company, L.P.
+
+[Unit]
+Description=Halon system initialization script
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/halon-init
+
+[Install]
+WantedBy=multi-user.target
