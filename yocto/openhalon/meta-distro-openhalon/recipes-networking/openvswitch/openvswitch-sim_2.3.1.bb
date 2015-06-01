@@ -7,7 +7,7 @@ LICENSE = "Apache-2"
 DEPENDS += "bridge-utils openssl python perl"
 
 RDEPENDS_${PN} += "util-linux-uuidgen util-linux-libuuid coreutils initscripts \
-	       python perl perl-module-strict ${PN}-switch ${PN}-controller ovsdb"
+                   python perl perl-module-strict ${PN}-switch ${PN}-controller ovsdb"
 RDEPENDS_${PN}-controller = "${PN} lsb ${PN}-pki ovsdb"
 RDEPENDS_${PN}-switch = "${PN} openssl procps util-linux-uuidgen ovsdb"
 RDEPENDS_${PN}-pki = "${PN}"
@@ -15,8 +15,8 @@ RDEPENDS_${PN}-brcompat = "${PN} ${PN}-switch"
 RRECOMMENDS_${PN} += "kernel-module-openvswitch"
 
 RDEPENDS_${PN}-ptest += "python-logging python-syslog python-argparse python-io \
-                     python-fcntl python-shell python-lang python-xml python-math \
-                     python-datetime python-netclient python sed"
+                         python-fcntl python-shell python-lang python-xml python-math \
+                         python-datetime python-netclient python sed"
 
 # Some installers will fail because of an install order based on
 # rdeps.  E.g. ovs-pki calls sed in the postinstall.  sed may be
@@ -35,6 +35,8 @@ SRC_URI = "http://openvswitch.org/releases/openvswitch-2.3.1.tar.gz \
            file://run-ptest \
            file://0001-Disable-git-hooks-that-cause-trouble-when-working-in.patch \
            file://custom-prefix-takes-precedence.patch \
+           file://openvswitch-sim.service \
+           file://ovsdb-server-sim.service \
            "
 
 SRC_URI[md5sum] = "c008c1de0a8b6363b37afa599105d6d6"
@@ -49,8 +51,8 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=5973c953e3c8a767cf0808ff8a0bac1b"
 # distro layers can enable with EXTRA_OECONF_pn_openvswitch += ""
 # EXTRA_OECONF = "--with-linux=${STAGING_KERNEL_DIR} KARCH=${TARGET_ARCH}"
 
-# Changing the default location to /opt to avoid conflict with the OVS 
-# infrastructure used by Halon
+# Changing the default location to /opt to avoid conflict
+# with the OVS infrastructure used by Halon.
 PKG_CONFIG_DIR := "${STAGING_DIR_HOST}${libdir}/pkgconfig"
 OVS_PREFIX="/opt/openvswitch"
 sys_bindir := "${bindir}"
@@ -80,9 +82,11 @@ FILES_${PN}-switch = "${sysconfdir}/init.d/openvswitch-switch \
 		   ${sysconfdir}/default/openvswitch-switch \
 		   "
 
-FILES_ovsdb = "/run /var/run /var/log /var/volatile ${bindir}/ovsdb* ${sbindir}/ovsdb-server ${datadir}/ovsdbmonitor ${sysconfdir}/openvswitch/"
+FILES_ovsdb = "/run /var/run /var/log /var/volatile ${bindir}/ovsdb* \
+               ${sbindir}/ovsdb-server ${datadir}/ovsdbmonitor \
+               ${sysconfdir}/openvswitch/"
 
-inherit autotools update-rc.d ptest
+inherit autotools ptest systemd
 
 EXTRA_OEMAKE += "TEST_DEST=${D}${PTEST_PATH} TEST_ROOT=${PTEST_PATH}"
 
@@ -90,25 +94,19 @@ do_install_ptest() {
 	oe_runmake test-install
 }
 
-INITSCRIPT_PACKAGES = "${PN}-switch ${PN}-controller"
-INITSCRIPT_NAME_${PN}-switch = "openvswitch-switch"
-INITSCRIPT_PARAMS_${PN}-switch = "defaults 71"
-
-INITSCRIPT_NAME_${PN}-controller = "openvswitch-controller"
-INITSCRIPT_PARAMS_${PN}-controller = "defaults 72"
-
 do_install_append() {
 	install -d ${D}/${sysconfdir}/default/
+	install -d ${D}/var/run/openvswitch-sim
 	install -m 660 ${WORKDIR}/openvswitch-switch-setup ${D}/${sysconfdir}/default/openvswitch-switch
 	install -d ${D}/${sysconfdir}/openvswitch-controller
 	install -m 660 ${WORKDIR}/openvswitch-controller-setup ${D}/${sysconfdir}/default/openvswitch-controller
 
-	install -d ${D}/${sysconfdir}/init.d/
-	install -m 755 ${WORKDIR}/openvswitch-controller ${D}/${sysconfdir}/init.d/openvswitch-controller
-	install -m 755 ${WORKDIR}/openvswitch-switch ${D}/${sysconfdir}/init.d/openvswitch-switch
-        sed -i -e "s?${orig_prefix}/?${prefix}/?g" ${D}/${sysconfdir}/init.d/openvswitch-controller
-        sed -i -e "s?${orig_prefix}/?${prefix}/?g" ${D}/${sysconfdir}/init.d/openvswitch-switch
-	true || rm -fr ${D}/${datadir}/openvswitch/pki
+    install -d ${D}${systemd_unitdir}/system
+    install -m 0644 ${WORKDIR}/ovsdb-server-sim.service ${D}${systemd_unitdir}/system
+	install -m 0644 ${WORKDIR}/openvswitch-sim.service ${D}${systemd_unitdir}/system
+
+    install -d ${D}${sysconfdir}/tmpfiles.d
+    echo "d /run/openvswitch-sim/ - - - -" > ${D}${sysconfdir}/tmpfiles.d/openswitch-sim.conf
 }
 
 pkg_postinst_${PN}-pki () {
@@ -146,3 +144,7 @@ pkg_postinst_${PN}-controller () {
 		umask $oldumask
 	fi
 }
+
+SYSTEMD_PACKAGES = "${PN}"
+
+SYSTEMD_SERVICE_${PN} += "openvswitch-sim.service ovsdb-server-sim.service"
