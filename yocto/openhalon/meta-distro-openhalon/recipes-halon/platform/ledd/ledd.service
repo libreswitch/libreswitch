@@ -2,14 +2,14 @@
 
 [Unit]
 Description=Halon LED Daemon
-After=sysd.service
+After=ovsdb-server.service halon-init.service
 
 [Service]
 Type=forking
 CPUSchedulingPolicy=rr
 CPUSchedulingPriority=3
 ExecStartPre=/bin/rm -f /var/run/openvswitch/ledd.pid
-ExecStart=/usr/bin/ledd --detach --pidfile -vSYSLOG:INFO
+ExecStart=/sbin/ip netns exec nonet /usr/bin/ledd --detach --pidfile -vSYSLOG:INFO
 PIDFile=/var/run/openvswitch/ledd.pid
 Restart=on-abort
 
