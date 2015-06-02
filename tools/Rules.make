@@ -344,9 +344,10 @@ _setup-git-review:: .git/hooks/commit-msg
 	fi
 
 .git/hooks/commit-msg:
-	$(V) gitdir=$$(git rev-parse --git-dir); scp -p -P 29418 $(REVIEWUSER)@review.openhalon.io:hooks/commit-msg $${gitdir}/hooks/
+	$(V) gitdir=$$(git rev-parse --git-dir); scp -q -p -P 29418 $(REVIEWUSER)@review.openhalon.io:hooks/commit-msg $${gitdir}/hooks/
 
-.PHONY: devenv_init devenv_clean devenv_add devenv_rm devenv_status devenv_cscope devenv_list_all devenv_import dev_header
+.PHONY: devenv_init devenv_clean devenv_add devenv_rm devenv_status devenv_cscope devenv_list_all 
+.PHONY: devenv_import dev_header devenv_refresh _devenv_refresh
 
 -include src/Rules.make
 
@@ -401,8 +402,7 @@ define DEVENV_ADD
 	  pushd . > /dev/null ; \
 	  cd $(BUILD_ROOT)/src/$(1) ; \
 	  if [ -f .gitreview ] ; then \
-	    gitdir=$$(git rev-parse --git-dir); scp -p -P 29418 $(REVIEWUSER)@review.openhalon.io:hooks/commit-msg $${gitdir}/hooks/ ; \
-	    if which git-review > /dev/null ; then echo git review -s ; fi ; \
+	    gitdir=$$(git rev-parse --git-dir); scp -q -p -P 29418 $(REVIEWUSER)@review.openhalon.io:hooks/commit-msg $${gitdir}/hooks/ ; \
 	  fi ; \
 	  git checkout -q master ; \
 	  popd > /dev/null ; \
@@ -476,6 +476,38 @@ endif
 devenv_patch_recipe: dev_header
 	$(V)$(call DEVTOOL,update-recipe -m patch $(PACKAGE))
 
+
+devenv_refresh: dev_header _devenv_refresh
+
+_devenv_refresh:
+	$(V) $(ECHO) "$(YELLOW)Updating all the repositories on the developer environment...$(GRAY)"
+	$(V) while read repo ; do \
+	  echo -e "\nUpdating src/$$repo" ; \
+	  pushd . >/dev/null ; \
+	  cd src/$$repo ; \
+	  git pull --rebase || $(ECHO) "${RED}WARNING: git pull failed, skipping this error$(GRAY)" ; \
+	  popd >/dev/null ; \
+	done < .devenv
+	$(V) $(ECHO) "\n$(GREEN)Update completed$(GRAY)"
+
+# Git support
+.PHONY: git_pull
+git_pull: header
+	$(V)$(ECHO) "Updating the base git repository..."
+	$(V)git pull --rebase || $(ECHO) "${RED}WARNING: git pull failed, skipping this error$(GRAY)"
+	$(V)for gitpath in `find yocto/ -maxdepth 2 -name .git` ; do \
+	   repo=`dirname $$gitpath` ; \
+	   $(ECHO) "\nUpdating the $$repo git repository..." ; \
+	   pushd . >/dev/null ; \
+	   cd $$repo ; \
+	   git pull --rebase || $(ECHO) "${RED}WARNING: git pull failed, skipping this error$(GRAY)" ; \
+	   popd >/dev/null ; \
+	 done
+	$(V)if test -f .devenv ; then \
+	  echo ; $(MAKE) _devenv_refresh ; \
+	 else \
+	  $(ECHO) "\n$(GREEN)Update completed$(GRAY)" ; \
+	 fi
 
 ## Support commands
 ## Use with caution!!!!
