@@ -12,6 +12,6 @@ DISTRO_FS_TARGET = openhalon-disk-image
 ONIE_INSTALLER_RECIPE = openhalon-onie-installer
 ONIE_INSTALLER_FILE = onie-installer-x86_64-as5712_54x
 
-# For this platform we create a itb image that includes a kernel, fs and dtb
-all:: kernel onie-installer
+# For this platform we create an onie-installer
+all:: onie-installer
 
