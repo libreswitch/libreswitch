@@ -38,7 +38,7 @@ menuentry 'Halon Development -- NFS root' {
         set rootpath=@@NFSROOTPATH@@
         echo
         echo "Loading Halon kernel from disk, root from NFS at ${ipaddress}:${rootpath}..."
-        linux /boot/bzImage console=ttyS1,115200n8 root=/dev/nfs nfsroot=${ipaddress}:${rootpath},nolock ip=dhcp usb-storage.quirks=14af:af01:blopsw quiet
+        linux /boot/bzImage console=ttyS1,115200n8 root=/dev/nfs nfsroot=${ipaddress}:${rootpath} ip=dhcp usb-storage.quirks=14af:af01:blopsw
 }
 
 # Menu entry for Accton Diags
