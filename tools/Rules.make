@@ -244,7 +244,7 @@ deploy_nfsroot:
 	  $(call WARNING,Removing previous deployed nfsroot directory at $(NFSROOTPATH) before re-deploying) ; \
 	  $(ECHO) "Press any key to continue wipping out previous nfsroot, or ctrl+c to abort..." ; \
 	  read ; \
-	  rm -Rf $(NFSROOTPATH) ; \
+	  sudo rm -Rf $(NFSROOTPATH) ; \
 	fi
 	$(V) mkdir -p $(NFSROOTPATH)
 	$(V) $(ECHO) -n "Extracting the NFS root into $(NFSROOTPATH)... "
