@@ -6,15 +6,19 @@ RDEPENDS_${PN} = "bash"
 
 SRC_URI = "file://halon-init.service \
            file://halon-init.sh \
+           file://halon-profile.sh \
 "
 
 S = "${WORKDIR}"
 
 do_install () {
-    install -d ${D}${systemd_unitdir}/system
     install -d ${D}${sbindir}
+    install -d ${D}${systemd_unitdir}/system
+    install -d ${D}${sysconfdir}/profile.d
+
     install -m 0644 ${WORKDIR}/halon-init.service ${D}${systemd_unitdir}/system
     install -m 0755 ${WORKDIR}/halon-init.sh ${D}${sbindir}/halon-init
+    install -m 0755 ${WORKDIR}/halon-profile.sh ${D}${sysconfdir}/profile.d/halon-profile
 }
 
 SYSTEMD_PACKAGES = "${PN}"
