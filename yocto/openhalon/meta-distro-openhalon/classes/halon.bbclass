@@ -7,7 +7,8 @@ BB_GENERATE_MIRROR_TARBALLS = "0"
 CFLAGS += "-DHALON"
 
 # Do cmake builds in debug mode
-EXTRA_OECMAKE="-DCMAKE_BUILD_TYPE=Debug"
+EXTRA_OECMAKE+="-DCMAKE_BUILD_TYPE=Debug"
+EXTRA_OECMAKE+="${@bb.utils.contains('MACHINE_FEATURES', 'halonsim', '-DPLATFORM_SIMULATION=ON', '',d)}"
 
 # Add debug directory for packages
 PACKAGE_DEBUG_SPLIT_STYLE??="debug-file-directory"
