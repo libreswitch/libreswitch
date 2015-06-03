@@ -256,9 +256,14 @@ deploy_nfsroot:
 	$(V) $(ECHO) -n "Extracting the NFS root into $(NFSROOTPATH)... "
 	$(V) tar -xzf images/$(notdir $(BASE_TARGZ_FS_FILE)) -C $(NFSROOTPATH)
 	$(V) $(ECHO) done
-	$(V) $(ECHO) "Exporting NFS directory, may ask for admin password..."
-	$(V) if ! sudo exportfs | grep -q $(NFSROOTPATH) ; then \
-	  sudo exportfs -o rw,no_root_squash,sync,no_subtree_check,insecure *:$(NFSROOTPATH) ; \
+	$(V) if ! [ -f /etc/exports.d/$(notdir $(NFSROOTPATH)).exports ] ; then \
+	  $(ECHO) "\nExporting NFS directory, may ask for admin password..." ; \
+	  sudo mkdir -p /etc/exports.d ; \
+	  sudo bash -c 'echo "$(NFSROOTPATH) *(rw,no_root_squash,sync,no_subtree_check,insecure)" > /etc/exports.d/$(notdir $(NFSROOTPATH)).exports' ; \
+	  if which service > /dev/null ; then \
+	    sudo service nfs-kernel-server start ; \
+	  fi ; \
+	  echo ; \
 	fi
 
 .PHONY: devshell
