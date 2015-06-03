@@ -31,9 +31,9 @@ endif
 ##RECIPE##-undeploy:
 	$(V)$(call DEVTOOL, undeploy-target -s ##RECIPE## $(TARGET))
 
-##RECIPE##-deploy-nfs:
-	$(V)$(call DEVTOOL, deploy-target -s ##RECIPE## $(NFSROOTPATH))
+##RECIPE##-nfs-deploy:
+	$(V)$(call DEVTOOL, deploy-target -s ##RECIPE## localhost:$(NFSROOTPATH))
 
-##RECIPE##-undeploy-nfs:
-	$(V)$(call DEVTOOL, undeploy-target -s ##RECIPE## $(NFSROOTPATH))
+##RECIPE##-nfs-undeploy:
+	$(V)$(call DEVTOOL, undeploy-target -s ##RECIPE## localhost:$(NFSROOTPATH))
 #END_##RECIPE##
