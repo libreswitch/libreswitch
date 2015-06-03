@@ -119,7 +119,7 @@ export PLATFORM_DTS_FILE
 ########## Common targets shared by most platforms ##############
 HOST_ARCH=$(shell uname -m)
 
-.PHONY: kernel _kernel kernelconfig
+.PHONY: kernel _kernel _kernel_links kernelconfig
 kernel: header _kernel
 
 _KERNEL_TARGET ?= _kernel
@@ -128,14 +128,17 @@ DISTRO_KERNEL_SYMBOLS_FILE ?= $(BASE_VMLINUX_FILE)
 _kernel:
 	$(V) $(ECHO) "$(YELLOW)Building kernel...$(GRAY)\n"
 	$(V)$(call BITBAKE,virtual/kernel)
+	$(V) $(MAKE) _kernel_links
+	$(V) $(ECHO)
+
+_kernel_links:
 	$(V)if test -f $(DISTRO_KERNEL_FILE) ; then ln -sf $(DISTRO_KERNEL_FILE) images/kernel-$(CONFIGURED_PLATFORM).bin ; fi
 	$(V)if test -f $(DISTRO_KERNEL_SYMBOLS_FILE) ; then ln -sf $(DISTRO_KERNEL_SYMBOLS_FILE) images/kernel-$(CONFIGURED_PLATFORM).elf ; fi
-	$(V) $(ECHO)
 
 $(DISTRO_KERNEL_FILE) images/kernel-$(CONFIGURED_PLATFORM).bin:
 	$(V) $(MAKE) $(_KERNEL_TARGET)
 
-.PHONY: fs _fs
+.PHONY: fs _fs _fs_links
 ifneq ($(findstring fs,$(MAKECMDGOALS)),)
  ifeq ($(DISTRO_FS_TARGET),undefined)
   $(error ====== DISTRO_FS_TARGET variable is empty, please specify it on your board meta-<product>/Rules.make =====)
@@ -146,13 +149,16 @@ fs: header _fs
 _fs images/fs-$(CONFIGURED_PLATFORM):
 	$(V) $(ECHO) "$(YELLOW)Building fs ($(DISTRO_FS_TARGET))...$(GRAY)\n"
 	$(V)$(call BITBAKE,$(DISTRO_FS_TARGET))
+	$(V) $(MAKE) _fs_links
+	$(V) $(ECHO)
+
+_fs_links:
 	$(V)ln -sf $(DISTRO_FS_FILE) images/`basename $(DISTRO_FS_FILE)`
 	$(V)for extra_fs in $(DISTRO_EXTRA_FS_FILES) ; do ln -sf $$extra_fs images/`basename $$extra_fs` ; done
 	@# If we have a tar.gz file, also link it, useful for docker images
 	$(V)if [ -f $(BASE_TARGZ_FS_FILE) ] ; then ln -sf $(BASE_TARGZ_FS_FILE) images/`basename $(BASE_TARGZ_FS_FILE)` ; fi
 	$(V)ln -sf `basename $(DISTRO_FS_FILE)` images/fs-$(CONFIGURED_PLATFORM)
 	$(V)ln -sf `dirname $(DISTRO_FS_FILE)`/`basename $(DISTRO_FS_FILE) |  cut -d'.' -f1`.manifest images/`basename $(DISTRO_FS_FILE) | cut -d'.' -f1`.manifest
-	$(V) $(ECHO)
 
 .PHONY: bake _bake
 $(eval $(call PARSE_ARGUMENTS,bake))
@@ -311,7 +317,7 @@ images/$(CONFIGURED_PLATFORM).itb:: $(DISTRO_PLATFORM_ITS_FILE) $(MKIMAGE)
 
 # ONIE installer
 .PHONY: onie-installer
-onie-installer: header _onie-installer
+onie-installer: header _onie-installer _kernel_links _fs_links
 
 DISTRO_ONIE_INSTALLER_FILE?= $(BASE_ONIE_INSTALLER_FILE)
 _onie-installer::
