@@ -85,7 +85,7 @@ endef
 
 define DEVTOOL
 	 cd $(BUILDDIR) ; umask 002 ; \
-	 $(BUILD_ROOT)/yocto/poky/scripts/devtool $(1)
+	 $(BUILD_ROOT)/yocto/poky/scripts/devtool $(1) || exit 1
 endef
 
 # Rule to regenerate the site.conf file if proxies changed
@@ -407,6 +407,8 @@ devenv_clean: dev_header
 	$(V)$(call DEVTOOL, reset -a)
 	$(V)rm -Rf src .devenv
 
+DEVENV_BRANCH?=master
+
 define DEVENV_ADD
 	if ! grep -q $(1) .devenv 2>/dev/null ; then \
 	  $(call DEVTOOL, modify --extract $(1) $(BUILD_ROOT)/src/$(1)) ; \
@@ -415,7 +417,7 @@ define DEVENV_ADD
 	  if [ -f .gitreview ] ; then \
 	    gitdir=$$(git rev-parse --git-dir); scp -q -p -P 29418 $(REVIEWUSER)@review.openhalon.io:hooks/commit-msg $${gitdir}/hooks/ ; \
 	  fi ; \
-	  git checkout -q master ; \
+	  git checkout $(DEVENV_BRANCH) || { $(call FATAL_ERROR, Unable to checkout the request branch '$(DEVENV_BRANCH)') ; } ; \
 	  popd > /dev/null ; \
 	  sed -e "s/##RECIPE##/$(1)/g" $(BUILD_ROOT)/tools/devenv-recipe-template.make >> $(BUILD_ROOT)/src/Rules.make ; \
 	  echo $(1) >> $(BUILD_ROOT)/.devenv ; \
