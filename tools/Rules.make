@@ -520,6 +520,15 @@ git_pull: header
 	  $(ECHO) "\n$(GREEN)Update completed$(GRAY)" ; \
 	 fi
 
+devenv_ct-test devenv_ct-test-clean: dev_header
+	$(V) if test -s .devenv ; then \
+	   while read repo ; do \
+	    make $$repo-$(subst devenv_,'',$(MAKECMDGOALS)) ; \
+	  done < .devenv; \
+	else \
+	  $(ECHO) "$(RED)No source repos found. Add them using make devenv_add. $(GRAY)" ; \
+	fi
+
 ## Support commands
 ## Use with caution!!!!
 
