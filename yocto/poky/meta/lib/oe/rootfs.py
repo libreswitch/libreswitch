@@ -95,6 +95,57 @@ class Rootfs(object):
     def _cleanup(self):
         pass
 
+    def _setup_dbg_rootfs(self, dirs):
+        gen_debugfs = self.d.getVar('IMAGE_GEN_DEBUGFS', True) or '0'
+        if gen_debugfs != '1':
+           return
+
+        bb.note("  Renaming the original rootfs...")
+        try:
+            shutil.rmtree(self.image_rootfs + '-orig')
+        except:
+            pass
+        os.rename(self.image_rootfs, self.image_rootfs + '-orig')
+
+        bb.note("  Creating debug rootfs...")
+        bb.utils.mkdirhier(self.image_rootfs)
+
+        bb.note("  Copying back package database...")
+        for dir in dirs:
+            bb.utils.mkdirhier(self.image_rootfs + os.path.dirname(dir))
+            shutil.copytree(self.image_rootfs + '-orig' + dir, self.image_rootfs + dir)
+
+        cpath = oe.cachedpath.CachedPath()
+        # Copy files located in /usr/lib/debug or /usr/src/debug
+        for dir in ["/usr/lib/debug", "/usr/src/debug"]:
+            src = self.image_rootfs + '-orig' + dir
+            if cpath.exists(src):
+                dst = self.image_rootfs + dir
+                bb.utils.mkdirhier(os.path.dirname(dst))
+                shutil.copytree(src, dst)
+
+        # Copy files with suffix '.debug' or located in '.debug' dir.
+        for root, dirs, files in cpath.walk(self.image_rootfs + '-orig'):
+            relative_dir = root[len(self.image_rootfs + '-orig'):]
+            for f in files:
+                if f.endswith('.debug') or '/.debug' in relative_dir:
+                    bb.utils.mkdirhier(self.image_rootfs + relative_dir)
+                    shutil.copy(os.path.join(root, f),
+                                self.image_rootfs + relative_dir)
+
+        bb.note("  Install complementary '*-dbg' packages...")
+        self.pm.install_complementary('*-dbg')
+
+        bb.note("  Rename debug rootfs...")
+        try:
+            shutil.rmtree(self.image_rootfs + '-dbg')
+        except:
+            pass
+        os.rename(self.image_rootfs, self.image_rootfs + '-dbg')
+
+        bb.note("  Restoreing original rootfs...")
+        os.rename(self.image_rootfs + '-orig', self.image_rootfs)
+
     def _exec_shell_cmd(self, cmd):
         fakerootcmd = self.d.getVar('FAKEROOT', True)
         if fakerootcmd is not None:
@@ -295,7 +346,9 @@ class Rootfs(object):
 class RpmRootfs(Rootfs):
     def __init__(self, d, manifest_dir):
         super(RpmRootfs, self).__init__(d)
-        self.log_check_regex = '(unpacking of archive failed|Cannot find package|exit 1|ERR|Fail)'
+        self.log_check_regex = '(unpacking of archive failed|Cannot find package'\
+                               '|exit 1|ERROR: |Error: |Error |ERROR '\
+                               '|Failed |Failed: |Failed$|Failed\(\d+\):)'
         self.manifest = RpmManifest(d, manifest_dir)
 
         self.pm = RpmPM(d,
@@ -367,6 +420,8 @@ class RpmRootfs(Rootfs):
 
         self.pm.install_complementary()
 
+        self._setup_dbg_rootfs(['/etc/rpm', '/var/lib/rpm', '/var/lib/smart'])
+
         if self.inc_rpm_image_gen == "1":
             self.pm.backup_packaging_data()
 
@@ -401,6 +456,9 @@ class RpmRootfs(Rootfs):
             for line in log.read().split('\n'):
                 if 'log_check' in line:
                     continue
+                # sh -x may emit code which isn't actually executed
+                if line.startswith('+'):
+		    continue
 
                 m = r.search(line)
                 if m:
@@ -469,6 +527,8 @@ class DpkgRootfs(Rootfs):
                                 [False, True][pkg_type == Manifest.PKG_TYPE_ATTEMPT_ONLY])
 
         self.pm.install_complementary()
+
+        self._setup_dbg_rootfs(['/var/lib/dpkg'])
 
         self.pm.fix_broken_dependencies()
 
@@ -737,6 +797,8 @@ class OpkgRootfs(Rootfs):
                                 [False, True][pkg_type == Manifest.PKG_TYPE_ATTEMPT_ONLY])
 
         self.pm.install_complementary()
+
+        self._setup_dbg_rootfs(['/var/lib/opkg'])
 
         execute_pre_post_process(self.d, opkg_post_process_cmds)
         execute_pre_post_process(self.d, rootfs_post_install_cmds)

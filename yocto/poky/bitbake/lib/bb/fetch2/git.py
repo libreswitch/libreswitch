@@ -49,10 +49,6 @@ Supported SRC_URI options are:
    referring to commit which is valid in tag instead of branch.
    The default is "0", set nobranch=1 if needed.
 
-- preserve_origin
-   Point the cloned repo remote origin towards the repo in the SRC_URI.
-   The default is "0", set with preserve_origin=1 if needed.
-
 """
 
 #Copyright (C) 2005 Richard Purdie
@@ -112,8 +108,6 @@ class Git(FetchMethod):
         ud.rebaseable = ud.parm.get("rebaseable","0") == "1"
 
         ud.nobranch = ud.parm.get("nobranch","0") == "1"
-
-        ud.preserve_origin = ud.parm.get("preserve_origin","0") == "1"
 
         # bareclone implies nocheckout
         ud.bareclone = ud.parm.get("bareclone","0") == "1"
@@ -184,11 +178,6 @@ class Git(FetchMethod):
     def download(self, ud, d):
         """Fetch url"""
 
-        if ud.user:
-            username = ud.user + '@'
-        else:
-            username = ""
-
         ud.repochanged = not os.path.exists(ud.fullmirror)
 
         # If the checkout doesn't exist and the mirror tarball does, extract it
@@ -197,7 +186,7 @@ class Git(FetchMethod):
             os.chdir(ud.clonedir)
             runfetchcmd("tar -xzf %s" % (ud.fullmirror), d)
 
-        repourl = "%s://%s%s%s" % (ud.proto, username, ud.host, ud.path)
+        repourl = self._get_repo_url(ud)
 
         # If the repo still doesn't exist, fallback to cloning it
         if not os.path.exists(ud.clonedir):
@@ -283,31 +272,15 @@ class Git(FetchMethod):
             clonedir = indirectiondir
 
         runfetchcmd("%s clone %s %s/ %s" % (ud.basecmd, cloneflags, clonedir, destdir), d)
+        os.chdir(destdir)
+        repourl = self._get_repo_url(ud)
+        runfetchcmd("%s remote set-url origin %s" % (ud.basecmd, repourl), d)
         if not ud.nocheckout:
-            os.chdir(destdir)
             if subdir != "":
                 runfetchcmd("%s read-tree %s%s" % (ud.basecmd, ud.revisions[ud.names[0]], readpathspec), d)
                 runfetchcmd("%s checkout-index -q -f -a" % ud.basecmd, d)
             else:
                 runfetchcmd("%s checkout %s" % (ud.basecmd, ud.revisions[ud.names[0]]), d)
-
-        if ud.preserve_origin:
-            if ud.user:
-                username = ud.user + '@'
-            else:
-                username = ""
-
-            repourl = "%s://%s%s%s" % (ud.proto, username, ud.host, ud.path)
-            runfetchcmd("%s remote rm origin" % ud.basecmd, d)
-            runfetchcmd("%s remote add origin %s" % (ud.basecmd, repourl), d)
-            fetch_cmd = "%s fetch --all" % (ud.basecmd)
-            if ud.proto.lower() != 'file':
-                bb.fetch2.check_network_access(d, fetch_cmd, ud.url)
-            runfetchcmd(fetch_cmd, d)
-            branches = ud.parm.get("branch", "master").split(',')
-            for branch in branches:
-                runfetchcmd("%s branch --set-upstream-to=origin/%s %s" % (ud.basecmd, branch, branch), d)
-
         return True
 
     def clean(self, ud, d):
@@ -336,6 +309,16 @@ class Git(FetchMethod):
             raise bb.fetch2.FetchError("The command '%s' gave output with more then 1 line unexpectedly, output: '%s'" % (cmd, output))
         return output.split()[0] != "0"
 
+    def _get_repo_url(self, ud):
+        """
+        Return the repository URL
+        """
+        if ud.user:
+            username = ud.user + '@'
+        else:
+            username = ""
+        return "%s://%s%s%s" % (ud.proto, username, ud.host, ud.path)
+
     def _revision_key(self, ud, d, name):
         """
         Return a unique key for the url
@@ -346,13 +329,9 @@ class Git(FetchMethod):
         """
         Run git ls-remote with the specified search string
         """
-        if ud.user:
-            username = ud.user + '@'
-        else:
-            username = ""
-
-        cmd = "%s ls-remote %s://%s%s%s %s" % \
-              (ud.basecmd, ud.proto, username, ud.host, ud.path, search)
+        repourl = self._get_repo_url(ud)
+        cmd = "%s ls-remote %s %s" % \
+              (ud.basecmd, repourl, search)
         if ud.proto.lower() != 'file':
             bb.fetch2.check_network_access(d, cmd)
         output = runfetchcmd(cmd, d, True)
@@ -376,7 +355,8 @@ class Git(FetchMethod):
             for l in output.split('\n'):
                 if s in l:
                     return l.split()[0]
-        raise bb.fetch2.FetchError("Unable to resolve '%s' in upstream git repository in git ls-remote output" % ud.unresolvedrev[name])
+        raise bb.fetch2.FetchError("Unable to resolve '%s' in upstream git repository in git ls-remote output for %s" % \
+            (ud.unresolvedrev[name], ud.host+ud.path))
 
     def latest_versionstring(self, ud, d):
         """
@@ -418,10 +398,34 @@ class Git(FetchMethod):
     def _build_revision(self, ud, d, name):
         return ud.revisions[name]
 
+    def gitpkgv_revision(self, ud, d, name):
+        """
+        Return a sortable revision number by counting commits in the history
+        Based on gitpkgv.bblass in meta-openembedded
+        """
+        rev = self._build_revision(ud, d, name)
+        localpath = ud.localpath
+        rev_file = os.path.join(localpath, "oe-gitpkgv_" + rev)
+        if not os.path.exists(localpath):
+            commits = None
+        else:
+            if not os.path.exists(rev_file) or not os.path.getsize(rev_file):
+                from pipes import quote
+                commits = bb.fetch2.runfetchcmd(
+                        "git rev-list %s -- | wc -l" % (quote(rev)),
+                        d, quiet=True).strip().lstrip('0')
+                if commits:
+                    open(rev_file, "w").write("%d\n" % int(commits))
+            else:
+                commits = open(rev_file, "r").readline(128).strip()
+        if commits:
+            return False, "%s+%s" % (commits, rev[:7])
+        else:
+            return True, str(rev)
+
     def checkstatus(self, ud, d):
-        fetchcmd = "%s ls-remote %s" % (ud.basecmd, ud.url)
         try:
-            runfetchcmd(fetchcmd, d, quiet=True)
+            self._lsremote(ud, d, "")
             return True
         except FetchError:
             return False

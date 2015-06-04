@@ -97,6 +97,7 @@ PATH_prepend = "${@extra_path_elements(d)}"
 def get_lic_checksum_file_list(d):
     filelist = []
     lic_files = d.getVar("LIC_FILES_CHKSUM", True) or ''
+    tmpdir = d.getVar("TMPDIR", True)
 
     urls = lic_files.split()
     for url in urls:
@@ -105,6 +106,8 @@ def get_lic_checksum_file_list(d):
         try:
             path = bb.fetch.decodeurl(url)[2]
             if path[0] == '/':
+                if path.startswith(tmpdir):
+                    continue
                 filelist.append(path + ":" + str(os.path.exists(path)))
         except bb.fetch.MalformedUrl:
             raise bb.build.FuncFailed(d.getVar('PN', True) + ": LIC_FILES_CHKSUM contains an invalid URL: " + url)
@@ -255,7 +258,7 @@ base_do_configure() {
 			if [ "${CLEANBROKEN}" != "1" -a \( -e Makefile -o -e makefile -o -e GNUmakefile \) ]; then
 				oe_runmake clean
 			fi
-			find ${B} -name \*.la -delete
+			find ${B} -ignore_readdir_race -name \*.la -delete
 		fi
 	fi
 	if [ -n "${CONFIGURESTAMPFILE}" ]; then
@@ -394,22 +397,6 @@ python () {
         else:
             appendVar('EXTRA_OECONF', extraconf)
 
-    # If PRINC is set, try and increase the PR value by the amount specified
-    # The PR server is now the preferred way to handle PR changes based on
-    # the checksum of the recipe (including bbappend).  The PRINC is now
-    # obsolete.  Return a warning to the user.
-    princ = d.getVar('PRINC', True)
-    if princ and princ != "0":
-        bb.error("Use of PRINC %s was detected in the recipe %s (or one of its .bbappends)\nUse of PRINC is deprecated.  The PR server should be used to automatically increment the PR.  See: https://wiki.yoctoproject.org/wiki/PR_Service." % (princ, d.getVar("FILE", True)))
-        pr = d.getVar('PR', True)
-        pr_prefix = re.search("\D+",pr)
-        prval = re.search("\d+",pr)
-        if pr_prefix is None or prval is None:
-            bb.error("Unable to analyse format of PR variable: %s" % pr)
-        nval = int(prval.group(0)) + int(princ)
-        pr = pr_prefix.group(0) + str(nval) + pr[prval.end():]
-        d.setVar('PR', pr)
-
     pn = d.getVar('PN', True)
     license = d.getVar('LICENSE', True)
     if license == "INVALID":
@@ -468,6 +455,8 @@ python () {
               "-cross-canadian-${TRANSLATED_TARGET_ARCH}"]:
             if pn.endswith(d.expand(t)):
                 check_license = False
+        if pn.startswith("gcc-source-"):
+            check_license = False
 
         if check_license and bad_licenses:
             bad_licenses = expand_wildcard_licenses(d, bad_licenses)

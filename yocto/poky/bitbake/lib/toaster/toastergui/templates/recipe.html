@@ -45,7 +45,7 @@
         </li>
     </ul>
     <div class="tab-content">
-        <div class="tab-pane {{tab_states.1}}" id="information" name="information">
+        <div class="tab-pane {{tab_states.1}}" id="information">
             <dl class="dl-horizontal">
                 <dt>
                     <i class="icon-question-sign get-help" title="The name of the layer providing the recipe"></i>
@@ -58,13 +58,13 @@
                     <i class="icon-question-sign get-help" title="Path to the layer providing the recipe"></i>
                     Layer directory
                 </dt>
-                <dd><code>{{layer.local_path}}</code></dd>
+                <dd><code>{{object.layer_version.local_path}}</code></dd>
           {% endif %}
                 <dt>
                     <i class="icon-question-sign get-help" title="Path to the recipe .bb file"></i>
                     Recipe file
                 </dt>
-                <dd><code>{{object.get_local_path}}</code></dd>
+                <dd><code>{{object.file_path}} {% if object.pathflags %}<i>({{object.pathflags}})</i>{% endif %}</code></dd>
                 {% if layer_version.branch %}
                 <dt>
                     <i class="icon-question-sign get-help" title="The Git branch of the layer providing the recipe"></i>
@@ -87,6 +87,7 @@
             {% else %}
             <table class="table table-bordered table-hover">
                 <thead>
+		  <tr>
                     <th>
                         <i class="icon-question-sign get-help" title="The running sequence of each task in the build"></i>
                         Order
@@ -107,6 +108,7 @@
                         <i class="icon-question-sign get-help" title="This column tells you if a task tried to restore output from the <code>sstate-cache</code> directory or mirrors, and reports the result: Succeeded, Failed or File not in cache"></i>
                         Cache attempt
                     </th>
+		  </tr>
                 </thead>
                 <tbody>
 
@@ -144,7 +146,7 @@
             </table>
             {% endif %}
         </div>
-        <div class="tab-pane {{tab_states.3}}" id="dependencies" name="dependencies">
+        <div class="tab-pane {{tab_states.3}}" id="dependencies">
 
             {% if not object.r_dependencies_recipe.all %}
             <div class="alert alert-info">
@@ -176,7 +178,7 @@
             {% endif %}
 
         </div>
-        <div class="tab-pane {{tab_states.4}}" id="brought-in-by" name="brought-in-by">
+        <div class="tab-pane {{tab_states.4}}" id="brought-in-by">
 
             {% if not object.r_dependencies_depends.all %}
             <div class="alert alert-info">

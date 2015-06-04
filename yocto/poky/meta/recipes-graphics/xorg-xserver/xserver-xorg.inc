@@ -2,7 +2,7 @@ SUMMARY = "The X.Org X server"
 HOMEPAGE = "http://www.x.org"
 SECTION = "x11/base"
 LICENSE = "MIT-X"
-LIC_FILES_CHKSUM = "file://COPYING;md5=15b5bf9327341c81089137aec4830bfd"
+LIC_FILES_CHKSUM = "file://COPYING;md5=5df87950af51ac2c5822094553ea1880"
 
 # xf86-*-* packages depend on an X server built with the xfree86 DDX
 # so we have a virtual to represent that:
@@ -47,6 +47,7 @@ PACKAGES =+ "${PN}-security-policy \
              ${PN}-xvfb \
              ${PN}-utils \
              ${PN}-xephyr \
+             ${PN}-xwayland \
              ${PN}-multimedia-modules \
              ${PN}-extension-dri \
              ${PN}-extension-dri2 \
@@ -62,7 +63,11 @@ PACKAGES =+ "${PN}-security-policy \
              ${PN}-module-exa \
              ${PN}-module-xaa \
              ${PN}-module-libxf1bpp \
-             ${PN}-module-libxf4bpp"
+             ${PN}-module-libxf4bpp \
+             xf86-video-modesetting"
+
+SUMMARY_xf86-video-modesetting = "X.Org X server -- modesetting display driver"
+INSANE_SKIP_xf86-video-modesetting = "xorg-driver-abi"
 
 RRECOMMENDS_${PN} += "${PN}-security-policy xkeyboard-config rgb xserver-xf86-config xkbcomp"
 RDEPENDS_${PN}-xvfb += "xkeyboard-config"
@@ -81,6 +86,7 @@ FILES_${PN}-fbdev = "${bindir}/Xfbdev"
 FILES_${PN}-xvfb = "${bindir}/Xvfb"
 FILES_${PN}-utils = "${bindir}/scanpci ${bindir}/pcitweak ${bindir}/ioport ${bindir}/in[bwl] ${bindir}/out[bwl] ${bindir}/mmap[rw] ${bindir}/gtf ${bindir}/getconfig ${bindir}/getconfig.pl"
 FILES_${PN}-xephyr = "${bindir}/Xephyr"
+FILES_${PN}-xwayland = "${bindir}/Xwayland"
 FILES_${PN}-multimedia-modules = "${libdir}/xorg/modules/multimedia/*drv*"
 FILES_${PN}-extension-dri = "${libdir}/xorg/modules/extensions/libdri.so"
 FILES_${PN}-extension-dri2 = "${libdir}/xorg/modules/extensions/libdri2.so"
@@ -97,11 +103,11 @@ FILES_${PN}-module-exa = "${libdir}/xorg/modules/libexa.so"
 FILES_${PN}-module-xaa = "${libdir}/xorg/modules/libxaa.so"
 FILES_${PN}-module-libxf1bpp = "${libdir}/xorg/modules/libxf1bpp.so"
 FILES_${PN}-module-libxf4bpp = "${libdir}/xorg/modules/libxf4bpp.so"
+FILES_xf86-video-modesetting = "${libdir}/xorg/modules/drivers/modesetting_drv.so"
 
 EXTRA_OECONF += "--with-fop=no \
                  --with-pic \
                  --disable-static \
-                 --disable-xinerama \
                  --disable-record \
                  --disable-dmx \
                  --disable-xnest \
@@ -116,7 +122,9 @@ EXTRA_OECONF += "--with-fop=no \
                  ac_cv_file__usr_share_sgml_X11_defs_ent=no \
 "
 
-PACKAGECONFIG ??= "udev ${@bb.utils.contains('DISTRO_FEATURES', 'opengl', 'dri dri2 glx', '', d)}"
+PACKAGECONFIG ??= "udev ${@bb.utils.contains('DISTRO_FEATURES', 'opengl', 'dri dri2 glx', '', d)} \
+                   ${@bb.utils.contains("DISTRO_FEATURES", "wayland", "xwayland", "", d)} \
+"
 
 PACKAGECONFIG[udev] = "--enable-config-udev,--disable-config-udev,udev"
 PACKAGECONFIG[dri] = "--enable-dri,--disable-dri,glproto virtual/mesa xf86driproto"
@@ -128,6 +136,8 @@ PACKAGECONFIG[unwind] = "--enable-libunwind,--disable-libunwind,libunwind"
 PACKAGECONFIG[xshmfence] = "--enable-xshmfence,--disable-xshmfence,libxshmfence"
 PACKAGECONFIG[xmlto] = "--with-xmlto, --without-xmlto, xmlto-native docbook-xml-dtd4-native docbook-xsl-stylesheets-native"
 PACKAGECONFIG[systemd-logind] = "--enable-systemd-logind=yes,--enable-systemd-logind=no,dbus,"
+PACKAGECONFIG[xinerama] = "--enable-xinerama,--disable-xinerama,xineramaproto"
+PACKAGECONFIG[xwayland] = "--enable-xwayland,--disable-xwayland,wayland libepoxy"
 
 do_install_append () {
 	# Its assumed base-files creates this for us
