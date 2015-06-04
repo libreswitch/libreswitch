@@ -459,10 +459,10 @@ ifneq ($(findstring devenv_rm,$(MAKECMDGOALS)),)
   endif
 endif
 devenv_rm: dev_header
+	$(V)$(V)sed -i -e "/#$(PACKAGE)/,/#END_$(PACKAGE)/d" src/Rules.make
+	$(V)sed -i -e "/$(PACKAGE)/d" .devenv
 	$(V)$(call DEVTOOL,reset $(PACKAGE))
 	$(V)rm -Rf src/$(PACKAGE)
-	$(V)sed -i -e "/#$(PACKAGE)/,/#END_$(PACKAGE)/d" src/Rules.make
-	$(V)sed -i -e "/$(PACKAGE)/d" .devenv
 
 devenv_status: dev_header
 	$(V) $(call DEVTOOL,status)
