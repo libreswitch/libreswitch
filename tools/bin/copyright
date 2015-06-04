@@ -1,0 +1,364 @@
+#!/usr/bin/env python2
+# -*- mode:python -*-
+#
+# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+# All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+
+from __future__ import print_function
+
+import argparse
+from datetime import date
+import os
+import re
+import sys
+import tempfile
+
+LICENSE = 'OpenSwitch'
+
+"""
+Note: COPYRIGHT_RE a list of regular expressions used to locate the entire
+copyright and license.  The first regex must match the copyright line; the last
+regex must match the last line in the license.  Any intermediate regexes can be
+used to avoid false positive matches.
+"""
+
+if LICENSE == 'OpenSwitch':
+
+    COPYRIGHT = """\
+Copyright (C) %s Hewlett Packard Enterprise Development LP
+All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may
+not use this file except in compliance with the License. You may obtain
+a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations
+under the License.\
+"""
+
+    COPYRIGHT_RE = [
+        r"Copyright.*Hewlett.*Packard.*Development",
+        r"Apache License",
+        r"under the License\."
+        ]
+
+elif LICENSE == 'PVOS':
+
+    COPYRIGHT = """\
+Copyright (C) %s Hewlett Packard Enterprise Development LP
+All Rights Reserved.
+
+The contents of this software are proprietary and confidential
+to the Hewlett Packard Enterprise Development LP.  No part of this
+program may be photocopied, reproduced, or translated into another
+programming language without prior written consent of the
+Hewlett Packard Enterprise Development LP.\
+"""
+
+    COPYRIGHT_RE = [
+        r"Copyright.*Hewlett.*Packard.*Development",
+        r"Hewlett.*Packard.*Development",
+        r"Hewlett.*Packard.*Development.*\."
+        ]
+
+else:
+    print("Internal error: Unknown license type",
+          file=sys.stderr)
+    sys.exit(2)
+
+
+COPYRIGHT = COPYRIGHT.split('\n')
+
+COPYRIGHT_RE = [re.compile(COPYRIGHT_RE[i])
+                for i in range(len(COPYRIGHT_RE))]
+
+COPYRIGHT_OFFSET_LIMIT = 5
+
+THIS_YEAR = date.today().year
+
+
+def condense_years(years):
+    """Condense the list of years to the canonical form.
+
+    The resultant string consists of comma-separated items.  Each item is
+    either a standalone year, or a range of years separated by a dash.  The
+    items are in ascending order.
+    """
+    years.sort()
+    compressed_years = str(years[0])
+    prev = years[0]
+    range_ = False
+    for year in years:
+        if year == prev:
+            continue
+        if not range_:
+            if year == prev + 1:
+                range_ = True
+            else:
+                compressed_years += (', %d' % year)
+        else:
+            if not year == prev + 1:
+                range_ = False
+                compressed_years += ('-%d, %d' % (prev, year))
+        prev = year
+
+    if range_:
+        compressed_years += ('-%d' % prev)
+
+    return compressed_years
+
+
+def expand_years(compressed_years):
+    """Expand the years string to a list of individual years.
+
+    Gracious acceptance of malformed syntax is done, perhaps too gracious.
+    Spaces are allowed to separate years and are treated like commas.  Multiple
+    commas or dashes are ignored (but not a mixture of them).  Reversed ranges
+    are accepted as well.
+    """
+    years = []
+    state = 0
+    while True:
+        (token, value, compressed_years) = get_year_token(compressed_years)
+
+        if state == 0:          # Need a year
+            # Ignore commas and dashes
+            if token == 'number':
+                year = value
+                state = 1
+            elif token == 'end':
+                break
+
+        elif state == 1:        # Have one year, need separating character
+            if token == 'comma':
+                years.append(year)
+                state = 0
+            elif token == 'dash':
+                state = 2
+            elif token == 'end':
+                years.append(year)
+                break
+
+        elif state == 2:        # Have one year, doing a range
+            if token == 'number':
+                if year > value: # Accept reversed ranges
+                    year, value = value, year
+                years.extend(range(year, value + 1))
+                state = 0
+            elif token == 'end':
+                # Missing end of range, assume until present
+                years.extend(range(year, THIS_YEAR + 1))
+                break
+            elif token == 'comma':
+                # Ignoring multiple dashes which is probably OK, but this is
+                # junk. Treat like a premature 'end'.
+                years.extend(range(year, THIS_YEAR + 1))
+                break
+
+    return years
+
+
+def extract_copyright(infile, license_too):
+    """Extract the copyright and license from the input file.
+
+    The existing copyright and license text to be extracted is defined by a
+    list of regexes.  The first regex must match an input line somewhere close
+    to the beginning of the file, determined by COPYRIGHT_OFFSET_LIMIT.  All of
+    the regexes must be met to consider the copyright/license found.  If found,
+    its beginning line number is returned as copyright_start; copyright_start
+    is 0 otherwise.  Any extracted copyright text is always returned, as it may
+    contain the copyright years to use in the updated copyright.
+    """
+    line_no = 0
+    re_no = 0
+    extracted_copyright = []
+
+    last_re = (len(COPYRIGHT_RE) if license_too else 1)
+
+    for line in infile:
+        line = line.rstrip('\n')
+        line_no += 1
+        match = re.search(COPYRIGHT_RE[re_no], line)
+        if match:
+            re_no += 1
+            if re_no == 1:
+                copyright_start = line_no
+            if re_no == last_re:
+                extracted_copyright.append(line)
+                break
+        if re_no == 0:
+            if line_no > COPYRIGHT_OFFSET_LIMIT:
+                break
+        else:
+            extracted_copyright.append(line)
+            if len(extracted_copyright) > 2 * len(COPYRIGHT):
+                break
+
+    if re_no != last_re:
+        copyright_start = 0
+
+    return (extracted_copyright, copyright_start)
+
+
+def get_year_token(years):
+    """Get a token when parsing the compressed years."""
+    match = re.match(' *([0-9]+)(.*)', years)
+    if match:
+        return ('number', int(match.group(1)), match.group(2))
+
+    match = re.match(' *,(.*)', years)
+    if match:
+        return ('comma', None, match.group(1))
+
+    match = re.match(' *-(.*)', years)
+    if match:
+        return ('dash', None, match.group(1))
+
+    return ('end', None, years)
+
+
+def make_updated_copyright(orig_copyright, license_too):
+    """Make an updated copyright/license from the original."""
+    years = []
+    prefix = None
+    if len(orig_copyright) > 0:
+        match = re.match(r"(.*)Copyright[ (Cc)]* ([-, 0-9]+) ",
+                         orig_copyright[0])
+        if match:
+            prefix = match.group(1)
+            years = expand_years(match.group(2))
+    years.append(THIS_YEAR)
+
+    updated_copyright = [COPYRIGHT[0] % condense_years(years)]
+    if license_too:
+        updated_copyright.extend(COPYRIGHT[1:])
+
+    if prefix:
+        for i in range(len(updated_copyright)):
+            updated_copyright[i] = (prefix + updated_copyright[i]).rstrip(' ')
+
+    return updated_copyright
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Hewlett Packard Enterprise Copyright Updater")
+    parser.add_argument(
+        '-g', '--generate',
+        action='store_true',
+        help="Generate a copyright if one isn't found in the input file." +
+        "  WARNING: the generated copyright may not be in comment form.")
+    parser.add_argument(
+        '-l', '--license',
+        action='store_true',
+        help="Correct the license text following the copyright, if necessary.")
+    parser.add_argument(
+        '-v', '--verbose',
+        action='store_true',
+        help="Be more vocal about the success conditions.")
+    parser.add_argument(
+        'filename',
+        help="The name of a file whose copyright will be checked for proper" +
+        " formatting and the inclusion of the current year.")
+    return parser.parse_args()
+
+
+def update_file(infile, filename, copyright_start,
+                orig_copyright, new_copyright):
+    """Rewrite the file with the updated copyright."""
+    try:
+        infile_stat = os.fstat(infile.fileno())
+        infile_dir = os.path.dirname(os.path.abspath(filename))
+        (outfd, outfilename) = tempfile.mkstemp(dir=infile_dir)
+        infile.seek(0)
+
+        # Copy before copyright
+        for i in range(1, copyright_start):
+            os.write(outfd, infile.readline())
+
+        # Skip old copyright, if one was found
+        if copyright_start > 0:
+            for i in range(0, len(orig_copyright)):
+                infile.readline()
+
+        # Output new copyright
+        for i in range(0, len(new_copyright)):
+            os.write(outfd, new_copyright[i] + '\n')
+
+        # Copy the rest
+        for line in infile:
+            os.write(outfd, line)
+
+        os.fchmod(outfd, infile_stat.st_mode)
+        os.rename(outfilename, filename)
+        infile.close()
+        os.close(outfd)
+
+    except Exception as err:
+        print("Error updating %s: %s" % (filename, err.strerror))
+        sys.exit(2)
+
+def main():
+    """Update the file's copyright/license if necessary.
+
+    Exit codes:
+      0: Either the copyright was updated successfully, or it didn't need
+         updating.
+      1: No copyright was found in the file to update.
+      2: Some error occurred.  Error description written to stderr.
+    """
+    args = parse_args()
+
+    try:
+        infile = open(args.filename, 'r')
+    except IOError as err:
+        print("%s: %s" % (args.filename, err.strerror),
+              file=sys.stderr)
+        sys.exit(2)
+
+    (extracted_copyright, copyright_start) = extract_copyright(infile,
+                                                               args.license)
+
+    if copyright_start == 0:
+        if not args.generate:
+            infile.close()
+            print ("No copyright found in %s" % args.filename,
+                   file=sys.stderr)
+            sys.exit(1)
+
+    updated_copyright = make_updated_copyright(extracted_copyright,
+                                               args.license)
+
+    if extracted_copyright == updated_copyright:
+        if args.verbose:
+            print("No update required for %s" % args.filename, file=sys.stderr)
+        infile.close()
+        sys.exit(0)
+
+    update_file(infile, args.filename, copyright_start,
+                extracted_copyright, updated_copyright)
+
+    if args.verbose:
+        print("Updated %s" % args.filename, file=sys.stderr)
+    sys.exit(0)
+
+if __name__ == "__main__":
+    main()
