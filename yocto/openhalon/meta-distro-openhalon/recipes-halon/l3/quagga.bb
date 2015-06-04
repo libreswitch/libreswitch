@@ -8,7 +8,7 @@ DEPENDS = "halonutils halon-ovsdb ncurses perl-native openssl"
 # the "ip" command from busybox is not sufficient (flush by protocol flushes all routes)
 RDEPENDS_${PN} += "iproute2"
 
-SRC_URI = "git://git.openhalon.io/openhalon/quagga;protocol=http;preserve_origin=1 \
+SRC_URI = "git://git.openhalon.io/openhalon/quagga;protocol=http \
     file://zebra.service file://bgpd.service \
 "
 

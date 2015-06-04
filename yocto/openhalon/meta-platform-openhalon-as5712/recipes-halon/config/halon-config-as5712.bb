@@ -6,7 +6,7 @@ RPROVIDES_${PN} = "virtual/halon-config"
 
 PR = "1"
 
-SRC_URI = "git://git.openhalon.io/openhalon/as5712-config;protocol=http;preserve_origin=1 \
+SRC_URI = "git://git.openhalon.io/openhalon/as5712-config;protocol=http \
 "
 
 SRCREV="${AUTOREV}"

@@ -4,7 +4,7 @@ LIC_FILES_CHKSUM = "file://setup.py;beginline=1;endline=15;md5=718b8f9952f79dfe2
 
 RDEPENDS_${PN} = "python-argparse python-json python-halon-ovsdb python-distribute"
 
-SRC_URI = "git://git.openhalon.io/openhalon/cfgd;protocol=http;preserve_origin=1 \
+SRC_URI = "git://git.openhalon.io/openhalon/cfgd;protocol=http \
            file://cfgd.service \
 "
 

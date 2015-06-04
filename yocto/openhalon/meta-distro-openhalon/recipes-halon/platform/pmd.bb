@@ -4,7 +4,7 @@ LIC_FILES_CHKSUM = "file://CMakeLists.txt;beginline=0;endline=14;md5=90baf0d21ac
 
 DEPENDS = "halonutils config-yaml halon-ovsdb"
 
-SRC_URI = "git://git.openhalon.io/openhalon/pmd;protocol=http;preserve_origin=1 \
+SRC_URI = "git://git.openhalon.io/openhalon/pmd;protocol=http \
            file://pmd.service \
 "
 

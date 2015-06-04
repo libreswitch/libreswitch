@@ -4,7 +4,7 @@ LIC_FILES_CHKSUM = "file://CMakeLists.txt;beginline=0;endline=14;md5=9bf02f5d4de
 
 DEPENDS = "yaml-cpp gtest i2c-tools"
 
-SRC_URI = "git://git.openhalon.io/openhalon/config-yaml;protocol=https;preserve_origin=1"
+SRC_URI = "git://git.openhalon.io/openhalon/config-yaml;protocol=https"
 
 SRCREV = "${AUTOREV}"
 

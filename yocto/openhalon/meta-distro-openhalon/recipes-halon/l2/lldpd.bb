@@ -4,7 +4,7 @@ LIC_FILES_CHKSUM = "file://README.md;beginline=249;endline=259;md5=c39f3ef7df234
 
 DEPENDS = "halonutils config-yaml halon-ovsdb libevent openssl"
 
-SRC_URI = "git://git.openhalon.io/openhalon/lldpd;protocol=http;preserve_origin=1 \ 
+SRC_URI = "git://git.openhalon.io/openhalon/lldpd;protocol=http \
 	  file://lldpd.service \
 "
 

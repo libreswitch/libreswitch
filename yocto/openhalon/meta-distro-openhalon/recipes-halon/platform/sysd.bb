@@ -6,7 +6,7 @@ LIC_FILES_CHKSUM = "file://CMakeLists.txt;beginline=0;endline=14;md5=9bf02f5d4de
 DEPENDS = "halonutils config-yaml halon-ovsdb"
 RDEPENDS_${PN} = "dmidecode"
 
-SRC_URI = "git://git.openhalon.io/openhalon/sysd;protocol=https;preserve_origin=1 \
+SRC_URI = "git://git.openhalon.io/openhalon/sysd;protocol=https \
            file://sysd.service \
 "
 
