@@ -16,8 +16,8 @@ PV = "git${SRCPV}"
 S = "${WORKDIR}/git"
 
 do_install () {
-    install -d ${D}${sysconfdir}/halon/platform/Generic-x86/X86
-    cp -p ${S}/*.yaml ${D}${sysconfdir}/halon/platform/Generic-x86/X86
+    install -d ${D}${sysconfdir}/halon/platform/Generic-x86/X86-64
+    cp -p ${S}/*.yaml ${D}${sysconfdir}/halon/platform/Generic-x86/X86-64
 }
 
 FILES_${PN} = "${sysconfdir}"
