@@ -2,7 +2,9 @@ DESCRIPTION = "Halon Disk Rootfs Image"
 
 IMAGE_LINGUAS = " "
 
-LICENSE = "HP"
+LICENSE = "Apache-2.0"
+
+IMAGE_FEATURES += "ssh-server-openssh"
 
 inherit core-image
 
