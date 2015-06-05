@@ -37,7 +37,7 @@ from django.views.decorators.csrf import csrf_exempt
 def eventfile(request):
     """ Receives a file by POST, and runs toaster-eventreply on this file """
     if request.method != "POST":
-        return HttpResponseBadRequest("This API only accepts POST requests. Post a file with:\n\ncurl -F eventlog=@bitbake_eventlog.json http[s]://[server-address]/orm/eventfile\n", content_type="text/plain;utf8")
+        return HttpResponseBadRequest("This API only accepts POST requests. Post a file with:\n\ncurl -F eventlog=@bitbake_eventlog.json %s\n" % request.build_absolute_uri(reverse('eventfile')), content_type="text/plain;utf8")
 
     # write temporary file
     (handle, abstemppath) = tempfile.mkstemp(dir="/tmp/")
@@ -55,6 +55,8 @@ def eventfile(request):
     scriptenv["DATABASE_URL"] = toastermain.settings.getDATABASE_URL()
 
     # run the data loading process and return the results
-    (out, err) = subprocess.Popen([import_script, abstemppath], stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=scriptenv).communicate()
-    os.remove(abstemppath)
-    return HttpResponse("%s\n%s" % (out, err), content_type="text/plain;utf8")
+    importer = subprocess.Popen([import_script, abstemppath], stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=scriptenv)
+    (out, err) = importer.communicate()
+    if importer.returncode == 0:
+        os.remove(abstemppath)
+    return HttpResponse("== Retval %d\n== STDOUT\n%s\n\n== STDERR\n%s" % (importer.returncode, out, err), content_type="text/plain;utf8")

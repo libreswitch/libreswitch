@@ -659,10 +659,13 @@ sstate_unpack_package () {
 
 BB_HASHCHECK_FUNCTION = "sstate_checkhashes"
 
-def sstate_checkhashes(sq_fn, sq_task, sq_hash, sq_hashfn, d):
+def sstate_checkhashes(sq_fn, sq_task, sq_hash, sq_hashfn, d, siginfo=False):
 
     ret = []
     missed = []
+    extension = ".tgz"
+    if siginfo:
+        extension = extension + ".siginfo"
 
     def getpathcomponents(task, d):
         # Magic data from BB_HASHFILENAME
@@ -683,7 +686,7 @@ def sstate_checkhashes(sq_fn, sq_task, sq_hash, sq_hashfn, d):
 
         spec, extrapath, tname = getpathcomponents(task, d)
 
-        sstatefile = d.expand("${SSTATE_DIR}/" + extrapath + generate_sstatefn(spec, sq_hash[task], d) + "_" + tname + ".tgz.siginfo")
+        sstatefile = d.expand("${SSTATE_DIR}/" + extrapath + generate_sstatefn(spec, sq_hash[task], d) + "_" + tname + extension)
 
         if os.path.exists(sstatefile):
             bb.debug(2, "SState: Found valid sstate file %s" % sstatefile)
@@ -712,20 +715,16 @@ def sstate_checkhashes(sq_fn, sq_task, sq_hash, sq_hashfn, d):
         if localdata.getVar('BB_NO_NETWORK', True) == "1" and localdata.getVar('SSTATE_MIRROR_ALLOW_NETWORK', True) == "1":
             localdata.delVar('BB_NO_NETWORK')
 
-        for task in range(len(sq_fn)):
-            if task in ret:
-                continue
+        def checkstatus(arg):
+            (task, sstatefile) = arg
 
-            spec, extrapath, tname = getpathcomponents(task, d)
-
-            sstatefile = d.expand(extrapath + generate_sstatefn(spec, sq_hash[task], d) + "_" + tname + ".tgz.siginfo")
-
+            localdata2 = bb.data.createCopy(localdata)
             srcuri = "file://" + sstatefile
             localdata.setVar('SRC_URI', srcuri)
             bb.debug(2, "SState: Attempting to fetch %s" % srcuri)
 
             try:
-                fetcher = bb.fetch2.Fetch(srcuri.split(), localdata)
+                fetcher = bb.fetch2.Fetch(srcuri.split(), localdata2)
                 fetcher.checkstatus()
                 bb.debug(2, "SState: Successful fetch test for %s" % srcuri)
                 ret.append(task)
@@ -735,6 +734,23 @@ def sstate_checkhashes(sq_fn, sq_task, sq_hash, sq_hashfn, d):
                 missed.append(task)
                 bb.debug(2, "SState: Unsuccessful fetch test for %s" % srcuri)
                 pass     
+
+        tasklist = []
+        for task in range(len(sq_fn)):
+            if task in ret:
+                continue
+            spec, extrapath, tname = getpathcomponents(task, d)
+            sstatefile = d.expand(extrapath + generate_sstatefn(spec, sq_hash[task], d) + "_" + tname + extension)
+            tasklist.append((task, sstatefile))
+
+        if tasklist:
+            bb.note("Checking sstate mirror object availability (for %s objects)" % len(tasklist))
+            import multiprocessing
+            nproc = min(multiprocessing.cpu_count(), len(tasklist))
+            pool = oe.utils.ThreadedPool(nproc)
+            for t in tasklist:
+                pool.add_task(checkstatus, t)
+            pool.wait_completion()
 
     inheritlist = d.getVar("INHERIT", True)
     if "toaster" in inheritlist:
@@ -811,6 +827,9 @@ def setscene_depvalid(task, taskdependees, notneeded, d):
                 continue
             # Target populate_sysroot need their dependencies
             return False
+
+        if taskdependees[task][1] == 'do_shared_workdir':
+            continue
 
         # This is due to the [depends] in useradd.bbclass complicating matters
         # The logic *is* reversed here due to the way hard setscene dependencies are injected

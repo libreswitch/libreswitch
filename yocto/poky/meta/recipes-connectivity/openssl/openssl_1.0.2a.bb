@@ -18,7 +18,6 @@ SRC_URI += "file://configure-targets.patch \
             file://openssl-fix-link.patch \
             file://debian1.0.2/block_diginotar.patch \
             file://debian1.0.2/block_digicert_malaysia.patch \
-            file://debian1.0.2/padlock_conf.patch \
             file://debian/ca.patch \
             file://debian/c_rehash-compat.patch \
             file://debian/debian-targets.patch \
@@ -37,6 +36,7 @@ SRC_URI += "file://configure-targets.patch \
             file://ptest-deps.patch \
             file://run-ptest \
             file://crypto_use_bigint_in_x86-64_perl.patch \
+            file://0001-bn-bn_lcl.h-fix-MIPS-specific-gcc-version-check.patch \
            "
 
 SRC_URI[md5sum] = "a06c547dac9044161a477211049f60ef"

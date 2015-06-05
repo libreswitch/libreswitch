@@ -26,6 +26,7 @@ from django.utils import timezone
 
 from django.core import validators
 from django.conf import settings
+import django.db.models.signals
 
 class GitURLValidator(validators.URLValidator):
     import re
@@ -52,7 +53,7 @@ class ToasterSetting(models.Model):
     value = models.CharField(max_length=255)
 
     def __unicode__(self):
-        return "Setting %s = " % (self.name, self.value)
+        return "Setting %s = %s" % (self.name, self.value)
 
 class ProjectManager(models.Manager):
     def create_project(self, name, release):
@@ -81,15 +82,18 @@ class ProjectManager(models.Manager):
     def create(self, *args, **kwargs):
         raise Exception("Invalid call to Project.objects.create. Use Project.objects.create_project() to create a project")
 
-    def get_or_create(self, *args, **kwargs):
+    def get_or_create(self, **kwargs):
+        # allow project creation for default data
+        if 'pk' in kwargs and kwargs['pk'] == 0:
+            return super(ProjectManager, self).get_or_create(**kwargs)
         raise Exception("Invalid call to Project.objects.get_or_create. Use Project.objects.create_project() to create a project")
 
 class Project(models.Model):
     search_allowed_fields = ['name', 'short_description', 'release__name', 'release__branch_name']
     name = models.CharField(max_length=100)
     short_description = models.CharField(max_length=50, blank=True)
-    bitbake_version = models.ForeignKey('BitbakeVersion')
-    release     = models.ForeignKey("Release")
+    bitbake_version = models.ForeignKey('BitbakeVersion', null=True)
+    release     = models.ForeignKey("Release", null=True)
     created     = models.DateTimeField(auto_now_add = True)
     updated     = models.DateTimeField(auto_now = True)
     # This is a horrible hack; since Toaster has no "User" model available when
@@ -223,7 +227,7 @@ class Build(models.Model):
 
     search_allowed_fields = ['machine', 'cooker_log_path', "target__target", "target__target_image_file__file_name"]
 
-    project = models.ForeignKey(Project, null = True)
+    project = models.ForeignKey(Project)            # must have a project
     machine = models.CharField(max_length=100)
     distro = models.CharField(max_length=100)
     distro_version = models.CharField(max_length=100)
@@ -262,6 +266,9 @@ class Build(models.Model):
     @property
     def toaster_exceptions(self):
         return self.logmessage_set.filter(level=LogMessage.EXCEPTION)
+
+    def __str__(self):
+        return "%d %s %s" % (self.id, self.project, ",".join([t.target for t in self.target_set.all()]))
 
 
 # an Artifact is anything that results from a Build, and may be of interest to the user, and is not stored elsewhere
@@ -435,8 +442,8 @@ class Task(models.Model):
     script_type = models.IntegerField(choices=TASK_CODING, default=CODING_NA)
     line_number = models.IntegerField(default=0)
     disk_io = models.IntegerField(null=True)
-    cpu_usage = models.DecimalField(max_digits=6, decimal_places=2, null=True)
-    elapsed_time = models.DecimalField(max_digits=6, decimal_places=2, null=True)
+    cpu_usage = models.DecimalField(max_digits=8, decimal_places=2, null=True)
+    elapsed_time = models.DecimalField(max_digits=8, decimal_places=2, null=True)
     sstate_result = models.IntegerField(choices=SSTATE_RESULT, default=SSTATE_NA)
     message = models.CharField(max_length=240)
     logfile = models.FilePathField(max_length=255, blank=True)
@@ -457,7 +464,7 @@ class Task_Dependency(models.Model):
     depends_on = models.ForeignKey(Task, related_name='task_dependencies_depends')
 
 class Package(models.Model):
-    search_allowed_fields = ['name', 'version', 'revision', 'recipe__name', 'recipe__version', 'recipe__license', 'recipe__layer_version__layer__name', 'recipe__layer_version__branch', 'recipe__layer_version__commit', 'recipe__layer_version__layer__local_path', 'installed_name']
+    search_allowed_fields = ['name', 'version', 'revision', 'recipe__name', 'recipe__version', 'recipe__license', 'recipe__layer_version__layer__name', 'recipe__layer_version__branch', 'recipe__layer_version__commit', 'recipe__layer_version__local_path', 'installed_name']
     build = models.ForeignKey('Build')
     recipe = models.ForeignKey('Recipe', null=True)
     name = models.CharField(max_length=100)
@@ -528,7 +535,7 @@ class Package_File(models.Model):
     size = models.IntegerField()
 
 class Recipe(models.Model):
-    search_allowed_fields = ['name', 'version', 'file_path', 'section', 'summary', 'description', 'license', 'layer_version__layer__name', 'layer_version__branch', 'layer_version__commit', 'layer_version__layer__local_path', 'layer_version__layer_source__name']
+    search_allowed_fields = ['name', 'version', 'file_path', 'section', 'summary', 'description', 'license', 'layer_version__layer__name', 'layer_version__branch', 'layer_version__commit', 'layer_version__local_path', 'layer_version__layer_source__name']
 
     layer_source = models.ForeignKey('LayerSource', default = None, null = True)  # from where did we get this recipe
     up_id = models.IntegerField(null = True, default = None)                    # id of entry in the source
@@ -544,6 +551,7 @@ class Recipe(models.Model):
     homepage = models.URLField(blank=True)
     bugtracker = models.URLField(blank=True)
     file_path = models.FilePathField(max_length=255)
+    pathflags = models.CharField(max_length=200, blank=True)
 
     def get_layersource_view_url(self):
         if self.layer_source is None:
@@ -555,20 +563,20 @@ class Recipe(models.Model):
     def __unicode__(self):
         return "Recipe " + self.name + ":" + self.version
 
-    def get_local_path(self):
-        if settings.MANAGED and self.layer_version.build.project is not None:
-            # strip any tag prefixes ('virtual:native:')
-            layer_path=self.layer_version.layer.local_path.split(":")[-1]
-            recipe_path=self.file_path.split(":")[-1]
-            if 0 == recipe_path.find(layer_path):
-                return recipe_path[len(layer_path)+1:]
-            else:
-                return recipe_path
+    def get_vcs_recipe_file_link_url(self):
+        return self.layer_version.get_vcs_file_link_url(self.file_path)
 
-        return self.file_path
+    def get_description_or_summary(self):
+        if self.description:
+            return self.description
+        elif self.summary:
+            return self.summary
+        else:
+            return ""
 
     class Meta:
-        unique_together = ("layer_version", "file_path")
+        unique_together = (("layer_version", "file_path", "pathflags"), )
+
 
 class Recipe_DependencyManager(models.Manager):
     use_for_related_fields = True
@@ -774,8 +782,11 @@ class LayerIndexLayerSource(LayerSource):
             print "EE: could not connect to %s, skipping update: %s\n%s" % (self.apiurl, e, traceback.format_exc(e))
             return
 
-        # update branches; only those that we already have names listed in the Releases table
+        # update branches; only those that we already have names listed in the
+        # Releases table
         whitelist_branch_names = map(lambda x: x.branch_name, Release.objects.all())
+        if len(whitelist_branch_names) == 0:
+            raise Exception("Failed to make list of branches to fetch")
 
         print "Fetching branches"
         branches_info = _get_json_response(apilinks['branches']
@@ -965,7 +976,6 @@ class Layer(models.Model):
     up_date = models.DateTimeField(null = True, default = None)
 
     name = models.CharField(max_length=100)
-    local_path = models.FilePathField(max_length=255, null = True, default = None)
     layer_index_url = models.URLField()
     vcs_url = GitURLField(default = None, null = True)
     vcs_web_url = models.URLField(null = True, default = None)
@@ -997,6 +1007,8 @@ class Layer_Version(models.Model):
     commit = models.CharField(max_length=100)           # LayerBranch.vcs_last_rev
     dirpath = models.CharField(max_length=255, null = True, default = None)          # LayerBranch.vcs_subdir
     priority = models.IntegerField(default = 0)         # if -1, this is a default layer
+
+    local_path = models.FilePathField(max_length=1024, default = "/")  # where this layer was checked-out
 
     project = models.ForeignKey('Project', null = True, default = None)   # Set if this layer is project-specific; always set for imported layers, and project-set branches
 
@@ -1171,3 +1183,14 @@ class LogMessage(models.Model):
     message=models.CharField(max_length=240)
     pathname = models.FilePathField(max_length=255, blank=True)
     lineno = models.IntegerField(null=True)
+
+def invalidate_cache(**kwargs):
+    from django.core.cache import cache
+    try:
+      cache.clear()
+    except Exception as e:
+      print "Problem with cache backend: Failed to clear cache"
+      pass
+
+django.db.models.signals.post_save.connect(invalidate_cache)
+django.db.models.signals.post_delete.connect(invalidate_cache)

@@ -61,6 +61,17 @@ class BBFetchException(Exception):
     def __str__(self):
          return self.msg
 
+class UntrustedUrl(BBFetchException):
+    """Exception raised when encountering a host not listed in BB_ALLOWED_NETWORKS"""
+    def __init__(self, url, message=''):
+        if message:
+            msg = message
+        else:
+            msg = "The URL: '%s' is not trusted and cannot be used" % url
+        self.url = url
+        BBFetchException.__init__(self, msg)
+        self.args = (url,)
+
 class MalformedUrl(BBFetchException):
     """Exception raised when encountering an invalid url"""
     def __init__(self, url, message=''):
@@ -709,7 +720,7 @@ def get_autorev(d):
         d.setVar('__BB_DONT_CACHE', '1')
     return "AUTOINC"
 
-def get_srcrev(d):
+def get_srcrev(d, method_name='sortable_revision'):
     """
     Return the revsion string, usually for use in the version string (PV) of the current package
     Most packages usually only have one SCM so we just pass on the call.
@@ -718,6 +729,9 @@ def get_srcrev(d):
 
     The idea here is that we put the string "AUTOINC+" into return value if the revisions are not 
     incremental, other code is then responsible for turning that into an increasing value (if needed)
+
+    A method_name can be supplied to retrieve an alternatively formatted revision from a fetcher, if
+    that fetcher provides a method with the given name and the same signature as sortable_revision.
     """
 
     scms = []
@@ -731,7 +745,7 @@ def get_srcrev(d):
         raise FetchError("SRCREV was used yet no valid SCM was found in SRC_URI")
 
     if len(scms) == 1 and len(urldata[scms[0]].names) == 1:
-        autoinc, rev = urldata[scms[0]].method.sortable_revision(urldata[scms[0]], d, urldata[scms[0]].names[0])
+        autoinc, rev = getattr(urldata[scms[0]].method, method_name)(urldata[scms[0]], d, urldata[scms[0]].names[0])
         if len(rev) > 10:
             rev = rev[:10]
         if autoinc:
@@ -749,7 +763,7 @@ def get_srcrev(d):
     for scm in scms:
         ud = urldata[scm]
         for name in ud.names:
-            autoinc, rev = ud.method.sortable_revision(ud, d, name)
+            autoinc, rev = getattr(ud.method, method_name)(ud, d, name)
             seenautoinc = seenautoinc or autoinc
             if len(rev) > 10:
                 rev = rev[:10]
@@ -783,6 +797,8 @@ def runfetchcmd(cmd, d, quiet = False, cleanup = []):
                   'NO_PROXY', 'no_proxy',
                   'ALL_PROXY', 'all_proxy',
                   'GIT_PROXY_COMMAND',
+                  'GIT_SSL_CAINFO',
+                  'GIT_SMART_HTTP',
                   'SSH_AUTH_SOCK', 'SSH_AGENT_PID',
                   'SOCKS5_USER', 'SOCKS5_PASSWD']
 
@@ -851,6 +867,11 @@ def build_mirroruris(origud, mirrors, ld):
             newuri = uri_replace(ud, find, replace, replacements, ld)
             if not newuri or newuri in uris or newuri == origud.url:
                 continue
+
+            if not trusted_network(ld, newuri):
+                logger.debug(1, "Mirror %s not in the list of trusted networks, skipping" %  (newuri))
+                continue
+
             try:
                 newud = FetchData(newuri, ld)
                 newud.setup_localpath(ld)
@@ -858,7 +879,9 @@ def build_mirroruris(origud, mirrors, ld):
                 logger.debug(1, "Mirror fetch failure for url %s (original url: %s)" % (newuri, origud.url))
                 logger.debug(1, str(e))
                 try:
-                    ud.method.clean(ud, ld)
+                    # setup_localpath of file:// urls may fail, we should still see 
+                    # if mirrors of the url exist
+                    adduri(newud, uris, uds)
                 except UnboundLocalError:
                     pass
                 continue   
@@ -970,6 +993,41 @@ def try_mirrors(d, origud, mirrors, check = False):
         if ret != False:
             return ret
     return None
+
+def trusted_network(d, url):
+    """
+    Use a trusted url during download if networking is enabled and
+    BB_ALLOWED_NETWORKS is set globally or for a specific recipe.
+    Note: modifies SRC_URI & mirrors.
+    """
+    if d.getVar('BB_NO_NETWORK', True) == "1":
+        return True
+
+    pkgname = d.expand(d.getVar('PN'))
+    trusted_hosts = d.getVarFlag('BB_ALLOWED_NETWORKS', pkgname)
+
+    if not trusted_hosts:
+        trusted_hosts = d.getVar('BB_ALLOWED_NETWORKS', True)
+
+    # Not enabled.
+    if not trusted_hosts:
+        return True
+
+    scheme, network, path, user, passwd, param = decodeurl(url)
+
+    if not network:
+        return True
+
+    network = network.lower()
+
+    for host in trusted_hosts.split(" "):
+        host = host.lower()
+        if host.startswith("*.") and ("." + network).endswith(host[1:]):
+            return True
+        if host == network:
+            return True
+
+    return False
 
 def srcrev_internal_helper(ud, d, name):
     """
@@ -1529,6 +1587,8 @@ class Fetch(object):
                 firsterr = None
                 if not localpath and ((not verify_donestamp(ud, self.d)) or m.need_update(ud, self.d)):
                     try:
+                        if not trusted_network(self.d, ud.url):
+                            raise UntrustedUrl(ud.url)
                         logger.debug(1, "Trying Upstream")
                         m.download(ud, self.d)
                         if hasattr(m, "build_mirror_data"):

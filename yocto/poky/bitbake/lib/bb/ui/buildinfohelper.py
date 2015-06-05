@@ -31,6 +31,9 @@ from toaster.orm.models import Variable, VariableHistory
 from toaster.orm.models import Package, Package_File, Target_Installed_Package, Target_File
 from toaster.orm.models import Task_Dependency, Package_Dependency
 from toaster.orm.models import Recipe_Dependency
+
+from toaster.orm.models import Project
+
 from bb.msg import BBLogFormatter as format
 from django.db import models
 from pprint import pformat
@@ -103,7 +106,7 @@ class ORMWrapper(object):
 
         return vars(self)[dictname][key]
 
-    def create_build_object(self, build_info, brbe):
+    def create_build_object(self, build_info, brbe, project_id):
         assert 'machine' in build_info
         assert 'distro' in build_info
         assert 'distro_version' in build_info
@@ -112,7 +115,26 @@ class ORMWrapper(object):
         assert 'build_name' in build_info
         assert 'bitbake_version' in build_info
 
+        prj = None
+        buildrequest = None
+        if brbe is not None:            # this build was triggered by a request from a user
+            logger.debug(1, "buildinfohelper: brbe is %s" % brbe)
+            from bldcontrol.models import BuildEnvironment, BuildRequest
+            br, be = brbe.split(":")
+            buildrequest = BuildRequest.objects.get(pk = br)
+            prj = buildrequest.project
+
+        elif project_id is not None:    # this build was triggered by an external system for a specific project
+            logger.debug(1, "buildinfohelper: project is %s" % prj)
+            prj = Project.objects.get(pk = project_id)
+
+        else:                           # this build was triggered by a legacy system, or command line interactive mode
+            prj, created = Project.objects.get_or_create(pk=0, name="Default Project")
+            logger.debug(1, "buildinfohelper: project is not specified, defaulting to %s" % prj)
+
+
         build = Build.objects.create(
+                                    project = prj,
                                     machine=build_info['machine'],
                                     distro=build_info['distro'],
                                     distro_version=build_info['distro_version'],
@@ -123,17 +145,11 @@ class ORMWrapper(object):
                                     bitbake_version=build_info['bitbake_version'])
 
         logger.debug(1, "buildinfohelper: build is created %s" % build)
-        if brbe is not None:
-            logger.debug(1, "buildinfohelper: brbe is %s" % brbe)
-            from bldcontrol.models import BuildEnvironment, BuildRequest
-            br, be = brbe.split(":")
 
-            buildrequest = BuildRequest.objects.get(pk = br)
+        if buildrequest is not None:
             buildrequest.build = build
             buildrequest.save()
 
-            build.project_id = buildrequest.project_id
-            build.save()
         return build
 
     def create_target_objects(self, target_info):
@@ -221,12 +237,12 @@ class ORMWrapper(object):
     def get_update_recipe_object(self, recipe_information, must_exist = False):
         assert 'layer_version' in recipe_information
         assert 'file_path' in recipe_information
+        assert 'pathflags' in recipe_information
 
-        if recipe_information['file_path'].startswith(recipe_information['layer_version'].layer.local_path):
-            recipe_information['file_path'] = recipe_information['file_path'][len(recipe_information['layer_version'].layer.local_path):].lstrip("/")
+        assert not recipe_information['file_path'].startswith("/")      # we should have layer-relative paths at all times
 
         recipe_object, created = self._cached_get_or_create(Recipe, layer_version=recipe_information['layer_version'],
-                                     file_path=recipe_information['file_path'])
+                                     file_path=recipe_information['file_path'], pathflags = recipe_information['pathflags'])
         if created and must_exist:
             raise NotExisting("Recipe object created when expected to exist", recipe_information)
 
@@ -247,13 +263,15 @@ class ORMWrapper(object):
         assert 'branch' in layer_version_information
         assert 'commit' in layer_version_information
         assert 'priority' in layer_version_information
+        assert 'local_path' in layer_version_information
 
         layer_version_object, created = Layer_Version.objects.get_or_create(
                                     build = build_obj,
                                     layer = layer_obj,
                                     branch = layer_version_information['branch'],
                                     commit = layer_version_information['commit'],
-                                    priority = layer_version_information['priority']
+                                    priority = layer_version_information['priority'],
+                                    local_path = layer_version_information['local_path'],
                                     )
 
         self.layer_version_objects.append(layer_version_object)
@@ -262,13 +280,11 @@ class ORMWrapper(object):
 
     def get_update_layer_object(self, layer_information, brbe):
         assert 'name' in layer_information
-        assert 'local_path' in layer_information
         assert 'layer_index_url' in layer_information
 
         if brbe is None:
             layer_object, created = Layer.objects.get_or_create(
                                 name=layer_information['name'],
-                                local_path=layer_information['local_path'],
                                 layer_index_url=layer_information['layer_index_url'])
             return layer_object
         else:
@@ -297,7 +313,6 @@ class ORMWrapper(object):
                     for pl in buildrequest.project.projectlayer_set.filter(layercommit__layer__name = brl.name):
                         if pl.layercommit.layer.vcs_url == brl.giturl :
                             layer = pl.layercommit.layer
-                            layer.local_path = layer_information['local_path']
                             layer.save()
                             return layer
 
@@ -639,6 +654,7 @@ class BuildInfoHelper(object):
         self.has_build_history = has_build_history
         self.tmp_dir = self.server.runCommand(["getVariable", "TMPDIR"])[0]
         self.brbe    = self.server.runCommand(["getVariable", "TOASTER_BRBE"])[0]
+        self.project = self.server.runCommand(["getVariable", "TOASTER_PROJECT"])[0]
         logger.debug(1, "buildinfohelper: Build info helper inited %s" % vars(self))
 
 
@@ -687,12 +703,12 @@ class BuildInfoHelper(object):
         if self.brbe is None:
             def _slkey_interactive(layer_version):
                 assert isinstance(layer_version, Layer_Version)
-                return len(layer_version.layer.local_path)
+                return len(layer_version.local_path)
 
             # Heuristics: we always match recipe to the deepest layer path in the discovered layers
             for lvo in sorted(self.orm_wrapper.layer_version_objects, reverse=True, key=_slkey_interactive):
                 # we can match to the recipe file path
-                if path.startswith(lvo.layer.local_path):
+                if path.startswith(lvo.local_path):
                     return lvo
 
         else:
@@ -718,21 +734,33 @@ class BuildInfoHelper(object):
                             return lvo
 
         #if we get here, we didn't read layers correctly; dump whatever information we have on the error log
-        logger.error("Could not match layer version for recipe path %s : %s" % (path, self.orm_wrapper.layer_version_objects))
+        logger.warn("Could not match layer version for recipe path %s : %s" % (path, self.orm_wrapper.layer_version_objects))
 
         #mockup the new layer
-        unknown_layer, created = Layer.objects.get_or_create(name="__FIXME__unidentified_layer", local_path="/", layer_index_url="")
+        unknown_layer, created = Layer.objects.get_or_create(name="__FIXME__unidentified_layer", layer_index_url="")
         unknown_layer_version_obj, created = Layer_Version.objects.get_or_create(layer = unknown_layer, build = self.internal_state['build'])
+
+        # append it so we don't run into this error again and again
+        self.orm_wrapper.layer_version_objects.append(unknown_layer_version_obj)
 
         return unknown_layer_version_obj
 
     def _get_recipe_information_from_taskfile(self, taskfile):
         localfilepath = taskfile.split(":")[-1]
+        filepath_flags = ":".join(sorted(taskfile.split(":")[:-1]))
         layer_version_obj = self._get_layer_version_for_path(localfilepath)
+
+
 
         recipe_info = {}
         recipe_info['layer_version'] = layer_version_obj
-        recipe_info['file_path'] = taskfile
+        recipe_info['file_path'] = localfilepath
+        recipe_info['pathflags'] = filepath_flags
+
+        if recipe_info['file_path'].startswith(recipe_info['layer_version'].local_path):
+            recipe_info['file_path'] = recipe_info['file_path'][len(recipe_info['layer_version'].local_path):].lstrip("/")
+        else:
+            raise RuntimeError("Recipe file path %s is not under layer version at %s" % (recipe_info['file_path'], recipe_info['layer_version'].local_path))
 
         return recipe_info
 
@@ -784,6 +812,7 @@ class BuildInfoHelper(object):
         for layer in layerinfos:
             try:
                 self.internal_state['lvs'][self.orm_wrapper.get_update_layer_object(layerinfos[layer], self.brbe)] = layerinfos[layer]['version']
+                self.internal_state['lvs'][self.orm_wrapper.get_update_layer_object(layerinfos[layer], self.brbe)]['local_path'] = layerinfos[layer]['local_path']
             except NotExisting as nee:
                 logger.warn("buildinfohelper: cannot identify layer exception:%s " % nee)
 
@@ -792,7 +821,7 @@ class BuildInfoHelper(object):
         assert '_pkgs' in vars(event)
         build_information = self._get_build_information()
 
-        build_obj = self.orm_wrapper.create_build_object(build_information, self.brbe)
+        build_obj = self.orm_wrapper.create_build_object(build_information, self.brbe, self.project)
 
         self.internal_state['build'] = build_obj
 
@@ -896,8 +925,8 @@ class BuildInfoHelper(object):
 
             recipe_information = self._get_recipe_information_from_taskfile(taskfile)
             try:
-                if recipe_information['file_path'].startswith(recipe_information['layer_version'].layer.local_path):
-                    recipe_information['file_path'] = recipe_information['file_path'][len(recipe_information['layer_version'].layer.local_path):].lstrip("/")
+                if recipe_information['file_path'].startswith(recipe_information['layer_version'].local_path):
+                    recipe_information['file_path'] = recipe_information['file_path'][len(recipe_information['layer_version'].local_path):].lstrip("/")
 
                 recipe_object = Recipe.objects.get(layer_version = recipe_information['layer_version'],
                             file_path__endswith = recipe_information['file_path'],
@@ -1048,8 +1077,9 @@ class BuildInfoHelper(object):
         self.internal_state['recipes'] = {}
         for pn in event._depgraph['pn']:
 
-            file_name = event._depgraph['pn'][pn]['filename']
-            layer_version_obj = self._get_layer_version_for_path(file_name.split(":")[-1])
+            file_name = event._depgraph['pn'][pn]['filename'].split(":")[-1]
+            pathflags = ":".join(sorted(event._depgraph['pn'][pn]['filename'].split(":")[:-1]))
+            layer_version_obj = self._get_layer_version_for_path(file_name)
 
             assert layer_version_obj is not None
 
@@ -1079,6 +1109,13 @@ class BuildInfoHelper(object):
                 recipe_info['bugtracker'] = event._depgraph['pn'][pn]['bugtracker']
 
             recipe_info['file_path'] = file_name
+            recipe_info['pathflags'] = pathflags
+
+            if recipe_info['file_path'].startswith(recipe_info['layer_version'].local_path):
+                recipe_info['file_path'] = recipe_info['file_path'][len(recipe_info['layer_version'].local_path):].lstrip("/")
+            else:
+                raise RuntimeError("Recipe file path %s is not under layer version at %s" % (recipe_info['file_path'], recipe_info['layer_version'].local_path))
+
             recipe = self.orm_wrapper.get_update_recipe_object(recipe_info)
             recipe.is_image = False
             if 'inherits' in event._depgraph['pn'][pn].keys():
@@ -1213,7 +1250,7 @@ class BuildInfoHelper(object):
                 logger.debug(1, "buildinfohelper: Saving stored event %s " % tempevent)
                 self.store_log_event(tempevent)
             else:
-                logger.error("buildinfohelper: Events not saved: %s" % self.internal_state['backlog'])
+                logger.info("buildinfohelper: All events saved")
                 del self.internal_state['backlog']
 
         log_information = {}

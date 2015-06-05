@@ -7,7 +7,10 @@ DESCRIPTION = "Packages required to satisfy the Linux Standard Base (LSB) specif
 PR = "r10"
 LICENSE = "MIT"
 
-inherit packagegroup
+inherit packagegroup distro_features_check
+
+# The libxt, libxtst and others require x11 in DISTRO_FEATURES
+REQUIRED_DISTRO_FEATURES = "x11"
 
 #
 # We will skip parsing this packagegeoup for non-glibc systems
@@ -54,6 +57,7 @@ RDEPENDS_packagegroup-core-sys-extended = "\
     dhcp-client \
     gamin \
     hdparm \
+    lighttpd \
     libaio \
     lrzsz \
     lzo \
