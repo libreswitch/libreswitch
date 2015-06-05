@@ -36,6 +36,12 @@ RDEPENDS_packagegroup-halon-base = "\
     sudo \
     pwauth \
     halon-init \
+    virtual/switchd \
+    halon-ovsdb \
+    virtual/halon-config \
+    cfgd fand ledd pmd powerd sysd tempd \
+    intfd lacpd lldpd vland \
+    quagga \
 "
 
 RDEPENDS_packagegroup-halon-base_append_arm = "\
