@@ -42,6 +42,7 @@ RDEPENDS_packagegroup-halon-base = "\
     cfgd fand ledd pmd powerd sysd tempd \
     intfd lacpd lldpd vland \
     quagga \
+    cronie \
     inetutils-ping inetutils-ping6 inetutils-hostname inetutils-ifconfig \
     inetutils-tftp inetutils-traceroute inetutils-ftp inetutils-telnet \
     xinetd \
