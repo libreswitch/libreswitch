@@ -1,0 +1,39 @@
+#!/bin/sh
+#
+# Verify what is about to be committed.  Called by "git commit" with no
+# arguments.  The hook should exit with non-zero status after issuing an
+# appropriate message if it wants to stop the commit.
+#
+
+if git rev-parse --verify HEAD >/dev/null 2>&1
+then
+    tree=HEAD
+else
+    # Empty tree object
+    tree=4b825dc642cb6eb9a060e54bf8d69288fbee4904
+fi
+
+# Redirect output to stderr.
+exec 1>&2
+
+# Prevent the addition of files with non-visible characters
+if test $(git diff --cached --name-only --diff-filter=A -z $tree | LC_ALL=C tr -d '[!-~]\0' | wc -c) != 0
+then
+    cat <<EOF
+
+Error: Attempt to add a file name with non-visible characters; commit failed.
+
+EOF
+    exit 1
+fi
+
+# Prevent change sets with trailing whitespace, except in markdown files
+if ! git diff --cached --name-only $tree | grep -v '.md$' | xargs git diff-index --cached --check $tree --
+then
+    cat <<EOF
+
+Error: Change set contains trailing whitespace; commit failed.
+
+EOF
+    exit 1
+fi

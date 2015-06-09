@@ -350,17 +350,17 @@ setup-git-review:
 	$(V) $(ECHO) "$(YELLOW)Setting up git-review system...$(GRAY)\n"
 	$(V)$(MAKE) _setup-git-review
 
-_setup-git-review:: .git/hooks/commit-msg
+_setup-git-review:: $(addprefix .git/hooks/,$(notdir $(wildcard $(BUILD_ROOT)/tools/bin/hooks/*)))
 	$(V) if which git-review > /dev/null ; then \
 	  git review -s ; \
 	else \
-	  $(call WARNING,git-review wasn't found... skipping his configuration) ; \
+	  $(call WARNING,git-review wasn't found... skipping its configuration) ; \
 	fi
 
-.git/hooks/commit-msg:
-	$(V) gitdir=$$(git rev-parse --git-dir); scp -q -p -P 29418 $(REVIEWUSER)@review.openhalon.io:hooks/commit-msg $${gitdir}/hooks/
+.git/hooks/%:
+	$(V) cp $(BUILD_ROOT)/tools/bin/hooks/$* $@
 
-.PHONY: devenv_init devenv_clean devenv_add devenv_rm devenv_status devenv_cscope devenv_list_all 
+.PHONY: devenv_init devenv_clean devenv_add devenv_rm devenv_status devenv_cscope devenv_list_all
 .PHONY: devenv_import dev_header devenv_refresh _devenv_refresh
 
 -include src/Rules.make
@@ -418,7 +418,7 @@ define DEVENV_ADD
 	  pushd . > /dev/null ; \
 	  cd $(BUILD_ROOT)/src/$(1) ; \
 	  if [ -f .gitreview ] ; then \
-	    gitdir=$$(git rev-parse --git-dir); scp -q -p -P 29418 $(REVIEWUSER)@review.openhalon.io:hooks/commit-msg $${gitdir}/hooks/ ; \
+	    gitdir=$$(git rev-parse --git-dir); cp $(BUILD_ROOT)/tools/bin/hooks/* $${gitdir}/hooks/ ; \
 	  fi ; \
 	  git checkout $(DEVENV_BRANCH) || { $(call FATAL_ERROR, Unable to checkout the request branch '$(DEVENV_BRANCH)') ; } ; \
 	  popd > /dev/null ; \
