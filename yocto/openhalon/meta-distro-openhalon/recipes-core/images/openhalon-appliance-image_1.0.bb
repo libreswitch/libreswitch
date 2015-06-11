@@ -1,6 +1,8 @@
 SUMMARY = "A VirtualBox image of Halon"
 
-LICENSE = "HP"
+LICENSE = "Apache-2.0"
+
+IMAGE_FEATURES += "ssh-server-openssh"
 
 IMAGE_ROOTFS_SIZE = "524288"
 
