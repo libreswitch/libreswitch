@@ -37,6 +37,7 @@ RDEPENDS_packagegroup-halon-base = "\
     pwauth \
     halon-init \
     virtual/switchd \
+    ${@bb.utils.contains('MACHINE_FEATURES', 'halonsim', 'ovs-sim-plugin', '',d)} \
     halon-ovsdb \
     virtual/halon-config \
     cfgd fand ledd pmd powerd sysd tempd \
