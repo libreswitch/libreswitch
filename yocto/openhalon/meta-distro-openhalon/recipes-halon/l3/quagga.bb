@@ -27,7 +27,7 @@ EXTRA_OECONF = "--disable-doc --disable-ripd \
  --disable-watchquagga --disable-opaque-lsa --disable-ospfapi \
  --disable-ospfclient --disable-ospf-te --disable-rtadv --disable-rusage \
  --enable-user=root --enable-group=root \
- --enable-ovsdb \
+ --enable-ovsdb --enable-vtysh\
 "
 
 do_install_append() {
