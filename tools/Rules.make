@@ -525,19 +525,11 @@ git_pull: header
 	  $(ECHO) "\n$(GREEN)Update completed$(GRAY)" ; \
 	 fi
 
-_ct_library_devenv_add: dev_header
-	$(V) if ! grep -q halon-vsi .devenv 2>/dev/null ; then \
-	  $(V) $(MAKE) devenv_add halon-vsi; \
-    fi
+devenv_ct_init: dev_header
+	$(call BITBAKE,halon-vsi-native)
 
-devenv_ct_test devenv_ct_test-clean: _ct_library_devenv_add
-	$(V) if test -s .devenv ; then \
-	   while read repo ; do \
-	    make $$repo-$(subst devenv_ct_,'ct-',$(MAKECMDGOALS)) ; \
-	  done < .devenv; \
-	else \
-	  $(ECHO) "$(RED)No source repos found. Add them using make devenv_add. $(GRAY)" ; \
-	fi
+devenv_ct_test:
+	/usr/bin/sudo $(PYTEST_NATIVE) -s src
 
 ## Support commands
 ## Use with caution!!!!
