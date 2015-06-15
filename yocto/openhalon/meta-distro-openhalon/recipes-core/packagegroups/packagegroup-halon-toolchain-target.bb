@@ -17,5 +17,4 @@ RDEPENDS_${PN} += " \
         lttng-ust-dev \
         systemd-dev \
         libevent-dev \
-	${@base_contains("MACHINE_FEATURES", "bcmsdk", "bcmsdk-dev ", "",d)} \
 "
