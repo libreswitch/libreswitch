@@ -47,6 +47,7 @@ RDEPENDS_packagegroup-halon-base = "\
     inetutils-ping inetutils-ping6 inetutils-hostname inetutils-ifconfig \
     inetutils-tftp inetutils-traceroute inetutils-ftp inetutils-telnet \
     xinetd \
+    aaa-utils \
 "
 
 RDEPENDS_packagegroup-halon-base_append_arm = "\
