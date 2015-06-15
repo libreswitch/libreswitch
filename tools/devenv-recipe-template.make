@@ -36,16 +36,4 @@ endif
 
 ##RECIPE##-nfs-undeploy:
 	$(V)$(call DEVTOOL, undeploy-target -s ##RECIPE## localhost:$(NFSROOTPATH))
-
-##RECIPE##-ct-test:
-	$(V) if [ -d src/##RECIPE##/ct-test ] && [ -f  src/##RECIPE##/ct-test/Makefile ]; then \
-		$(MAKE) -C src/##RECIPE##/ct-test; \
-    else \
-        $(ECHO) "$(RED)No component tests found for ##RECIPE##. $(GRAY)"; \
-	fi
-
-##RECIPE##-ct-test-clean:
-	$(V) if [ -d src/##RECIPE##/ct-test ] && [ -f  src/##RECIPE##/ct-test/Makefile ]; then \
-		$(MAKE) -C src/##RECIPE##/ct-test clean; \
-	fi
 #END_##RECIPE##
