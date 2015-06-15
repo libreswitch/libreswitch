@@ -2,8 +2,6 @@ SUMMARY = "A VirtualBox image of Halon"
 
 LICENSE = "Apache-2.0"
 
-IMAGE_FEATURES += "ssh-server-openssh"
-
 IMAGE_ROOTFS_SIZE = "524288"
 
 # Do a quiet boot with limited console messages
@@ -13,8 +11,6 @@ SYSLINUX_TIMEOUT ?= "0"
 
 DEPENDS = "tar-native"
 IMAGE_FSTYPES = "vmdk tar.gz"
-
-inherit core-image
 
 SRC_URI = " \
 	file://halon.ovf \
@@ -53,3 +49,5 @@ python do_bundle_files() {
 
 addtask bundle_files after do_vmdkimg before do_build
 #do_bundle_files[nostamp] = "1"
+
+inherit halon-image
