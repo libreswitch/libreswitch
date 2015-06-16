@@ -1,0 +1,10 @@
+#%PAM-1.0
+
+auth       include      common-auth-access
+account    required     pam_nologin.so
+account    include      common-account-access
+password   include      common-password-access
+session    optional     pam_keyinit.so force revoke
+session    include      common-session-access
+session    required     pam_loginuid.so
+
