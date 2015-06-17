@@ -206,7 +206,7 @@ deploy_container:
 	fi
 	$(V) $(ECHO) "Exporting an lxc-container with name '$(CONTAINER_NAME)' may ask for admin password..."
 	$(V) $(ECHO) -n "Checking that no container with the same name already exists..."
-	$(V) if sudo lxc-info -n $(CONTAINER_NAME) >/dev/null 2>&1 ; then \
+	$(V) if $(SUDO) lxc-info -n $(CONTAINER_NAME) >/dev/null 2>&1 ; then \
 	  echo ; \
 	  $(call FATAL_ERROR, A container '$(CONTAINER_NAME)' already exists... aborting.\nYou may remove it with 'sudo lxc-destroy -n $(CONTAINER_NAME)') ; \
 	else \
@@ -214,7 +214,7 @@ deploy_container:
 	fi
 	$(V) export OPENHALON_IMAGE=$(BUILD_ROOT)/images/`basename $(BASE_TARGZ_FS_FILE)` ; \
 	export BUILD_ROOT ; \
-	sudo -E lxc-create -n $(CONTAINER_NAME) -f /dev/null -t $(BUILD_ROOT)/tools/lxc/lxc-openhalon
+	$(SUDO) -E lxc-create -n $(CONTAINER_NAME) -f /dev/null -t $(BUILD_ROOT)/tools/lxc/lxc-openhalon
 	$(V) $(ECHO) "Exporting completed.\nRun with 'sudo lxc-start -n $(CONTAINER_NAME)'"
 
 .PHONY: export_docker_image
@@ -253,7 +253,7 @@ deploy_nfsroot:
 	  $(call WARNING,Removing previous deployed nfsroot directory at $(NFSROOTPATH) before re-deploying) ; \
 	  $(ECHO) "Press any key to continue wipping out previous nfsroot, or ctrl+c to abort..." ; \
 	  read ; \
-	  sudo rm -Rf $(NFSROOTPATH) ; \
+	  $(SUDO) rm -Rf $(NFSROOTPATH) ; \
 	fi
 	$(V) mkdir -p $(NFSROOTPATH)
 	$(V) $(ECHO) -n "Extracting the NFS root into $(NFSROOTPATH)... "
@@ -261,10 +261,10 @@ deploy_nfsroot:
 	$(V) $(ECHO) done
 	$(V) if ! [ -f /etc/exports.d/$(notdir $(NFSROOTPATH)).exports ] ; then \
 	  $(ECHO) "\nExporting NFS directory, may ask for admin password..." ; \
-	  sudo mkdir -p /etc/exports.d ; \
-	  sudo bash -c 'echo "$(NFSROOTPATH) *(rw,no_root_squash,sync,no_subtree_check,insecure)" > /etc/exports.d/$(notdir $(NFSROOTPATH)).exports' ; \
+	  $(SUDO) mkdir -p /etc/exports.d ; \
+	  $(SUDO) bash -c 'echo "$(NFSROOTPATH) *(rw,no_root_squash,sync,no_subtree_check,insecure)" > /etc/exports.d/$(notdir $(NFSROOTPATH)).exports' ; \
 	  if which service > /dev/null ; then \
-	    sudo service nfs-kernel-server start ; \
+	    $(SUDO) service nfs-kernel-server start ; \
 	  fi ; \
 	  echo ; \
 	fi
@@ -525,11 +525,18 @@ git_pull: header
 	  $(ECHO) "\n$(GREEN)Update completed$(GRAY)" ; \
 	 fi
 
+.PHONY: devenv_ct_init devenv_ct_test
 devenv_ct_init: dev_header
 	$(call BITBAKE,halon-vsi-native)
+	/bin/cp tools/pytest.ini src/pytest.ini
 
+$(eval $(call PARSE_ARGUMENTS, devenv_ct_test))
+PY_TEST_ARGS:=$(EXTRA_ARGS)
+ifeq ($(PY_TEST_ARGS),)
+PY_TEST_ARGS=src
+endif
 devenv_ct_test:
-	/usr/bin/sudo $(PYTEST_NATIVE) -s src
+	$(SUDO) $(PYTEST_NATIVE) $(PY_TEST_ARGS)
 
 ## Support commands
 ## Use with caution!!!!
@@ -542,19 +549,19 @@ ifneq ($(findstring share_screen_with,$(MAKECMDGOALS)),)
   endif
 endif
 share_screen_with:
-	$(V)$(ECHO) "Enabling shared console with user: $(USERTOSHARE)..."
-	$(V)$(ECHO) "  Enabling suid in screen binary and fixing permissions, may need root password..."
-	$(V)sudo chmod +s `which screen`
-	$(V)sudo chmod g-w /var/run/screen
-	$(V)$(ECHO) "  Starting shared screen session..."
+	$(V) $(ECHO) "Enabling shared console with user: $(USERTOSHARE)..."
+	$(V) $(ECHO) "  Enabling suid in screen binary and fixing permissions, may need root password..."
+	$(V) $(SUDO) chmod +s `which screen`
+	$(V) $(SUDO) chmod g-w /var/run/screen
+	$(V) $(ECHO) "  Starting shared screen session..."
 	$(V) screen -d -m -S shared-with-$(USERTOSHARE) ; \
 	 sleep 1 ; \
 	 screen -x shared-with-$(USERTOSHARE) -X multiuser on ; \
 	 screen -x shared-with-$(USERTOSHARE) -X acladd $(USERTOSHARE) ; \
 	 screen -x shared-with-$(USERTOSHARE) -r
-	$(V)$(ECHO) "  Disabling suid and restoring permissions..."
-	$(V)sudo chmod -s `which screen`
-	$(V)sudo chmod g+w /var/run/screen
+	$(V) $(ECHO) "  Disabling suid and restoring permissions..."
+	$(V) $(SUDO) chmod -s `which screen`
+	$(V) $(SUDO) chmod g+w /var/run/screen
 
 $(eval $(call PARSE_ARGUMENTS,attach_screen_with))
 USERTOSHARE?=$(EXTRA_ARGS)
