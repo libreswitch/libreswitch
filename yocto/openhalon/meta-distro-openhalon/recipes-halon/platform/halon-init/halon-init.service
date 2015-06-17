@@ -4,7 +4,7 @@
 Description=Halon system initialization script
 
 [Service]
-Type=simple
+Type=oneshot
 ExecStart=/usr/sbin/halon-init
 
 [Install]
