@@ -4,7 +4,9 @@ SECTION = "devel/python"
 LICENSE = "BSD"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=d9ccab8f5115cadad300993df353cd47"
 
-SRC_URI = "git://github.com/mininet/mininet"
+SRC_URI = "git://github.com/mininet/mininet \
+           file://0001-Ignore-ifconfig-output.patch \
+           "
 SRCREV = "2.2.1"
 
 S = "${WORKDIR}/git"

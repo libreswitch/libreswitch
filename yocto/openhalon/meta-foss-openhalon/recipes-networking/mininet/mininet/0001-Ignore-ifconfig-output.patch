@@ -1,0 +1,28 @@
+From 9e9aad5a8166dd17d03f18f74527cf43da5a59b2 Mon Sep 17 00:00:00 2001
+From: Sreedhar <sreedharr@hp.com>
+Date: Thu, 18 Jun 2015 12:40:33 -0500
+Subject: [PATCH] Ignore ifconfig output.
+
+---
+ mininet/link.py | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/mininet/link.py b/mininet/link.py
+index 9703ce7..e179f0a 100644
+--- a/mininet/link.py
++++ b/mininet/link.py
+@@ -136,8 +136,9 @@ def isUp( self, setUp=False ):
+             cmdOutput = self.ifconfig( 'up' )
+             # no output indicates success
+             if cmdOutput:
+-                error( "Error setting %s up: %s " % ( self.name, cmdOutput ) )
+-                return False
++                if 'UP' not in cmdOutput:
++                    error( "Error setting %s up: %s " % ( self.name, cmdOutput ) )
++                    return False
+             else:
+                 return True
+         else:
+-- 
+1.9.1
+
