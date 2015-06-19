@@ -325,7 +325,7 @@ images/$(CONFIGURED_PLATFORM).itb:: $(DISTRO_PLATFORM_ITS_FILE) $(MKIMAGE)
 
 # ONIE installer
 .PHONY: onie-installer
-onie-installer: header _onie-installer _kernel_links _fs_links
+onie-installer: header _onie-installer _kernel_links _fs
 
 DISTRO_ONIE_INSTALLER_FILE?= $(BASE_ONIE_INSTALLER_FILE)
 _onie-installer::
