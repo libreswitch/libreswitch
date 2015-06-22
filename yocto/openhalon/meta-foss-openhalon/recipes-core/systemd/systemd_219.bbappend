@@ -17,6 +17,9 @@ SRC_URI += "file://systemctl-alias.sh \
     file://revert-ipv6ll-address-setting.patch \
 "
 
+# We remove the dependency from os-release to avoid rebuilding constantly
+RRECOMMENDS_${PN}_remove = "os-release"
+
 FILES_${PN} += "${sysconfdir}/profile.d/"
 
 do_install_append() {

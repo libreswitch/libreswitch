@@ -8,6 +8,11 @@ OS_RELEASE_FIELDS = "ID ID_LIKE NAME VERSION VERSION_ID PRETTY_NAME HOME_URL BUI
 
 HOME_URL="https://wiki.openhalon.io"
 
-include build_info.conf
+def get_build_id(d):
+    import os
+    import pwd
+    return pwd.getpwuid(os.getuid())[0]
 
-BUILD_ID??=""
+BUILD_ID = "${@get_build_id(d)}"
+
+include build_info.conf

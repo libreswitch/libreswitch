@@ -20,6 +20,7 @@ PACKAGES = ' \
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 
 RDEPENDS_packagegroup-halon-base = "\
+    os-release \
     i2c-tools \
     mtd-utils \
     gptfdisk \
