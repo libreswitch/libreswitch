@@ -16,15 +16,15 @@ do_install () {
     install -d ${D}${sbindir}
     install -d ${D}${systemd_unitdir}/system
     install -d ${D}${sysconfdir}/profile.d
-    install -d ${D}${sysconfdir}/sysctl.d
+    install -d ${D}${sysconfdir}/halon/sysctl.d
 
     install -m 0644 ${WORKDIR}/halon-init.service ${D}${systemd_unitdir}/system
     install -m 0755 ${WORKDIR}/halon-init.sh ${D}${sbindir}/halon-init
     install -m 0755 ${WORKDIR}/halon-profile.sh ${D}${sysconfdir}/profile.d/halon-profile
-    install -m 0755 ${WORKDIR}/halon-sysctl.conf ${D}${sysconfdir}/sysctl.d/99-halon-sysctl.conf
+    install -m 0755 ${WORKDIR}/halon-sysctl.conf ${D}${sysconfdir}/halon/sysctl.d/halon-sysctl.conf
 }
 
-FILES_${PN} += "${sysconfdir}/sysctl.d"
+FILES_${PN} += "${sysconfdir}/halon/sysctl.d"
 SYSTEMD_PACKAGES = "${PN}"
 SYSTEMD_SERVICE_${PN} = "halon-init.service"
 
