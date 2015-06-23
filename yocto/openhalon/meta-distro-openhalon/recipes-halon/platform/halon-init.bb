@@ -7,7 +7,8 @@ RDEPENDS_${PN} = "bash"
 SRC_URI = "file://halon-init.service \
            file://halon-init.sh \
            file://halon-profile.sh \
-           file://halon-sysctl.conf \
+           file://halon-vrf-sysctl-set.conf \
+           file://halon-vrf-sysctl-unset.conf \
 "
 
 S = "${WORKDIR}"
@@ -21,7 +22,8 @@ do_install () {
     install -m 0644 ${WORKDIR}/halon-init.service ${D}${systemd_unitdir}/system
     install -m 0755 ${WORKDIR}/halon-init.sh ${D}${sbindir}/halon-init
     install -m 0755 ${WORKDIR}/halon-profile.sh ${D}${sysconfdir}/profile.d/halon-profile
-    install -m 0755 ${WORKDIR}/halon-sysctl.conf ${D}${sysconfdir}/halon/sysctl.d/halon-sysctl.conf
+    install -m 0755 ${WORKDIR}/halon-vrf-sysctl-set.conf ${D}${sysconfdir}/halon/sysctl.d/halon-vrf-sysctl-set.conf
+    install -m 0755 ${WORKDIR}/halon-vrf-sysctl-unset.conf ${D}${sysconfdir}/halon/sysctl.d/halon-vrf-sysctl-unset.conf
 }
 
 FILES_${PN} += "${sysconfdir}/halon/sysctl.d"
