@@ -527,8 +527,8 @@ git_pull: header
 
 .PHONY: devenv_ct_init devenv_ct_test
 devenv_ct_init: dev_header
-	$(call BITBAKE,halon-vsi-native)
-	/bin/cp tools/pytest.ini src/pytest.ini
+	$(V)$(call BITBAKE,halon-vsi-native)
+	$(V)/bin/cp tools/pytest.ini src/pytest.ini
 
 $(eval $(call PARSE_ARGUMENTS, devenv_ct_test))
 PY_TEST_ARGS:=$(EXTRA_ARGS)
@@ -536,7 +536,7 @@ ifeq ($(PY_TEST_ARGS),)
 PY_TEST_ARGS=src
 endif
 devenv_ct_test:
-	$(SUDO) $(PYTEST_NATIVE) $(PY_TEST_ARGS)
+	$(V)$(SUDO) $(PYTEST_NATIVE) $(PY_TEST_ARGS)
 
 ## Support commands
 ## Use with caution!!!!
