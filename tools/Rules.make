@@ -218,7 +218,7 @@ deploy_container:
 	$(V) $(ECHO) "Exporting completed.\nRun with 'sudo lxc-start -n $(CONTAINER_NAME)'"
 
 .PHONY: export_docker_image
-$(eval $(call PARSE_ARGUMENTS, export_docker_image))
+$(eval $(call PARSE_ARGUMENTS,export_docker_image))
 DOCKER_IMAGE:=$(EXTRA_ARGS)
 ifeq ($(DOCKER_IMAGE),)
 DOCKER_IMAGE=$(BASE_DOCKER_IMAGE)
