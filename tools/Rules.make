@@ -529,6 +529,9 @@ git_pull: header
 devenv_ct_init: dev_header
 	$(V)$(call BITBAKE,halon-vsi-native)
 	$(V)/bin/cp tools/pytest.ini src/pytest.ini
+	$(V)if ! vercomp $$(docker --version | cut -d' ' -f 3 | cut -d, -f 1) 1.3.0 \> ; then \
+	  $(call FATAL_ERROR, Your docker is too old. You need at least > 1.3.0); \
+	fi
 
 $(eval $(call PARSE_ARGUMENTS, devenv_ct_test))
 PY_TEST_ARGS:=$(EXTRA_ARGS)
@@ -536,7 +539,7 @@ ifeq ($(PY_TEST_ARGS),)
 PY_TEST_ARGS=src
 endif
 devenv_ct_test:
-	$(V)$(SUDO) $(PYTEST_NATIVE) $(PY_TEST_ARGS)
+	$(V) $(SUDO) PATH=$(STAGING_DIR_NATIVE)/usr/bin:$$PATH $(PYTEST_NATIVE) $(PY_TEST_ARGS)
 
 ## Support commands
 ## Use with caution!!!!
