@@ -18,6 +18,17 @@ RDEPENDS_${PN} += " \
     python-textutils python-shell python-netclient python-logging python-readline \
 "
 
+do_compile_append() {
+    cd ${B}
+    make mnexec
+}
+
+do_install_append() {
+    install -d ${D}${bindir}
+    install -m 0755 mnexec ${D}${bindir}
+    touch ${D}
+}
+
 RDEPENDS_${PN}_class-native = ""
 RDEPENDS_${PN}_class-nativesdk = ""
 

@@ -27,7 +27,7 @@ SHELL=/bin/bash
 V=$(if $(VERBOSE),,@)
 ECHO=echo -e
 MAKE=make $(if $(VERBOSE),,-s)
-SUDO=/usr/bin/sudo
+SUDO=/usr/bin/sudo -E
 
 # Remove known troublesome directories from PATH.
 # More directories can be added to RDIRS separated by '|'.
