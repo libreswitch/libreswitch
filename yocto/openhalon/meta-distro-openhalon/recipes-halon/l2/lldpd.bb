@@ -1,6 +1,7 @@
+
 SUMMARY = "Halon LLDP Daemon"
 LICENSE = "ISC"
-LIC_FILES_CHKSUM = "file://README.md;beginline=249;endline=259;md5=c39f3ef7df23415cc6e3f0d278dd31f4"
+LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
 DEPENDS = "halonutils config-yaml halon-ovsdb libevent openssl"
 
