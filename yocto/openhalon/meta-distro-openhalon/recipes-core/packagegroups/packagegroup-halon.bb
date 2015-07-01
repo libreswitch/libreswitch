@@ -49,6 +49,7 @@ RDEPENDS_packagegroup-halon-base = "\
     inetutils-tftp inetutils-traceroute inetutils-ftp inetutils-telnet \
     xinetd \
     aaa-utils \
+    pam-plugin-radius-auth \
 "
 
 RDEPENDS_packagegroup-halon-base_append_arm = "\
