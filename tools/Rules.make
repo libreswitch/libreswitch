@@ -506,6 +506,13 @@ _devenv_refresh:
 	done < .devenv
 	$(V) $(ECHO) "\n$(GREEN)Update completed$(GRAY)"
 
+
+# Git support
+.PHONY: changelog_manifest
+changelog_manifest: header
+	$(V) $(ECHO) "$(YELLOW)Generating Change Log Manifest ...$(GRAY)\n"
+	$(V) cd $(BUILDDIR) ; $(BUILD_ROOT)/tools/bin/changelog_projects.py
+
 # Git support
 .PHONY: git_pull
 git_pull: header
