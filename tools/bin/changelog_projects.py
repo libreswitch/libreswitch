@@ -125,10 +125,16 @@ def parse_recipe(recipe):
 def generate_manifest_data(repositories):
     """
     We need to execute BitBake -s in order to know the latest version for each proyect
+    :param str repositories: Path of the recipe.
+    :rtype: str
     """
+    path = abspath("../../build")
+
+    command = 'cd '+path
+    #git checkout a la primera version
+    command += ' && ../yocto/poky/bitbake/bin/bitbake -s | grep \'gitAUTOINC*\' > ../tools/bin/tmp.txt'
+    system (command)
     listprojects = repositories.keys()
-    #Getting the latest git references for everyproject in git
-    system("../yocto/poky/bitbake/bin/bitbake -s | grep 'gitAUTOINC*' > tmp.txt")
 
     #it is going to store the name of the project and the git reference number
     m = open('changelog.manifest','w')
@@ -156,7 +162,7 @@ def main():
 
     # Get root
     #root = abspath(dirname(__file__))
-    root = abspath("../yocto")
+    root = abspath("../../yocto")
     #log.debug('Root is: {}'.format(root))
 
     # Find all changelog configurations
@@ -183,7 +189,7 @@ def main():
 
             # Parse recipe
             repository = parse_recipe(recipe)
-            log.debug('Recipe {} repository is: {}'.format(name, repository))
+            #log.debug('Recipe {} repository is: {}'.format(name))
             repositories[name] = repository
 
     generate_manifest_data(repositories)
