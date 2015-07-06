@@ -546,7 +546,7 @@ ifeq ($(PY_TEST_ARGS),)
 PY_TEST_ARGS=src
 endif
 devenv_ct_test:
-	$(V) $(SUDO) PATH=$(STAGING_DIR_NATIVE)/usr/bin:$$PATH $(PYTEST_NATIVE) $(PY_TEST_ARGS)
+	$(V) $(SUDO) PYTHONDONTWRITEBYTECODE=0 PATH=$(STAGING_DIR_NATIVE)/usr/bin:$$PATH $(PYTEST_NATIVE) $(PY_TEST_ARGS)
 
 ## Support commands
 ## Use with caution!!!!
