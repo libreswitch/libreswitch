@@ -27,8 +27,9 @@ EOF
     exit 1
 fi
 
-# Prevent change sets with trailing whitespace, except in markdown files
-if ! git diff --cached --name-only $tree | grep -v '.md$' | xargs git diff-index --cached --check $tree --
+# Prevent change sets with trailing whitespace
+# Don't check markdown or patch files
+if ! git diff --cached --name-only $tree | egrep -v '(\.md|\.patch)$' | xargs git diff-index --cached --check $tree --
 then
     cat <<EOF
 
