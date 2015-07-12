@@ -43,6 +43,7 @@ RDEPENDS_packagegroup-halon-base = "\
     virtual/halon-config \
     cfgd fand ledd pmd powerd sysd tempd \
     intfd lacpd lldpd vland \
+    cli \
     quagga \
     cronie \
     inetutils-ping inetutils-ping6 inetutils-hostname inetutils-ifconfig \
