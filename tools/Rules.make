@@ -418,7 +418,7 @@ define DEVENV_ADD
 	  pushd . > /dev/null ; \
 	  cd $(BUILD_ROOT)/src/$(1) ; \
 	  if [ -f .gitreview ] ; then \
-	    gitdir=$$(git rev-parse --git-dir); cp $(BUILD_ROOT)/tools/bin/hooks/* $${gitdir}/hooks/ ; \
+	    gitdir=$$(git rev-parse --git-dir); cp -f $(BUILD_ROOT)/tools/bin/hooks/* $${gitdir}/hooks/ ; \
 	  fi ; \
 	  git checkout $(DEVENV_BRANCH) || { $(call FATAL_ERROR, Unable to checkout the request branch '$(DEVENV_BRANCH)') ; } ; \
 	  popd > /dev/null ; \
