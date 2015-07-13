@@ -1,0 +1,77 @@
+From b2d625a6df0dfadd6e7bd55f7cc206b1228be8e5 Mon Sep 17 00:00:00 2001
+From: Diego Dompe <dompe@hp.com>
+Date: Fri, 3 Jul 2015 11:56:16 -0600
+Subject: [PATCH] Fix cross compile
+
+Signed-off-by: Diego Dompe <dompe@hp.com>
+---
+ configure | 90 ++++++++-------------------------------------------------------
+ 1 file changed, 11 insertions(+), 79 deletions(-)
+
+Index: freeradius-server-3.0.8/configure.ac
+===================================================================
+--- freeradius-server-3.0.8.orig/configure.ac	2015-07-06 09:47:14.864698995 -0600
++++ freeradius-server-3.0.8/configure.ac	2015-07-06 10:22:31.908606820 -0600
+@@ -903,7 +903,7 @@
+   esac])
+ 
+ smart_try_dir="$collectdclient_lib_dir"
+-FR_SMART_CHECK_LIB(collectdclient, lcc_connect)
++dnl FR_SMART_CHECK_LIB(collectdclient, lcc_connect)
+ if test "x$ac_cv_lib_collectdclient_lcc_connect" != "xyes"; then
+   AC_MSG_WARN([collectdclient library not found. Use --with-collectdclient-lib-dir=<path>.])
+ else
+@@ -1138,44 +1138,6 @@
+         AC_MSG_FAILURE([OpenSSL version too old])
+       ]
+     )
+-
+-    dnl #
+-    dnl #  CPPFLAGS are passed to the compiler first, so we use
+-    dnl #  them to ensure things like --sysroot don't override the
+-    dnl #  library location we discovered previously.
+-    dnl #
+-    old_CPPFLAGS="$CPPFLAGS"
+-    CPPFLAGS="$OPENSSL_CPPFLAGS $CPPFLAGS"
+-
+-    dnl #
+-    dnl #  Now check that the header versions match the library
+-    dnl #
+-    AC_MSG_CHECKING([OpenSSL library and header version consistency])
+-    AC_RUN_IFELSE(
+-      [AC_LANG_PROGRAM(
+-        [[
+-          #include <stdio.h>
+-          #include <openssl/opensslv.h>
+-          #include <openssl/crypto.h>
+-        ]],
+-        [[
+-          printf("library: %lx header: %lx... ", (unsigned long) SSLeay(), (unsigned long) OPENSSL_VERSION_NUMBER);
+-          if (SSLeay() == OPENSSL_VERSION_NUMBER) {
+-            return 0;
+-          } else {
+-            return 1;
+-          }
+-        ]]
+-      )],
+-      [
+-        AC_MSG_RESULT(yes)
+-      ],
+-      [
+-        AC_MSG_RESULT(no)
+-        AC_MSG_FAILURE([OpenSSL library version does not match header version])
+-      ]
+-    )
+-    CPPFLAGS="$old_CPPFLAGS"
+   fi
+ 
+   LIBS="$OLD_LIBS"
+@@ -1719,7 +1681,7 @@
+ FR_SMART_CHECK_INCLUDE(execinfo.h)
+ if test "x$ac_cv_header_execinfo_h" = "xyes"; then
+   smart_try_dir=$execinfo_lib_dir
+-  FR_SMART_CHECK_LIB(execinfo, backtrace_symbols)
++  dnl FR_SMART_CHECK_LIB(execinfo, backtrace_symbols)
+   if test "x$ac_cv_lib_execinfo_backtrace_symbols" != "xyes"; then
+     dnl # Might be provided as part of libc
+     AC_MSG_CHECKING([if execinfo provided as part of libc])
