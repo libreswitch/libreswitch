@@ -535,7 +535,8 @@ git_pull: header
 .PHONY: devenv_ct_init devenv_ct_test
 devenv_ct_init: dev_header
 	$(V)$(call BITBAKE,halon-vsi-native)
-	$(V)/bin/cp tools/pytest.ini src/pytest.ini
+	$(V) /bin/mkdir -p src
+	$(V) /bin/cp tools/pytest.ini src/pytest.ini
 	$(V)if ! vercomp $$(docker --version | cut -d' ' -f 3 | cut -d, -f 1) 1.3.0 \> ; then \
 	  $(call FATAL_ERROR, Your docker is too old. You need at least > 1.3.0); \
 	fi
