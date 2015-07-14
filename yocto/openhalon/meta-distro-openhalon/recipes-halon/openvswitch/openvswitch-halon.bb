@@ -43,13 +43,17 @@ FILES_halon-ovsdb = "/run /var/run /var/log /var/volatile ${bindir}/ovsdb* \
   ${libdir}/libovscommon.so.1* ${libdir}/libovsdb.so.1* \
   ${sysconfdir}/tmpfiles.d/openswitch.conf /usr/share/openvswitch/*.ovsschema"
 
-inherit python-dir
+inherit python-dir useradd
 
 FILES_python-halon-ovsdb = "${PYTHON_SITEPACKAGES_DIR}/ovs"
 
 FILES_${PN} = "${bindir}/ovs-appctl ${bindir}/ovs-pki ${bindir}/ovs-vsctl \
  /var/local/openvswitch ${sbindir}/ovs-vswitchd \
  ${libdir}/libofproto.so.1* ${libdir}/libopenvswitch.so.1* ${libdir}/libsflow.so.1*"
+
+USERADD_PACKAGES = "${PN}"
+
+GROUPADD_PARAM_${PN} ="-g 1020 ovsdb_users"
 
 do_configure_prepend() {
     export OPEN_HALON_BUILD=1
@@ -79,7 +83,7 @@ do_install_append() {
         install -m 0644 ${WORKDIR}/switchd_sim.service ${D}${systemd_unitdir}/system/switchd.service
     fi
     install -d ${D}${sysconfdir}/tmpfiles.d
-    echo "d /run/openvswitch/ - - - -" > ${D}${sysconfdir}/tmpfiles.d/openswitch.conf
+    echo "d /run/openvswitch/ 0770 - ovsdb_users -" > ${D}${sysconfdir}/tmpfiles.d/openswitch.conf
     install -d ${D}${PYTHON_SITEPACKAGES_DIR}
     mv ${D}/${prefix}/share/openvswitch/python/ovs ${D}${PYTHON_SITEPACKAGES_DIR}
 }
