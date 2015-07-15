@@ -81,7 +81,7 @@ ifeq ($(1),$(firstword $(MAKECMDGOALS)))
 endif
 endef
 
-export BUILD_ROOT=$(PWD)
+export BUILD_ROOT=$(CURDIR)
 
 all:: header
 
