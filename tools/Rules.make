@@ -557,7 +557,7 @@ ifneq ($(findstring devenv_ct_test,$(MAKECMDGOALS)),)
 SBOX_UUID=$(shell cat .sandbox_uuid | cut -d '-' -f 5)
 endif
 
-$(eval $(call PARSE_ARGUMENTS, devenv_ct_test))
+$(eval $(call PARSE_ARGUMENTS,devenv_ct_test))
 PY_TEST_ARGS:=$(EXTRA_ARGS)
 ifeq ($(PY_TEST_ARGS),)
 PY_TEST_ARGS=src
