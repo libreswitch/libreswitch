@@ -9,9 +9,12 @@ CFLAGS += "-DHALON"
 # Do cmake builds in debug mode
 EXTRA_OECMAKE+="-DCMAKE_BUILD_TYPE=Debug"
 EXTRA_OECMAKE+="${@bb.utils.contains('MACHINE_FEATURES', 'halonsim', '-DPLATFORM_SIMULATION=ON', '',d)}"
+EXTRA_OECMAKE+="${@base_conditional('SITEINFO_ENDIANNESS', 'le', '-DCPU_LITTLE_ENDIAN=ON', '-DCPU_BIG_ENDIAN=ON', d)}"
 
 # Add debug directory for packages
 PACKAGE_DEBUG_SPLIT_STYLE??="debug-file-directory"
 
 # For debugging/development purposes on devtool
 EXTERNALSRC_BUILD??="${S}/build"
+
+inherit siteinfo
