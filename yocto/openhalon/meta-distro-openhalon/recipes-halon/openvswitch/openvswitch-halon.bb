@@ -60,6 +60,8 @@ do_configure_prepend() {
     # After building the code with libltdl, we get a subdirectory with autoconf that will
     # inherit the m4 macros configurations from his parent, causing to fail if not finding some
     # of their macros. This hack removes the issue
+    /usr/bin/python ${S}/vswitchd/sanitize.py ${S}/vswitchd/vswitch.extschema ${S}/vswitchd/vswitch.ovsschema
+    touch ${S}/vswitchd/vswitch.xml
     if [ -d ${S}/libltdl ] ; then
         if ! [ -L ${S}/libltdl/m4 ] ; then
             ln -s ../m4 ${S}/libltdl/m4
