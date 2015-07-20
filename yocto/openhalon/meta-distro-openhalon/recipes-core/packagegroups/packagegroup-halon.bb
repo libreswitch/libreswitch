@@ -43,6 +43,7 @@ RDEPENDS_packagegroup-halon-base = "\
     virtual/halon-config \
     cfgd fand ledd pmd powerd sysd tempd \
     intfd lacpd lldpd vland \
+    script-utils \
     cli \
     quagga \
     cronie \
