@@ -1,5 +1,6 @@
 .platform
 .devenv
+.sandbox_uuid
 images/*
 src/*
 .*.swp
