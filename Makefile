@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-.PHONY: all clean configure distclean header switch-platform help
+.PHONY: all clean configure distclean header switch-platform show-platform help
 
 # This allows an overlay layer to basically override the whole environment
 -include yocto/*/.distro_override
@@ -118,6 +118,7 @@ Additional development/maintenance targets:
     $(YELLOW)devshell RECIPE= $(GRAY)   : start a devshell for RECIPE
     $(YELLOW)help$(GRAY)                : this, see also $(BLUE)$(DISTRO_HELP_LINK)$(GRAY)
     $(YELLOW)switch-platform$(GRAY)     : change to a different platform
+    $(YELLOW)show-platform$(GRAY)       : show current platform
 
 endef
 endif
@@ -177,6 +178,8 @@ configure:
 	$(V) echo $(PLATFORM) > .platform
 	$(V) $(ECHO) "\n$(GREEN)Configuration completed successfully!\n$(GRAY)"
 
+$(eval $(call PARSE_ARGUMENTS,switch-platform))
+PLATFORM?=$(EXTRA_ARGS)
 switch-platform: header _switch-platform
 
 _switch-platform:
@@ -191,6 +194,8 @@ _switch-platform:
 	 ln -sf bblayers.conf-$(PLATFORM) build/conf/bblayers.conf ; \
 	 echo $(PLATFORM) > .platform ; \
 	 echo -e " done\n"
+
+show-platform: header
 
 clean:: header
 	$(V)$(ECHO) "Cleaning..."
