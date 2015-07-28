@@ -41,7 +41,7 @@ EXTRA_OECONF += "TARGET_PYTHON=${bindir}/python \
 FILES_halon-ovsdb = "/run /var/run /var/log /var/volatile ${bindir}/ovsdb* \
   ${sbindir}/ovsdb-server ${datadir}/ovsdbmonitor ${sysconfdir}/openvswitch/ \
   ${libdir}/libovscommon.so.1* ${libdir}/libovsdb.so.1* \
-  ${sysconfdir}/tmpfiles.d/openswitch.conf /usr/share/openvswitch/*.ovsschema"
+  ${sysconfdir}/tmpfiles.d/openswitch.conf /usr/share/openvswitch/*.ovsschema /usr/share/openvswitch/vswitch.extschema"
 
 inherit python-dir useradd
 
@@ -88,6 +88,7 @@ do_install_append() {
     echo "d /run/openvswitch/ 0770 - ovsdb_users -" > ${D}${sysconfdir}/tmpfiles.d/openswitch.conf
     install -d ${D}${PYTHON_SITEPACKAGES_DIR}
     mv ${D}/${prefix}/share/openvswitch/python/ovs ${D}${PYTHON_SITEPACKAGES_DIR}
+    install -m 0644 ${S}/vswitchd/vswitch.extschema ${D}/${prefix}/share/openvswitch/vswitch.extschema
 }
 
 pkg_postinst_halon-ovsdb () {
