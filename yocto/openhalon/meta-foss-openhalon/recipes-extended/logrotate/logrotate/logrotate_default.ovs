@@ -1,0 +1,15 @@
+/var/log/auth.log
+/var/log/messages
+{
+    daily
+    create 0664 root utmp
+    missingok
+    notifempty
+    maxsize 10M
+    rotate 1
+    compress
+    sharedscripts
+    postrotate
+        killall -HUP rsyslogd
+    endscript
+}
