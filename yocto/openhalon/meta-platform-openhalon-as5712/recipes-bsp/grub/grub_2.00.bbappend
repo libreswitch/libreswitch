@@ -16,8 +16,10 @@ def get_default_ip(d):
     import socket
     return [(s.connect(('8.8.8.8', 80)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]
 
-NFS_SERVER_IP ??= "${@get_default_ip(d)}"
-NFS_SERVER_PATH ??= "${BUILD_ROOT}/nfsroot-${MACHINE}"
+#NFS_SERVER_IP ??= "${@get_default_ip(d)}"
+#NFS_SERVER_PATH ??= "${BUILD_ROOT}/nfsroot-${MACHINE}"
+NFS_SERVER_IP ??= "192.168.0.1"
+NFS_SERVER_PATH ??= "/srv/nfsroot-${MACHINE}"
 
 do_install_append () {
     install -d ${D}/boot/grub
