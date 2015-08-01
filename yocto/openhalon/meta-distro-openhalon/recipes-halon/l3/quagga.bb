@@ -26,7 +26,7 @@ EXTRA_OECONF = "--disable-doc --disable-ripd \
  --disable-ripngd --disable-ospfd --disable-ospf6d --disable-babeld \
  --disable-watchquagga --disable-opaque-lsa --disable-ospfapi \
  --disable-ospfclient --disable-ospf-te --disable-rtadv --disable-rusage \
- --enable-user=root --enable-group=root \
+ --enable-user=root --enable-group=root --enable-multipath=32 \
  --enable-ovsdb \
 "
 
