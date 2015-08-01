@@ -46,7 +46,7 @@ RDEPENDS_packagegroup-halon-base = "\
     script-utils \
     cli \
     restd \
-    quagga \
+    l3portd quagga \
     cronie \
     inetutils-ping inetutils-ping6 inetutils-hostname inetutils-ifconfig \
     inetutils-tftp inetutils-traceroute inetutils-ftp inetutils-telnet \
