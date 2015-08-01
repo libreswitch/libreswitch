@@ -50,14 +50,17 @@ ovs_schema = '/usr/share/openvswitch/vswitch.ovsschema'
 
 # Default conf file values
 
-period = "hourly"
+period = "daily"
 rotate_count = 1
 remoteIP = "0"
 rotate_string = "rotate " + str(rotate_count)
-size_string = "10M"
+size_string = "10"
 target = "local"
 table_name = "Open_vSwitch"
 retry_max_count = 3
+rotate_max_count = 3
+protocol = "tftp"
+uri = "tftp://"
 
 def readDB():
 
@@ -67,6 +70,8 @@ def readDB():
     global remoteIP
     global size_string
     global target
+    global protocol
+    global uri
 
     parser = argparse.ArgumentParser()
 
@@ -88,7 +93,11 @@ def readDB():
                  period = logrotate_rec.get('period','daily')
                  size_string = logrotate_rec.get('maxsize','10')
                  target = logrotate_rec.get('target','local')
-                 remoteIP = logrotate_rec.get('ip','127.0.0.1')
+
+           uri = target
+           offset = uri.find(':')
+           protocol = uri[0:offset]
+           remoteIP = uri[offset+3:len(uri)]
     else:
            print("Using default config")
 
@@ -125,19 +134,40 @@ def generateConfFile():
     else:
         return True
 
+# Removes old rotated log files if number of files are morethan rotate_max_count
+def removeRotatedLogfiles(path,filename):
+    global rotate_max_count
+
+    count = 0
+    out = getoutput("cd "+ path + "; ls -c " + filename + "-*")
+    out_lines = out.split(" ")
+    lines = out.split("\n")
+
+    for line in lines:
+        count = count + 1
+        if (count >= rotate_max_count):
+            print("Removing old rotated file " + line)
+            system("cd " + path + ";rm -f " + line)
+
+
 # clear old compressed logs and renames rotated log files with time extension
 
 def cleanLogfiles(path):
-    system("cd " + path + "; ls *.1.gz > /tmp/compressed_files")
+    if(system("cd " + path + "; ls *.1.gz > /tmp/compressed_files 2>/dev/null")):
+        print("No log files rotated")
+        return False
     try:
-        with open('/tmp/compressed_files','r') as compress_file:
+        with open('/tmp/compressed_files','r') as compress_file , open('/tmp/tftp_files','w') as tftp_file:
             for line in compress_file:
                 offset = line.find('.1.gz')
                 fileName = line[0:offset]
-                yearSuffix = getoutput('date +"%Y"')
-                system("cd " + path + ";rm -f " + fileName + "-" + yearSuffix + "*")
+                removeRotatedLogfiles(path,fileName)
                 timeSuffix = getoutput('date +"%Y%m%d%H"')
                 system("cd " + path + ";mv " + fileName + ".1.gz " + fileName + "-" + timeSuffix + ".gz")
+                target_file = fileName + "-" + timeSuffix + ".gz"
+                tftp_file.write( target_file + "\n")
+                print("Rotated log file:" + target_file)
+            tftp_file.close()
             compress_file.close()
         system("rm -f /tmp/compressed_files")
     except IOError:
@@ -146,6 +176,7 @@ def cleanLogfiles(path):
     else:
         return True
 
+# Send tftp with retry mechanism
 def sendTftp(command):
     global retry_max_count
     retry = True
@@ -162,10 +193,10 @@ def sendTftp(command):
             retry = False
 
 
-def sendLogFiles(path):
+def sendLogFilesTftp(path):
     global remoteIP
+    global uri
 
-    system("cd " + path + "; ls *.gz > /tmp/tftp_files")
     try:
 
         with open('/tmp/tftp_files','r') as tftp_file:
@@ -176,7 +207,9 @@ def sendLogFiles(path):
                     tftp_command.write("put "+ line + "\n")
                     tftp_command.write("quit\n")
                     tftp_command.close()
-                print("Sending compressed log " + line + " through tftp")
+                offset = line.find('\n')
+                log_file = line[0:offset]
+                print("Sending compressed log " + log_file + " to remote host " + uri)
                 tftp_string ="cd " + path + ";" +"tftp " + remoteIP + "< /tmp/tftp_put"
                 sendTftp(tftp_string)
                 system("rm -f /tmp/tftp_put")
@@ -199,11 +232,11 @@ def main():
         print("Executing logrotate with default config")
         system("logrotate /etc/logrotate_default.ovs")
 
-    cleanLogfiles("/var/log/")
-
-
-    if target == "remote":
-        sendLogFiles("/var/log/")
+    if cleanLogfiles("/var/log/") and target != "local":
+        if protocol == 'tftp':
+            sendLogFilesTftp("/var/log/")
+        else:
+            print("Remote transfer protocol not supported")
 
 
 if __name__ == '__main__':
