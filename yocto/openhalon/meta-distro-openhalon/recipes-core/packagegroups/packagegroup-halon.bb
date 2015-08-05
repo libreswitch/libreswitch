@@ -62,6 +62,7 @@ RDEPENDS_packagegroup-halon-base_append_arm = "\
 
 RDEPENDS_packagegroup-halon-min = "\
     python \
+    python-pyroute2 \
     yaml-cpp \
     libevent \
     util-linux-uuidgen \
