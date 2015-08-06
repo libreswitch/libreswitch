@@ -51,6 +51,7 @@ RDEPENDS_packagegroup-halon-base = "\
     xinetd \
     aaa-utils \
     pam-plugin-radius-auth \
+    bufmond \
 "
 
 RDEPENDS_packagegroup-halon-base_append_arm = "\
