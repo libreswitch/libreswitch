@@ -42,7 +42,7 @@ RDEPENDS_packagegroup-halon-base = "\
     halon-ovsdb \
     virtual/halon-config \
     cfgd fand ledd pmd powerd sysd tempd \
-    intfd lacpd lldpd vland \
+    intfd lacpd lldpd vland arpmgrd \
     script-utils \
     cli \
     restd \
