@@ -5,7 +5,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 
 DEPENDS = "halon-ovsdb"
 
-RDEPENDS_${PN} = "python-argparse python-json python-halon-ovsdb python-distribute"
+RDEPENDS_${PN} = "python-argparse python-json python-halon-ovsdb python-distribute python-pam"
 
 SRC_URI = "git://git.openhalon.io/openhalon/aaa-utils;protocol=http \
            file://aaautils.service \
