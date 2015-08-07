@@ -1,0 +1,33 @@
+SUMMARY = "OpenSwitch WebUI"
+LICENSE = "Apache-2.0"
+LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"
+
+SRC_URI = "git://git.openhalon.io/openswitch/webui;protocol=http \
+"
+
+SRCREV="${AUTOREV}"
+
+RDEPENDS_${PN} = "lighttpd"
+
+# When using AUTOREV, we need to force the package version to the revision of git
+# in order to avoid stale shared states.
+PV = "git${SRCPV}"
+
+S = "${WORKDIR}/git"
+
+inherit npm
+
+do_compile() {
+    oe_runnpm install     # Installs dependencies defined in package.json
+    oe_runnpm run buildprod
+}
+
+do_install() {
+    install -d ${D}/srv/www/static
+    cp -Rp build/* ${D}/srv/www/static
+}
+
+PROVIDES = "${PN}-dbg ${PN}"
+
+FILES_${PN}-dbg = "/srv/www/static/*.map"
+FILES_${PN} = "/srv/www/static/*"
