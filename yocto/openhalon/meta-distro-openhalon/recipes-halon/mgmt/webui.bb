@@ -7,15 +7,17 @@ SRC_URI = "git://git.openhalon.io/openswitch/webui;protocol=http \
 
 SRCREV="${AUTOREV}"
 
-RDEPENDS_${PN} = "lighttpd"
-
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
 PV = "git${SRCPV}"
 
 S = "${WORKDIR}/git"
+B = "${S}"
 
 inherit npm
+
+# Put it after the inherit NPM to override the dependency on node
+RDEPENDS_${PN} = "lighttpd"
 
 do_compile() {
     oe_runnpm install     # Installs dependencies defined in package.json
@@ -27,7 +29,4 @@ do_install() {
     cp -Rp build/* ${D}/srv/www/static
 }
 
-PROVIDES = "${PN}-dbg ${PN}"
-
-FILES_${PN}-dbg = "/srv/www/static/*.map"
 FILES_${PN} = "/srv/www/static/*"
