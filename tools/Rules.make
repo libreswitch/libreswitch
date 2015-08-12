@@ -58,6 +58,9 @@ BASE_DOCKER_IMAGE = openhalon/${CONFIGURED_PLATFORM}
 UUIDGEN_NATIVE=$(STAGING_DIR_NATIVE)/usr/bin/uuidgen
 PYTEST_NATIVE=$(STAGING_DIR_NATIVE)/usr/bin/py.test
 
+# Leave blank to use default location
+SSTATE_DIR?=""
+
 # Some makefile macros
 
 # Parameters: first argument is the fatal error message
@@ -114,6 +117,10 @@ build/conf/local.conf: .platform
            -e "s|##DISTRO_SSTATE_ADDRESS##|$(DISTRO_SSTATE_ADDRESS)|" \
 	   -e "s|##DISTRO_ARCHIVE_ADDRESS##|$(DISTRO_ARCHIVE_ADDRESS)|" \
 	   tools/config/local.conf.in > $@
+	$(V)if [ -n "$(SSTATE_DIR)" ] && [ -d $(SSTATE_DIR) ] && [ -w $(SSTATE_DIR) ] ; then \
+	      $(ECHO) "$(YELLOW)Using shared state cache from $(SSTATE_DIR)...$(GRAY)\n" ; \
+	      sed -i -e "s|^#SSTATE_DIR.*|SSTATE_DIR = \"$(SSTATE_DIR)\"|" $@ ; \
+	 fi
 
 header:: build/conf/site.conf build/conf/local.conf
 

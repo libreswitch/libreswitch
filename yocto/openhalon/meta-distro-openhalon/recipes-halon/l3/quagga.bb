@@ -20,8 +20,6 @@ PV = "git${SRCPV}"
 
 S = "${WORKDIR}/git"
 
-inherit halon autotools pkgconfig systemd
-
 EXTRA_OECONF = "--disable-doc --disable-ripd \
  --disable-ripngd --disable-ospfd --disable-ospf6d --disable-babeld \
  --disable-watchquagga --disable-opaque-lsa --disable-ospfapi \
@@ -43,4 +41,4 @@ do_install_append() {
 SYSTEMD_PACKAGES = "${PN}"
 SYSTEMD_SERVICE_${PN} = "zebra.service bgpd.service"
 
-
+inherit halon autotools pkgconfig systemd

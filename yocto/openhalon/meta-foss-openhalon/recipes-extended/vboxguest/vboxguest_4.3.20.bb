@@ -13,13 +13,11 @@ SRC_URI[sha256sum] = "1484f8e9993ec4fe3892c5165db84d238713d2506e147ed8236541ece6
 
 S = "${WORKDIR}/VirtualBox-${PV}"
 
-DEPENDS += "virtual/kernel"
-
 inherit module-base kernel-module-split
 
 addtask make_scripts after do_patch before do_compile
 do_make_scripts[lockfiles] = "${TMPDIR}/kernel-scripts.lock"
-do_make_scripts[deptask] = "do_populate_sysroot"
+do_make_scripts[depends] += "virtual/kernel:do_shared_workdir"
 
 # Extract the kernel drivers
 do_configure() {

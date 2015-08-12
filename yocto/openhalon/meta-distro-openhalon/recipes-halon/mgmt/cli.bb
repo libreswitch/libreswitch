@@ -16,8 +16,8 @@ PV = "git${SRCPV}"
 
 S = "${WORKDIR}/git"
 
-inherit halon autotools pkgconfig
-
 EXTRA_OECONF = "--enable-user=root --enable-group=root \
  --enable-ovsdb --enable-vtysh\
 "
+
+inherit halon autotools pkgconfig
