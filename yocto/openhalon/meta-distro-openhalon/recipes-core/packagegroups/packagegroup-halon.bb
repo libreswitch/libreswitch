@@ -1,6 +1,10 @@
 DESCRIPTION = "Package groups for Halon applications"
-LICENSE = "HP"
+LICENSE = "Apache-2.0"
 PR = "r1"
+
+#
+# packages which content depend on MACHINE_FEATURES need to be MACHINE_ARCH
+#
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 
 inherit packagegroup
@@ -13,11 +17,6 @@ PACKAGES = ' \
             packagegroup-halon-min-debug \
             packagegroup-halon-core \
             '
-
-#
-# packages which content depend on MACHINE_FEATURES need to be MACHINE_ARCH
-#
-PACKAGE_ARCH = "${MACHINE_ARCH}"
 
 RDEPENDS_packagegroup-halon-base = "\
     os-release \
@@ -44,7 +43,7 @@ RDEPENDS_packagegroup-halon-base = "\
     cfgd fand ledd pmd powerd sysd tempd \
     intfd lacpd lldpd vland arpmgrd \
     script-utils \
-    cli restd webui \
+    cli restd \
     l3portd quagga \
     cronie \
     inetutils-ping inetutils-ping6 inetutils-hostname inetutils-ifconfig \
