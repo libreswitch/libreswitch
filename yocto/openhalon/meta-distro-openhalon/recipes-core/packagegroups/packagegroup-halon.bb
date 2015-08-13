@@ -27,7 +27,7 @@ RDEPENDS_packagegroup-halon-base = "\
     lttng-tools lttng-modules lttng-ust babeltrace \
     kexec kdump \
     rsyslog \
-    iproute2 \
+    iproute2 dhcp-client\
     vim \
     tzdata-posix \
     valgrind \

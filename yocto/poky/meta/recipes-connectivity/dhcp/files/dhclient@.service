@@ -1,0 +1,11 @@
+[Unit]
+Description=DHCP client service %I
+After=systemd-user-sessions.service
+After=rc-local.service
+
+[Service]
+ExecStart=/sbin/dhclient -4 -q -d %I
+
+[Install]
+WantedBy=dhclient.target
+DefaultInstance=eth0
