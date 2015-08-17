@@ -15,6 +15,6 @@ S = "${WORKDIR}/git"
 inherit setuptools
 
 RDEPENDS_${PN} = "mininet python-pytest"
-DEPENDS_class-native = "mininet-native python-pytest-native"
+DEPENDS_class-native = "mininet-native python-pytest-native util-linux-native"
 
 BBCLASSEXTEND = "native"
