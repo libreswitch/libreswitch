@@ -26,4 +26,4 @@ do_install_prepend() {
 SYSTEMD_PACKAGES = "${PN}"
 SYSTEMD_SERVICE_${PN} = "bufmond.service"
 
-inherit halon systemd
+inherit halon setuptools systemd
