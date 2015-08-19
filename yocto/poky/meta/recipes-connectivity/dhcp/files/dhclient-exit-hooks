@@ -1,0 +1,8 @@
+#!/bin/sh
+
+if [ x$reason = xBOUND ] || [ x$reason = xRENEW ]; then
+	if [ -n "${new_openswitch_ztp+x}" ]; then
+                autoprovision ${new_openswitch_ztp}
+	fi
+
+fi
