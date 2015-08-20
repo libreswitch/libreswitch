@@ -542,15 +542,12 @@ git_pull: header
 
 .PHONY: devenv_ct_init devenv_ct_test
 
-ifneq ($(findstring devenv_ct_init,$(MAKECMDGOALS)),)
-SANDBOX_UUID=$(shell $(UUIDGEN_NATIVE) -t)
-endif
 devenv_ct_init: dev_header
 	$(V)$(call BITBAKE,halon-vsi-native)
 	$(V) /bin/mkdir -p src
 	$(V) /bin/cp tools/pytest.ini src/pytest.ini
 	$(V) if [ ! -f .sandbox_uuid ] ; then \
-	  echo "$(SANDBOX_UUID)" >.sandbox_uuid; \
+	  echo "$$($(UUIDGEN_NATIVE) -t)" >.sandbox_uuid; \
 	fi
 	$(V)if ! vercomp $$(docker --version | cut -d' ' -f 3 | cut -d, -f 1) 1.3.0 \> ; then \
 	  $(call FATAL_ERROR, Your docker is too old. You need at least > 1.3.0); \
@@ -560,10 +557,6 @@ devenv_ct_init: dev_header
 # while creating docker instances to run tests.
 # Docker can't use the entire UUID as container name,
 # so using only the fifth field of the UUID.
-ifneq ($(findstring devenv_ct_test,$(MAKECMDGOALS)),)
-SBOX_UUID=$(shell cat .sandbox_uuid | cut -d '-' -f 5)
-endif
-
 $(eval $(call PARSE_ARGUMENTS,devenv_ct_test))
 PY_TEST_ARGS:=$(EXTRA_ARGS)
 ifeq ($(PY_TEST_ARGS),)
@@ -571,19 +564,16 @@ PY_TEST_ARGS=src
 endif
 devenv_ct_test:
 	$(V) $(SUDO) PYTHONDONTWRITEBYTECODE=0 PATH=$(STAGING_DIR_NATIVE)/usr/bin:$$PATH \
-	  SANDBOX_UUID=$(SBOX_UUID) $(PYTEST_NATIVE) $(PY_TEST_ARGS)
+	  SANDBOX_UUID=$$(cat .sandbox_uuid | cut -d '-' -f 5) $(PYTEST_NATIVE) $(PY_TEST_ARGS)
 
-ifneq ($(findstring devenv_ct_clean,$(MAKECMDGOALS)),)
-SBOX_UUID=$(shell cat .sandbox_uuid | cut -d '-' -f 5 )
-endif
 devenv_ct_clean:
-	$(V) for name in `docker ps -a -q --filter="name=$(SBOX_UUID)"`; do \
-	  echo "Cleaning the docker container with id $(SBOX_UUID)" ; \
+	$(V) SBOX_UUID=$$(cat .sandbox_uuid | cut -d '-' -f 5) ; \
+	for name in `docker ps -a -q --filter="name=$$SBOX_UUID"`; do \
+	  echo "Cleaning the docker container with id $$SBOX_UUID" ; \
 	  docker stop $$name >/dev/null ; \
 	  docker rm -f $$name >/dev/null ; \
 	done
 	$(V) rm -rf .sandbox_uuid
-
 
 ## Support commands
 ## Use with caution!!!!
