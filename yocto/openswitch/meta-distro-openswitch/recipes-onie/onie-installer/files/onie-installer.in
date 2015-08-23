@@ -1,0 +1,125 @@
+# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+installer_version="0.5"
+
+# check if stdout is a terminal...
+if [ -t 1 ]; then
+    normal="\033[m"
+    bold="${normal}\033[1m"
+    low="${normal}\033[2m"
+    red="${normal}\033[1;31m"
+fi
+
+echo
+echo -e "${bold}OpenSwitch ONIE installer (version $installer_version) for $MACHINE_DESCRIPTION ${low}"
+
+# Set system partition (bit 0) attributes.
+attr_bitmask="0x0000000000000001"
+label="OpenSwitch"
+mount_point=/mnt/nos
+
+setup_nos_partition()
+{
+    echo
+    echo -e "${bold} --- Creating a new NOS partition (#${NOS_PARTITION_NUMBER}, label $label) --- ${low}"
+    first_sector=$(($(sgdisk -i $((${NOS_PARTITION_NUMBER} - 1)) ${NOS_DISK} | grep 'Last sector:' | awk '{ print $3 }') + 1))
+    sgdisk --new=${NOS_PARTITION_NUMBER}:${first_sector}:+${NOS_PARTITION_SIZE} \
+       --typecode=${NOS_PARTITION_NUMBER}:8300 \
+       --attributes=${NOS_PARTITION_NUMBER}:=:$attr_bitmask \
+       --change-name=${NOS_PARTITION_NUMBER}:"$label"  ${NOS_DISK} || {
+            echo -e "${red}ERROR${normal}: Failed to create partition ${NOS_DISK}${NOS_PARTITION_NUMBER}!"
+            exit 1
+        }
+    partprobe ${NOS_DISK}
+
+    echo
+    echo -e "${bold} --- Formatting NOS partition in ext4 --- ${low}"
+    mkfs.ext4 -L "$label" -q ${NOS_DISK}${NOS_PARTITION_NUMBER}
+}
+
+populate_rootfs()
+{
+    echo
+    echo -e "${bold} --- Populating the root filesystem --- ${low}"
+    mkdir -p $mount_point
+    mount -t ext4 ${NOS_DISK}${NOS_PARTITION_NUMBER} $mount_point
+    prev_dir=$(pwd)
+    source_path=$(realpath "$0")
+    cd $mount_point
+    sed -e '1,/^exit_marker$/d' "$source_path" | gzip -cd - | cpio -idm || {
+        echo -e "${red}ERROR${normal}: Failed to populate the root filesystem on ${NOS_DISK}${NOS_PARTITION_NUMBER}!"
+        exit 1
+    }
+    echo
+    echo -e "${bold} --- Installing NOS GRUB --- ${low}"
+    sed -i -e "s/OPENSWITCH_BOOT_PART_NUM/${NOS_PARTITION_NUMBER}/g" ${mount_point}/boot/grub/grub.cfg
+    ${mount_point}/usr/sbin/grub-install --force --boot-directory ${mount_point}/boot --recheck ${NOS_DISK} || {
+        echo -e "${red}ERROR${normal}: Failed to install the NOS GRUB!"
+        exit 1
+    }
+    chattr +i ${mount_point}/boot/grub/i386-pc/core.img
+
+    cd $prev_dir
+    umount $mount_point
+}
+
+
+# Make sure we are running in the ONIE environment.
+[ "$(uname -n)" != "onie" ] && {
+    echo -e "${red}ERROR${normal}: This machine does not seem to be running ONIE; aborting!"
+    exit 1
+}
+
+# Get the running machine configuration info.
+[ -r /etc/machine.conf ] && . /etc/machine.conf
+
+# Make sure that the machine matches the firmware image.
+[ "$onie_machine" != "$INSTALLER_ONIE_MACHINE" ] && {
+    echo -e "${red}ERROR${normal}: This machine is not an $INSTALLER_ONIE_MACHINE; aborting!"
+    exit 1
+}
+
+NOS_DISK=$(blkid | awk "/LABEL=\"$label\"/ {print substr (\$1,0,8)}")
+if [ -n "${NOS_DISK}" ]; then
+    NOS_PARTITION_NUMBER=$(blkid | awk "/LABEL=\"$label\"/ {print substr (\$1,9,length(\$1)-9)}")
+
+    echo
+    echo -e "${bold} ---  Removing existing NOS partition (#${NOS_PARTITION_NUMBER}) --- ${low}"
+    # Delete the partition
+    sgdisk -d ${NOS_PARTITION_NUMBER} ${NOS_DISK} || {
+        echo -e "${red}ERROR${normal}: Failed to delete partition ${NOS_DISK}${NOS_PARTITION_NUMBER}!"
+        exit 1
+    }
+    partprobe ${NOS_DISK}
+else
+    # Install NOS on the same block device as ONIE
+    NOS_DISK=$(blkid | awk '/LABEL="ONIE-BOOT"/ {print substr ($1,0,8)}')
+
+    # Find next available partition
+    NOS_PARTITION_NUMBER=$(($(sgdisk -p ${NOS_DISK} | awk END'{print $1}') + 1))
+
+    if [ -z "${NOS_PARTITION_NUMBER}" ]; then
+        echo -e "${red}ERROR${normal}: Failed to find an available partition for installation!"
+        exit 1
+    fi
+fi
+
+setup_nos_partition
+populate_rootfs
+
+echo
+echo -e "${bold}OpenSwitch installation completed${normal}"
+exit 0
+exit_marker

@@ -9,5 +9,5 @@ tools/bin/python
 tools/bin/corkscrew
 nfsroot*
 
-# Exclude halon enterprise layer
+# Exclude enterprise layer
 yocto/halon

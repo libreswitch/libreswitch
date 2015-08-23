@@ -1,6 +1,0 @@
-{
-  "provider": "virtualbox",
-  "name": "halon-appliance-image",
-  "description": "This box contains an image of Halon."
-}
-

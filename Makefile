@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Hewlett-Packard Development Company, L.P.
+# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 # This allows an overlay layer to basically override the whole environment
 -include yocto/*/.distro_override
 
-DISTRO ?= openhalon
+DISTRO ?= openswitch
 export DISTRO
 # Pull distribution specific rules
 include yocto/$(DISTRO)/Rules.make

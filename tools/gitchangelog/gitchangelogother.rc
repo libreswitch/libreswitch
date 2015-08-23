@@ -136,7 +136,7 @@ tag_filter_regexp = r'^(current_version|previous_version)$'
 ##
 ## This label will be used as the changelog Title of the last set of changes
 ## between last valid tag and HEAD if any.
-unreleased_version_label = "%%version%% (unreleased) halon"
+unreleased_version_label = "%%version%% (unreleased) openswitch"
 
 
 ## ``output_engine`` is a callable

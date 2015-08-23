@@ -1,0 +1,6 @@
+{
+  "provider": "virtualbox",
+  "name": "openswitch-appliance-image",
+  "description": "This box contains an image of OpenSwitch."
+}
+

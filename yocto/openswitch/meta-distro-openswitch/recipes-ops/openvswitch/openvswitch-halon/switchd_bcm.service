@@ -1,0 +1,18 @@
+# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+
+[Unit]
+Description=OpenSwitch Switch Daemon for BCM
+After=ovsdb-server.service ops-init.service
+
+[Service]
+Type=forking
+Environment="KNET_KCOM=bcm-knet"
+CPUSchedulingPolicy=rr
+CPUSchedulingPriority=10
+ExecStart=/sbin/ip netns exec swns /usr/bin/netserve -d 1943 /usr/sbin/ovs-vswitchd --no-chdir --pidfile -vSYSLOG:INFO
+WorkingDirectory=/var/run/openvswitch
+PIDFile=/var/run/netserve.pid
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target

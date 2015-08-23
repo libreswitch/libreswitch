@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Hewlett-Packard Development Company, L.P.
+# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ BASE_HDDIMG_FS_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(DIS
 BASE_OVA_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(DISTRO_FS_TARGET)-$(CONFIGURED_PLATFORM).ova
 BASE_BOX_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(DISTRO_FS_TARGET)-$(CONFIGURED_PLATFORM).box
 BASE_ONIE_INSTALLER_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(ONIE_INSTALLER_FILE)
-BASE_DOCKER_IMAGE = openhalon/${CONFIGURED_PLATFORM}
+BASE_DOCKER_IMAGE = openswitch/${CONFIGURED_PLATFORM}
 
 UUIDGEN_NATIVE=$(STAGING_DIR_NATIVE)/usr/bin/uuidgen
 PYTEST_NATIVE=$(STAGING_DIR_NATIVE)/usr/bin/py.test
@@ -197,7 +197,7 @@ cleansstate: header _cleansstate
 _cleansstate:
 	$(V)$(call BITBAKE,-c cleansstate $(RECIPE))
 
-CONTAINER_NAME?=openhalon
+CONTAINER_NAME?=openswitch
 .PHONY: deploy_container
 deploy_container:
 	$(V) if ! which lxc-create > /dev/null ; then \
@@ -220,9 +220,9 @@ deploy_container:
 	else \
 	  echo done ; \
 	fi
-	$(V) export OPENHALON_IMAGE=$(BUILD_ROOT)/images/`basename $(BASE_TARGZ_FS_FILE)` ; \
+	$(V) export OPENSWITCH_IMAGE=$(BUILD_ROOT)/images/`basename $(BASE_TARGZ_FS_FILE)` ; \
 	export BUILD_ROOT ; \
-	$(SUDO) -E lxc-create -n $(CONTAINER_NAME) -f /dev/null -t $(BUILD_ROOT)/tools/lxc/lxc-openhalon
+	$(SUDO) -E lxc-create -n $(CONTAINER_NAME) -f /dev/null -t $(BUILD_ROOT)/tools/lxc/lxc-openswitch
 	$(V) $(ECHO) "Exporting completed.\nRun with 'sudo lxc-start -n $(CONTAINER_NAME)'"
 
 .PHONY: export_docker_image
@@ -543,7 +543,7 @@ git_pull: header
 .PHONY: devenv_ct_init devenv_ct_test
 
 devenv_ct_init: dev_header
-	$(V)$(call BITBAKE,halon-vsi-native)
+	$(V)$(call BITBAKE,ops-vsi-native)
 	$(V) /bin/mkdir -p src
 	$(V) /bin/cp tools/pytest.ini src/pytest.ini
 	$(V) if [ ! -f .sandbox_uuid ] ; then \

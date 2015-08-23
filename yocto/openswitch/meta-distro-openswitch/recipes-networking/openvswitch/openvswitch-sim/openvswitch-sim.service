@@ -1,0 +1,17 @@
+# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+
+[Unit]
+Description=OpenSwitch Switch Daemon for Simulator
+After=ovsdb-server-sim.service
+
+[Service]
+Type=forking
+CPUSchedulingPolicy=rr
+CPUSchedulingPriority=10
+ExecStart=/sbin/ip netns exec swns /opt/openvswitch/sbin/ovs-vswitchd --no-chdir --pidfile --detach -vSYSLOG:INFO
+WorkingDirectory=/var/run/openvswitch-sim
+PIDFile=/var/run/openvswitch-sim/ovs-vswitchd.pid
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target

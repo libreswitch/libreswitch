@@ -1,0 +1,16 @@
+# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+
+[Unit]
+Description=OpenSwitch Configuration Daemon
+After=ovsdb-server.service
+
+[Service]
+Type=oneshot
+CPUSchedulingPolicy=rr
+CPUSchedulingPriority=7
+ExecStartPre=/bin/rm -f /var/run/cfgd.pid
+ExecStart=/usr/bin/cfgd
+PIDFile=/var/run/cfgd.pid
+
+[Install]
+WantedBy=multi-user.target

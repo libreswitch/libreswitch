@@ -39,7 +39,7 @@ apt-get -y install vagrant strace linux-tools-common uncrustify doxygen cmake cm
 # Eclipse environment
 apt-get install -y openjdk-7-jre
 echo "Downloading eclipse Luna... could take some time..."
-wget -nv http://archive.openhalon.io/eclipse-cpp-luna-SR2-linux-gtk-x86_64.tar.gz
+wget -nv http://archive.openswitch.net/eclipse-cpp-luna-SR2-linux-gtk-x86_64.tar.gz
 tar xzf eclipse-cpp-luna-SR2-linux-gtk-x86_64.tar.gz -C /opt/
 rm eclipse-cpp-luna-SR2-linux-gtk-x86_64.tar.gz
 # Install Eclipse plugins
@@ -84,36 +84,12 @@ apt-get install -y software-properties-common
 add-apt-repository -y ppa:x2go/stable
 apt-get update
 apt-get install -y x2goserver x2goserver-xsession
-# Setup certificate for openhalon site until we get out or our own CA
-cat > /usr/local/share/ca-certificates/openhalon.io.crt <<EOF
------BEGIN CERTIFICATE-----
-MIIDSzCCAjOgAwIBAgIJAI67unfu/qnJMA0GCSqGSIb3DQEBBQUAMDwxCzAJBgNV
-BAYTAlVTMRMwEQYDVQQIDApDYWxpZm9ybmlhMRgwFgYDVQQKDA9IZXdsZXR0LVBh
-Y2thcmQwHhcNMTUwMzEzMTQxNTQzWhcNMTcxMjMxMTQxNTQzWjA8MQswCQYDVQQG
-EwJVUzETMBEGA1UECAwKQ2FsaWZvcm5pYTEYMBYGA1UECgwPSGV3bGV0dC1QYWNr
-YXJkMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxfwNlsw7ajA71AG/
-hIJXQERRD1sd3ZFF24k+pd0WBxerHz8XykZ8qcf6aGOjhVtgQEhMVIn7LDuaGja/
-pr0AccUVL0AGPFWhC4eBjuG4k/A1RfBEuFq9claj7jsFCf/lqns1ImnWoA0PNZCI
-LRx9OGyMQ4D4WumHImb61mr/PMJXuumybYnXXvAeO7sGXD3r831Om+4gV4Jd8Vis
-5wWIj7VFdEqpLCBU/Y6wWdYWqST19V98C5sFLhWCdUtHik8IZfr7DhFwjGeCByMc
-2E/AId5ynPdEZzzVg2+Cx0BglVgdiabbdTQIGp+IAADDzTMU+TpzquQQaRAudWCI
-O9o7MQIDAQABo1AwTjAdBgNVHQ4EFgQUw8SYa+Zq/nqBm90yQdCFxhr2nvswHwYD
-VR0jBBgwFoAUw8SYa+Zq/nqBm90yQdCFxhr2nvswDAYDVR0TBAUwAwEB/zANBgkq
-hkiG9w0BAQUFAAOCAQEAgV1HggFV3jXI2wi36JrsODwWckwG8O284H7l7K7uFq94
-j65bwg050UWpNsTLmD+k07u24ChlZEfnBc4TttJTeG5iYynasAhLxBHksE9sn3CK
-eue2+kZJxjzNy3xQbcgYwgljRJKDng7p6OCK1EnZfjbOtXKLrovxO5tKQHBZXvkk
-GGtFSy/QgwylniY3eBtsHSAzpgbJ1dYTWR0w8RU5KBlWTAc/NgXwE0eXpF08uf7v
-XzzmD6B/89SHYqUFkEgfmQIJo1OU9i1bU0P5PptIvN824sKb0jTlMFQphuuU9RZx
-fvVWlkkyp0Mdtqw8li2VsEUoEIX7XcZivSxR6YYs+g==
------END CERTIFICATE-----
-EOF
-update-ca-certificates
 
 if test -n "$1" ; then
   proxyhost=`echo $http_proxy | awk -F: '{ print substr($2,3); }'`
   proxyport=`echo $http_proxy | awk -F: '{ print $3 }'`
   cat > /home/vagrant/.ssh/config <<EOF
-Host *.openhalon.io
+Host *.openswitch.net
   ProxyCommand socat - PROXY:$proxyhost:%h:%p,proxyport=$proxyport
 EOF
 fi

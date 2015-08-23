@@ -1,0 +1,16 @@
+# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+
+[Unit]
+Description=OpenSwitch Buffer monitoring Daemon
+After=ovsdb-server.service ops-init.service
+
+[Service]
+Type=oneshot
+CPUSchedulingPolicy=rr
+CPUSchedulingPriority=10
+ExecStartPre=/bin/rm -f /var/run/bufmond.pid
+ExecStart=/usr/bin/bufmond
+PIDFile=/var/run/bufmond.pid
+
+[Install]
+WantedBy=multi-user.target
