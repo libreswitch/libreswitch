@@ -52,6 +52,7 @@ RDEPENDS_packagegroup-ops-base = "\
     ops-portd ops-quagga \
     ops-aaa-utils \
     ops-bufmond \
+    ops-mgmt-intf \
 "
 
 RDEPENDS_packagegroup-ops-base_append_arm = "\
