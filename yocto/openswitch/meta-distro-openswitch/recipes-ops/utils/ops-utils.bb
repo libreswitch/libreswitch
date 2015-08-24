@@ -1,8 +1,8 @@
 SUMMARY = "Library of OpenSwitch utils"
 LICENSE = "Apache-2.0"
-LIC_FILES_CHKSUM = "file://CMakeLists.txt;beginline=0;endline=14;md5=9bf02f5d4de26e44a8954673dead2ee0"
+LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
-SRC_URI = "git://git.openhalon.io/openhalon/halonutils;protocol=https"
+SRC_URI = "git://git.openswitch.net/openswitch/ops-utils;protocol=https"
 
 SRCREV = "${AUTOREV}"
 

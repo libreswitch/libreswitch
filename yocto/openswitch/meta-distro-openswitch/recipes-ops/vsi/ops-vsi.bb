@@ -2,7 +2,7 @@ SUMMARY = "Mininet based Python Library for component & feature tests."
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://setup.py;beginline=0;endline=14;md5=7b67a88d8ffaceb13faa66ec76114ed6"
 
-SRC_URI = "git://git.openhalon.io/openhalon/vsi;protocol=https"
+SRC_URI = "git://git.openswitch.net/openswitch/ops-vsi;protocol=https"
 
 SRCREV = "${AUTOREV}"
 

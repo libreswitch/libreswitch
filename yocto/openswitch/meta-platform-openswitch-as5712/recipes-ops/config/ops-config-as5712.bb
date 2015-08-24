@@ -6,7 +6,7 @@ RPROVIDES_${PN} = "virtual/ops-hw-config"
 
 PR = "1"
 
-SRC_URI = "git://git.openhalon.io/openhalon/as5712-config;protocol=http \
+SRC_URI = "git://git.openswitch.net/openswitch/ops-config-as5712;protocol=http \
 "
 
 SRCREV="${AUTOREV}"

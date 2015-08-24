@@ -35,23 +35,23 @@ RDEPENDS_packagegroup-ops-base = "\
     valgrind-helgrind \
     sudo \
     pwauth \
-    ops-init \
-    virtual/switchd \
-    ${@bb.utils.contains('MACHINE_FEATURES', 'ops-sim', 'ovs-sim-plugin', '',d)} \
-    ops-ovsdb \
-    virtual/ops-hw-config \
-    cfgd fand ledd pmd powerd sysd tempd \
-    intfd lacpd lldpd vland arpmgrd \
-    script-utils \
-    cli restd lighttpd \
-    l3portd quagga \
+    shadow \
     cronie \
     inetutils-ping inetutils-ping6 inetutils-hostname inetutils-ifconfig \
     inetutils-tftp inetutils-traceroute inetutils-ftp inetutils-telnet \
     xinetd \
-    aaa-utils \
-    pam-plugin-radius-auth \
-    bufmond \
+    ops-init \
+    virtual/switchd \
+    ${@bb.utils.contains('MACHINE_FEATURES', 'ops-sim', 'ops-switchd-sim-plugin', '',d)} \
+    ops-ovsdb \
+    virtual/ops-hw-config \
+    ops-cfgd ops-fand ops-ledd ops-pmd ops-powerd ops-sysd ops-tempd \
+    ops-intfd ops-lacpd ops-lldpd ops-vland ops-arpmgrd \
+    ops-script-utils \
+    ops-cli ops-restd lighttpd \
+    ops-portd ops-quagga \
+    ops-aaa-utils \
+    ops-bufmond \
 "
 
 RDEPENDS_packagegroup-ops-base_append_arm = "\

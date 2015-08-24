@@ -4,7 +4,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 
 RPROVIDES_${PN} = "virtual/ops-hw-config"
 
-SRC_URI = "git://git.openhalon.io/openhalon/simulator-config;protocol=http \
+SRC_URI = "git://git.openswitch.net/openswitch/ops-config-simulator;protocol=http \
 "
 
 SRCREV="${AUTOREV}"
