@@ -53,6 +53,7 @@ RDEPENDS_packagegroup-ops-base = "\
     ops-aaa-utils \
     ops-bufmond \
     ops-mgmt-intf \
+    dnsmasq \
 "
 
 RDEPENDS_packagegroup-ops-base_append_arm = "\
