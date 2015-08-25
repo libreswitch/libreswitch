@@ -4,7 +4,11 @@ After=systemd-user-sessions.service
 After=rc-local.service
 
 [Service]
-ExecStart=/sbin/dhclient -4 -q -d %I
+Type=forking
+KillSignal=SIGKILL
+SuccessExitStatus=SIGKILL
+ExecStart=/sbin/dhclient -4 -v -nw -pf /run/dhclient.%i.pid -lf /var/lib/dhcp/dhclient.%i.leases %I
+ExecStop=/sbin/dhclient -r  -lf /var/lib/dhcp/dhclient.%i.leases %I
 
 [Install]
 WantedBy=dhclient.target
