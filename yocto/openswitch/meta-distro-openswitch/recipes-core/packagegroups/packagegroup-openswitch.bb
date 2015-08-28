@@ -43,6 +43,7 @@ RDEPENDS_packagegroup-ops-base = "\
     ops-init \
     virtual/switchd \
     ${@bb.utils.contains('MACHINE_FEATURES', 'ops-sim', 'ops-switchd-sim-plugin', '',d)} \
+    ${@bb.utils.contains('MACHINE_FEATURES', 'broadcom', 'ops-switchd-bcm-plugin', '',d)} \
     ops-ovsdb \
     virtual/ops-hw-config \
     ops-cfgd ops-fand ops-ledd ops-pmd ops-powerd ops-sysd ops-tempd \
