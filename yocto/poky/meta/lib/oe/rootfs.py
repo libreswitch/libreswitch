@@ -240,8 +240,6 @@ class Rootfs(object):
                     for pkg_installed in pkgs_installed[:]:
                         pkg = pkg_installed.split()[0]
                         if pkg in ["update-rc.d",
-                                "base-passwd",
-                                "shadow",
                                 "update-alternatives",
                                 self.d.getVar("ROOTFS_BOOTSTRAP_INSTALL", True)
                                 ]:
