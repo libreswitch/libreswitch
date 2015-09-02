@@ -36,4 +36,6 @@ endif
 
 ##RECIPE##-nfs-undeploy:
 	$(V)$(call DEVTOOL, undeploy-target -s ##RECIPE## localhost:$(NFSROOTPATH))
+
+-include src/##RECIPE##/Rules-ops-build.make
 #END_##RECIPE##
