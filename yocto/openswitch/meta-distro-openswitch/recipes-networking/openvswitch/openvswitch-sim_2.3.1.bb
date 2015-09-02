@@ -72,15 +72,15 @@ PROVIDES = "${PACKAGES}"
 
 FILES_${PN} += "${datadir}/openvswitch"
 FILES_${PN}-controller = "${sysconfdir}/init.d/openvswitch-controller \
-	${sysconfdir}/default/openvswitch-controller \
-	${sysconfdir}/openvswitch-controller \
-	${bindir}/ovs-controller"
+    ${sysconfdir}/default/openvswitch-controller \
+    ${sysconfdir}/openvswitch-controller \
+    ${bindir}/ovs-controller"
 
 FILES_${PN}-brcompat = "${sbindir}/ovs-brcompatd"
 
 FILES_${PN}-switch = "${sysconfdir}/init.d/openvswitch-switch \
-		   ${sysconfdir}/default/openvswitch-switch \
-		   "
+           ${sysconfdir}/default/openvswitch-switch \
+           "
 
 FILES_ovsdb = "/run /var/run /var/log /var/volatile ${bindir}/ovsdb* \
                ${sbindir}/ovsdb-server ${datadir}/ovsdbmonitor \
@@ -91,58 +91,60 @@ inherit autotools ptest systemd
 EXTRA_OEMAKE += "TEST_DEST=${D}${PTEST_PATH} TEST_ROOT=${PTEST_PATH}"
 
 do_install_ptest() {
-	oe_runmake test-install
+    oe_runmake test-install
 }
 
 do_install_append() {
-	install -d ${D}/${sysconfdir}/default/
-	install -d ${D}/var/run/openvswitch-sim
-	install -m 660 ${WORKDIR}/openvswitch-switch-setup ${D}/${sysconfdir}/default/openvswitch-switch
-	install -d ${D}/${sysconfdir}/openvswitch-controller
-	install -m 660 ${WORKDIR}/openvswitch-controller-setup ${D}/${sysconfdir}/default/openvswitch-controller
-
+    install -d ${D}/${sysconfdir}/default/
+    install -d ${D}/var/run/openvswitch-sim
+    install -m 660 ${WORKDIR}/openvswitch-switch-setup ${D}/${sysconfdir}/default/openvswitch-switch
+    install -d ${D}/${sysconfdir}/openvswitch-controller
+    install -m 660 ${WORKDIR}/openvswitch-controller-setup ${D}/${sysconfdir}/default/openvswitch-controller
+    # Renaming the open source switchd to ovs-vswitchd-sim to differentiate
+    # from OpenSwitch switchd process
+    /bin/mv  ${D}${OVS_PREFIX}/sbin/ovs-vswitchd ${D}${OVS_PREFIX}/sbin/ovs-vswitchd-sim
     install -d ${D}${systemd_unitdir}/system
     install -m 0644 ${WORKDIR}/ovsdb-server-sim.service ${D}${systemd_unitdir}/system
-	install -m 0644 ${WORKDIR}/openvswitch-sim.service ${D}${systemd_unitdir}/system
+    install -m 0644 ${WORKDIR}/openvswitch-sim.service ${D}${systemd_unitdir}/system
 
     install -d ${D}${sysconfdir}/tmpfiles.d
     echo "d /run/openvswitch-sim/ - - - -" > ${D}${sysconfdir}/tmpfiles.d/openswitch-sim.conf
 }
 
 pkg_postinst_${PN}-pki () {
-	# can't do this offline
-	if [ "x$D" != "x" ]; then
-		exit 1
-	fi
-	if test ! -d $D/${datadir}/openvswitch/pki; then
-		ovs-pki init --dir=$D/${datadir}/openvswitch/pki
-	fi
+    # can't do this offline
+    if [ "x$D" != "x" ]; then
+        exit 1
+    fi
+    if test ! -d $D/${datadir}/openvswitch/pki; then
+        ovs-pki init --dir=$D/${datadir}/openvswitch/pki
+    fi
 }
 
 pkg_postinst_${PN}-controller () {
-	# can't do this offline
-	if [ "x$D" != "x" ]; then
-		exit 1
-	fi
+    # can't do this offline
+    if [ "x$D" != "x" ]; then
+        exit 1
+    fi
 
-	if test ! -d $D/${datadir}/openvswitch/pki; then
-		ovs-pki init --dir=$D/${datadir}/openvswitch/pki
-	fi
+    if test ! -d $D/${datadir}/openvswitch/pki; then
+        ovs-pki init --dir=$D/${datadir}/openvswitch/pki
+    fi
 
-	cd $D/${sysconfdir}/openvswitch-controller
-	if ! test -e cacert.pem; then
-		ln -s $D/${datadir}/openvswitch/pki/switchca/cacert.pem cacert.pem
-	fi
-	if ! test -e privkey.pem || ! test -e cert.pem; then
-		oldumask=$(umask)
-		umask 077
-		ovs-pki req+sign --dir=$D/${datadir}/openvswitch/pki tmp controller >/dev/null
-		mv tmp-privkey.pem privkey.pem
-		mv tmp-cert.pem cert.pem
-		mv tmp-req.pem req.pem
-		chmod go+r cert.pem req.pem
-		umask $oldumask
-	fi
+    cd $D/${sysconfdir}/openvswitch-controller
+    if ! test -e cacert.pem; then
+        ln -s $D/${datadir}/openvswitch/pki/switchca/cacert.pem cacert.pem
+    fi
+    if ! test -e privkey.pem || ! test -e cert.pem; then
+        oldumask=$(umask)
+        umask 077
+        ovs-pki req+sign --dir=$D/${datadir}/openvswitch/pki tmp controller >/dev/null
+        mv tmp-privkey.pem privkey.pem
+        mv tmp-cert.pem cert.pem
+        mv tmp-req.pem req.pem
+        chmod go+r cert.pem req.pem
+        umask $oldumask
+    fi
 }
 
 SYSTEMD_PACKAGES = "${PN}"
