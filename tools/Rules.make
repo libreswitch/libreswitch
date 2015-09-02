@@ -563,7 +563,7 @@ ifeq ($(PY_TEST_ARGS),)
 PY_TEST_ARGS=src
 endif
 devenv_ct_test:
-	$(V) $(SUDO) PYTHONDONTWRITEBYTECODE=0 PATH=$(STAGING_DIR_NATIVE)/usr/bin:$$PATH \
+	$(V) $(SUDO) PYTHONDONTWRITEBYTECODE=0 PATH=$(STAGING_DIR_NATIVE)/usr/bin:/sbin:$$PATH \
 	  SANDBOX_UUID=$$(cat .sandbox_uuid | cut -d '-' -f 5) $(PYTEST_NATIVE) $(PY_TEST_ARGS)
 
 devenv_ct_clean:
