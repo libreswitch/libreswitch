@@ -5,7 +5,7 @@ Description=OpenSwitch REST service Daemon
 After=cfgd.service
 
 [Service]
-Type=oneshot
+Type=simple
 CPUSchedulingPolicy=rr
 CPUSchedulingPriority=7
 ExecStartPre=/bin/rm -f /var/run/restd.pid
