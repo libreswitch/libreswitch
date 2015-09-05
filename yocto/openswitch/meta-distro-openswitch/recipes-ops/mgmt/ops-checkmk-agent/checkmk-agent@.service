@@ -1,0 +1,11 @@
+[Unit]
+Description=Check_MK Agent
+
+[Service]
+ExecStart=/usr/bin/check_mk_agent
+User=root
+Group=root
+StandardInput=socket
+
+[Install]
+WantedBy=sockets.target

@@ -55,6 +55,7 @@ RDEPENDS_packagegroup-ops-base = "\
     ops-bufmond \
     ops-mgmt-intf \
     dnsmasq \
+    ops-checkmk-agent \
 "
 
 RDEPENDS_packagegroup-ops-base_append_arm = "\
