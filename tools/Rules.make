@@ -38,6 +38,8 @@ KERNEL_STAGING_DIR=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin
 DISTRO_VERSION=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^DISTRO_VERSION=/ { gsub(/"/, "", $$2); print $$2 }')
 STAGING_DIR_TARGET=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^STAGING_DIR_TARGET=/ { gsub(/"/, "", $$2); print $$2 }')
 STAGING_DIR_NATIVE=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^STAGING_DIR_NATIVE=/ { gsub(/"/, "", $$2); print $$2 }')
+DEPLOY_DIR_IMAGE=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^DEPLOY_DIR_IMAGE=/ { gsub(/"/, "", $$2); print $$2 }')
+DEPLOY_DIR_IMAGE_ALL=$(subst $(CONFIGURED_PLATFORM),,$(DEPLOY_DIR_IMAGE))
 # Used to identify the valid layers
 YOCTO_LAYERS=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F'=' '/^BBLAYERS=/ { print $$2 }')
 BASE_UIMAGE_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/uImage
@@ -514,6 +516,24 @@ _devenv_refresh:
 	done < .devenv
 	$(V) $(ECHO) "\n$(GREEN)Update completed$(GRAY)"
 
+# Trim Support
+.PHONY: trim
+trim: header
+	$(V) $(ECHO) "$(YELLOW)Trimming build directory to reduce size...$(GRAY)\n"
+	$(V) $(ECHO) "Removing old images..."
+	$(V) find -L $(DEPLOY_DIR_IMAGE_ALL) -xtype l | xargs readlink > $(BUILDDIR)/trim_keep
+	$(V) find -L $(DEPLOY_DIR_IMAGE_ALL) -xtype l | xargs readlink | awk -F\- '{$$NF=""; OFS="-"; print}' > $(BUILDDIR)/trim_patterns
+	$(V) while read PATTERN ; do \
+		find $(DEPLOY_DIR_IMAGE_ALL) -name $${PATTERN}* | grep -vf $(BUILDDIR)/trim_keep >> $(BUILDDIR)/trim_duplicated || true ; \
+	 done < $(BUILDDIR)/trim_patterns
+	$(V)awk '!a[$$0]++' $(BUILDDIR)/trim_duplicated > $(BUILDDIR)/trim_delete
+	$(V)for file in `cat $(BUILDDIR)/trim_delete` ; do echo "  Removing $$file..." ;rm $$file ; done
+	$(V)rm -f $(BUILDDIR)/trim_*
+	$(V) $(ECHO) "\nCleaning workdir..."
+	$(V)cd build ; ../yocto/poky/scripts/cleanup-workdir
+	$(V) $(ECHO) "\nCleaning duplicated shared states..."
+	$(V)cd build ; ../yocto/poky/scripts/sstate-cache-management.sh -d -L -y --cache-dir=$$(awk -F\" '/SSTATE_DIR =/ { print $$2 } ' $(BUILDDIR)/conf/local.conf)
+	$(V) $(ECHO) "\nTrimming completed."
 
 # Git support
 .PHONY: changelog_manifest
