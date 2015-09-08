@@ -219,17 +219,35 @@ cat /proc/uptime
 
 # New variant: Information about speed and state in one section
 echo '<<<lnx_if:sep(58)>>>'
-sed 1,2d /proc/net/dev
-if type ethtool > /dev/null
-then
-    for eth in $(sed -e 1,2d < /proc/net/dev | cut -d':' -f1 | sort)
-    do
-        echo "[$eth]"
-        ethtool $eth | egrep '(Speed|Duplex|Link detected|Auto-negotiation):'
-        echo -en "\tAddress: " ; cat /sys/class/net/$eth/address ; echo
-    done
-fi
-
+#sed 1,2d /proc/net/dev
+#if type ethtool > /dev/null
+#then
+#    for eth in $(sed -e 1,2d < /proc/net/dev | cut -d':' -f1 | sort)
+#    do
+#        echo "[$eth]"
+#        ethtool $eth | egrep '(Speed|Duplex|Link detected|Auto-negotiation):'
+#        echo -en "\tAddress: " ; cat /sys/class/net/$eth/address ; echo
+#    done
+#fi
+for i in $(ovs-vsctl list Interface | grep name | cut -c 24- | sed 's/"$//') ; do
+    if [ $(ovs-vsctl get Interface $i admin_state | grep "up") ]
+    then
+        echo $i: $(ovs-vsctl get Interface $i statistics:rx_bytes) $(ovs-vsctl get Interface $i statistics:rx_packets) $(ovs-vsctl get Interface $i statistics:rx_crc_err) $(ovs-vsctl get Interface $i stati
+stics:rx_dropped) 0 0 0 0 $(ovs-vsctl get Interface $i statistics:tx_bytes) $(ovs-vsctl get Interface $i statistics:rx_packets) $(ovs-vsctl get Interface $i statistics:rx_crc_err) $(ovs-vsctl get Interface
+ $i statistics:rx_dropped) 0 $(ovs-vsctl get Interface $i statistics:collisions) 0 0
+    fi
+done
+for i in $(ovs-vsctl list Interface | grep name | cut -c 24- | sed 's/"$//') ; do
+    if [ $(ovs-vsctl get Interface $i admin_state | grep "up") ]
+    then
+        echo [$i]
+        echo -e "\tSpeed: $(ovs-vsctl get Interface $i link_speed | sed 's/.\{5\}$//')Mb/s"
+        echo -e "\tDuplex: $(ovs-vsctl get Interface $i duplex | sed -e "s/\b\(.\)/\u\1/g")"
+        echo -e "\tAuto-negotiation: "
+        echo -e "\tLink detected: $(ovs-vsctl get Interface $i link_state | sed -e 's/up/yes/g' -e 's/down/no/g')"
+        echo -e "\tAddress: $(ovs-vsctl get Interface $i mac_in_use | sed -e 's/"//g')"
+    fi
+done
 
 # Current state of bonding interfaces
 if [ -e /proc/net/bonding ] ; then
