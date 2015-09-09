@@ -3,7 +3,7 @@ LICENSE = "GPL-2.0 & LGPL-2.0"
 LIC_FILES_CHKSUM = "file://COPYING;md5=81bcece21748c91ba9992349a91ec11d\
                     file://COPYING.LIB;md5=01ef24401ded36cd8e5d18bfe947240c"
 
-DEPENDS = "ops-utils ops-ovsdb ncurses perl-native openssl ops-cli"
+DEPENDS = "ops-utils ops-ovsdb ncurses perl-native openssl"
 
 # the "ip" command from busybox is not sufficient (flush by protocol flushes all routes)
 RDEPENDS_${PN} += "iproute2"
@@ -35,7 +35,6 @@ do_install_append() {
      # Remove non-ovs configuration files
      rm -Rf ${D}${sysconfdir}*
      rm -Rf ${D}/usr/include/quagga/*
-     rm -Rf ${D}/usr/lib/libzebra*
 }
 
 SYSTEMD_PACKAGES = "${PN}"
