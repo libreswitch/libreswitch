@@ -4,14 +4,21 @@ LIC_FILES_CHKSUM="file://${COMMON_LICENSE_DIR}/GPL-2.0;md5=801f80980d171dd642561
 
 RDEPENDS_${PN} = "bash"
 
-SRC_URI = "file://checkmk-agent.sh \
-    file://checkmk-agent@.service \
-    file://checkmk-agent.socket \
+SRC_URI = "git://git.openswitch.net/openswitch/ops-checkmk-agent;protocol=http \
+           file://checkmk-agent.sh \
+           file://checkmk-agent@.service \
+           file://checkmk-agent.socket \
 "
 
-S = "${WORKDIR}"
+SRCREV = "${AUTOREV}"
 
-do_install () {
+# When using AUTOREV, we need to force the package version to the revision of git
+# in order to avoid stale shared states.
+PV = "git${SRCPV}"
+
+S = "${WORKDIR}/git"
+
+do_install_prepend () {
     install -d ${D}${systemd_unitdir}/system
     install -m 644 ${WORKDIR}/checkmk-agent\@.service ${D}${systemd_unitdir}/system
     install -m 644 ${WORKDIR}/checkmk-agent.socket ${D}${systemd_unitdir}/system
@@ -20,4 +27,7 @@ do_install () {
     install -m 755 ${WORKDIR}/checkmk-agent.sh ${D}${bindir}/check_mk_agent
 }
 
-FILES_${PN} += "${systemd_unitdir}/system/checkmk-agent*"
+SYSTEMD_PACKAGES = "${PN}"
+SYSTEMD_SERVICE_${PN} = "checkmk-agent@.service checkmk-agent.socket"
+
+inherit systemd
