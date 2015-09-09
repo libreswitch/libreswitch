@@ -1,6 +1,6 @@
 inherit core-image extrausers
 EXTRA_USERS_PARAMS = "\
-         useradd -P admin admin; \
+         useradd -N -P admin admin; \
          usermod -g ovsdb_users admin;\
          usermod -s /usr/bin/vtysh admin;\
          "
