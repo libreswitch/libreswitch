@@ -9,6 +9,7 @@ KillSignal=SIGKILL
 SuccessExitStatus=SIGKILL
 ExecStart=/sbin/dhclient -4 -v -nw -pf /run/dhclient.%i.pid -lf /var/lib/dhcp/dhclient.%i.leases %I
 ExecStop=/sbin/dhclient -r  -lf /var/lib/dhcp/dhclient.%i.leases %I
+ExecStopPost=/bin/rm -f /var/lib/dhcp/dhclient.%i.leases
 
 [Install]
 WantedBy=dhclient.target
