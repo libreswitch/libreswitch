@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2015, 2010, 2011, 2012 Nicira, Inc.
+# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+# All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,10 +16,9 @@
 # limitations under the License.
 
 
-# This python script reads logrotate configs from DB and updates in /etc/logrotate.ovs
+# This python script reads logrotate configs from DB and updates
+# /etc/logrotate.ovs
 # Executes logrotation and transfer compressed log via tftp
-
-
 
 import argparse
 import os
@@ -62,10 +62,9 @@ rotate_max_count = 3
 protocol = "tftp"
 uri = "tftp://"
 
+
 def readDB():
-
     global idl
-
     global period
     global remoteIP
     global size_string
@@ -77,8 +76,7 @@ def readDB():
 
     remote = def_db
     schema_helper = ovs.db.idl.SchemaHelper(location=ovs_schema)
-    schema_helper.register_columns(table_name, \
-        ["logrotate_config"])
+    schema_helper.register_columns(table_name, ["logrotate_config"])
 
     idl = ovs.db.idl.Idl(remote, schema_helper)
     seqno = idl.change_seqno    # Sequence number when we last processed the db
@@ -87,21 +85,22 @@ def readDB():
             idl.run()
 
     if (len(idl.tables[table_name].rows) > 0):
-           for ovs_rec in idl.tables[table_name].rows.itervalues():
-                 logrotate_rec = dict(ovs_rec.logrotate_config)
-                 print("Reading logrotate config from DB")
-                 period = logrotate_rec.get('period','daily')
-                 size_string = logrotate_rec.get('maxsize','10')
-                 target = logrotate_rec.get('target','local')
+        for ovs_rec in idl.tables[table_name].rows.itervalues():
+            logrotate_rec = dict(ovs_rec.logrotate_config)
+            print("Reading logrotate config from DB")
+            period = logrotate_rec.get('period', 'daily')
+            size_string = logrotate_rec.get('maxsize', '10')
+            target = logrotate_rec.get('target', 'local')
 
-           uri = target
-           offset = uri.find(':')
-           protocol = uri[0:offset]
-           remoteIP = uri[offset+3:len(uri)]
+        uri = target
+        offset = uri.find(':')
+        protocol = uri[0:offset]
+        remoteIP = uri[offset+3:len(uri)]
     else:
-           print("Using default config")
+        print("Using default config")
 
     idl.close()
+
 
 def generateConfFile():
     global period
@@ -111,16 +110,16 @@ def generateConfFile():
     size_string += 'M'
     system("rm -f /etc/logrotate.ovs")
     try:
-        with open('/etc/logrotate.ovs','w') as conf_file:
+        with open('/etc/logrotate.ovs', 'w') as conf_file:
             conf_file.write("/var/log/auth.log \n")
             conf_file.write("/var/log/messages \n")
             conf_file.write("{\n")
-            conf_file.write("    "+ period +"\n")
+            conf_file.write("    " + period + "\n")
             conf_file.write("    maxsize " + size_string + "\n")
             conf_file.write("    create 0664 root utmp\n")
             conf_file.write("    missingok\n")
             conf_file.write("    notifempty\n")
-            conf_file.write("    "+ rotate_string+"\n")
+            conf_file.write("    " + rotate_string + "\n")
             conf_file.write("    compress\n")
             conf_file.write("    sharedscripts\n")
             conf_file.write("    postrotate\n")
@@ -134,12 +133,14 @@ def generateConfFile():
     else:
         return True
 
-# Removes old rotated log files if number of files are morethan rotate_max_count
-def removeRotatedLogfiles(path,filename):
+
+# Removes old rotated log files if number of files are morethan
+# rotate_max_count
+def removeRotatedLogfiles(path, filename):
     global rotate_max_count
 
     count = 0
-    out = getoutput("cd "+ path + "; ls -c " + filename + "-*")
+    out = getoutput("cd " + path + "; ls -c " + filename + "-*")
     out_lines = out.split(" ")
     lines = out.split("\n")
 
@@ -153,19 +154,22 @@ def removeRotatedLogfiles(path,filename):
 # clear old compressed logs and renames rotated log files with time extension
 
 def cleanLogfiles(path):
-    if(system("cd " + path + "; ls *.1.gz > /tmp/compressed_files 2>/dev/null")):
+    if(system("cd " + path +
+              "; ls *.1.gz > /tmp/compressed_files 2>/dev/null")):
         print("No log files rotated")
         return False
     try:
-        with open('/tmp/compressed_files','r') as compress_file , open('/tmp/tftp_files','w') as tftp_file:
+        with open('/tmp/compressed_files', 'r') as compress_file, \
+                open('/tmp/tftp_files', 'w') as tftp_file:
             for line in compress_file:
                 offset = line.find('.1.gz')
                 fileName = line[0:offset]
-                removeRotatedLogfiles(path,fileName)
+                removeRotatedLogfiles(path, fileName)
                 timeSuffix = getoutput('date +"%Y%m%d%H"')
-                system("cd " + path + ";mv " + fileName + ".1.gz " + fileName + "-" + timeSuffix + ".gz")
+                system("cd " + path + ";mv " + fileName +
+                       ".1.gz " + fileName + "-" + timeSuffix + ".gz")
                 target_file = fileName + "-" + timeSuffix + ".gz"
-                tftp_file.write( target_file + "\n")
+                tftp_file.write(target_file + "\n")
                 print("Rotated log file:" + target_file)
             tftp_file.close()
             compress_file.close()
@@ -175,6 +179,7 @@ def cleanLogfiles(path):
         return False
     else:
         return True
+
 
 # Send tftp with retry mechanism
 def sendTftp(command):
@@ -198,19 +203,20 @@ def sendLogFilesTftp(path):
     global uri
 
     try:
-
-        with open('/tmp/tftp_files','r') as tftp_file:
+        with open('/tmp/tftp_files', 'r') as tftp_file:
             for line in tftp_file:
-                with open('/tmp/tftp_put','w') as tftp_command:
+                with open('/tmp/tftp_put', 'w') as tftp_command:
                     tftp_command.write("binary\n")
                     tftp_command.write("timeout 5\n")
-                    tftp_command.write("put "+ line + "\n")
+                    tftp_command.write("put " + line + "\n")
                     tftp_command.write("quit\n")
                     tftp_command.close()
                 offset = line.find('\n')
                 log_file = line[0:offset]
-                print("Sending compressed log " + log_file + " to remote host " + uri)
-                tftp_string ="cd " + path + ";" +"tftp " + remoteIP + "< /tmp/tftp_put"
+                print("Sending compressed log " + log_file +
+                      " to remote host " + uri)
+                tftp_string = "cd " + path + ";" + "tftp " + remoteIP + \
+                              "< /tmp/tftp_put"
                 sendTftp(tftp_string)
                 system("rm -f /tmp/tftp_put")
             tftp_file.close()
@@ -220,6 +226,7 @@ def sendLogFilesTftp(path):
         return False
     else:
         return True
+
 
 def main():
 

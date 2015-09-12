@@ -5,8 +5,8 @@ EXTRA_OECONF += "--with-inotify"
 
 FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 
-SRC_URI += "file://cron.hourly/log_rotate \
+SRC_URI += "file://cron.hourly/ops-log-rotate \
            "
 do_install_append () {
-    install -m 0755 ${WORKDIR}/cron.hourly/log_rotate ${D}${sysconfdir}/cron.hourly/
+    install -m 0755 ${WORKDIR}/cron.hourly/ops-log-rotate ${D}${sysconfdir}/cron.hourly/
 }
