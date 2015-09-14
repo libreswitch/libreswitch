@@ -39,7 +39,7 @@ EXTRA_OECONF += "TARGET_PYTHON=${bindir}/python \
 FILES_ops-ovsdb = "/run /var/run /var/log /var/volatile ${bindir}/ovsdb* \
   ${sbindir}/ovsdb-server ${datadir}/ovsdbmonitor ${sysconfdir}/openvswitch/ \
   ${libdir}/libovscommon.so.1* ${libdir}/libovsdb.so.1* \
-  ${sysconfdir}/tmpfiles.d/openswitch.conf /usr/share/openvswitch/*.ovsschema /usr/share/openvswitch/vswitch.extschema"
+  ${sysconfdir}/tmpfiles.d/openswitch.conf /usr/share/openvswitch/*.ovsschema /usr/share/openvswitch/vswitch.extschema /usr/share/openvswitch/dhcp_leases.extschema"
 
 inherit python-dir useradd
 
@@ -67,6 +67,7 @@ do_configure_prepend() {
 
 do_compile_prepend() {
     ${PYTHON} ${S}/vswitchd/sanitize.py ${S}/vswitchd/vswitch.extschema ${S}/vswitchd/vswitch.ovsschema
+    ${PYTHON} ${S}/vswitchd/sanitize.py ${S}/vswitchd/dhcp_leases.extschema ${S}/vswitchd/dhcp_leases.ovsschema
     touch ${S}/vswitchd/vswitch.xml
 }
 
@@ -90,6 +91,7 @@ do_install_append() {
     install -d ${D}${PYTHON_SITEPACKAGES_DIR}
     mv ${D}/${prefix}/share/openvswitch/python/ovs ${D}${PYTHON_SITEPACKAGES_DIR}
     install -m 0644 ${S}/vswitchd/vswitch.extschema ${D}/${prefix}/share/openvswitch/vswitch.extschema
+    install -m 0644 ${S}/vswitchd/dhcp_leases.extschema ${D}/${prefix}/share/openvswitch/dhcp_leases.extschema
 }
 
 pkg_postinst_ops-ovsdb () {
