@@ -256,10 +256,10 @@ fi
 # Same for Open vSwitch bonding
 if type ovs-appctl > /dev/null ; then
     echo '<<<ovs_bonding:sep(58)>>>'
-    for bond in $(ovs-appctl bond/list | sed -e 1d | rev | cut -f3 | rev) ; do
-        echo "[$bond]"
-        ovs-appctl bond/show $bond
-    done
+#    for bond in $(ovs-appctl bond/list | sed -e 1d | rev | cut -f3 | rev) ; do
+#        echo "[$bond]"
+#        ovs-appctl bond/show $bond
+#    done
 fi
 
 
