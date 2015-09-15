@@ -1,16 +1,16 @@
 # Copyright (C) 2015 Hewlett Packard Enterprise Development LP
 
 [Unit]
-Description=OpenSwitch LED Daemon
+Description=OpenSwitch System Daemon (ops-sysd)
 After=ovsdb-server.service ops-init.service
 
 [Service]
 Type=forking
 CPUSchedulingPolicy=rr
 CPUSchedulingPriority=3
-ExecStartPre=/bin/rm -f /var/run/openvswitch/ledd.pid
-ExecStart=/sbin/ip netns exec nonet /usr/bin/ledd --detach --pidfile -vSYSLOG:INFO
-PIDFile=/var/run/openvswitch/ledd.pid
+ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-sysd.pid
+ExecStart=/sbin/ip netns exec nonet /usr/bin/ops-sysd --detach --pidfile -vSYSLOG:INFO
+PIDFile=/var/run/openvswitch/ops-sysd.pid
 Restart=on-abort
 
 [Install]

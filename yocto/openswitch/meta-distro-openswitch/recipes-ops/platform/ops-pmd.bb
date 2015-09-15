@@ -5,7 +5,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 DEPENDS = "ops-config-yaml ops-ovsdb"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-pmd;protocol=http \
-           file://pmd.service \
+           file://ops-pmd.service \
 "
 
 SRCREV="${AUTOREV}"
@@ -18,10 +18,10 @@ S = "${WORKDIR}/git"
 
 do_install_append() {
      install -d ${D}${systemd_unitdir}/system
-     install -m 0644 ${WORKDIR}/pmd.service ${D}${systemd_unitdir}/system/
+     install -m 0644 ${WORKDIR}/ops-pmd.service ${D}${systemd_unitdir}/system/
 }
 
 SYSTEMD_PACKAGES = "${PN}"
-SYSTEMD_SERVICE_${PN} = "pmd.service"
+SYSTEMD_SERVICE_${PN} = "ops-pmd.service"
 
 inherit openswitch cmake systemd
