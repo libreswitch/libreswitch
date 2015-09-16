@@ -8,9 +8,9 @@ After=ovsdb-server.service ops-init.service
 Type=forking
 CPUSchedulingPolicy=rr
 CPUSchedulingPriority=3
-ExecStartPre=/bin/rm -f /var/run/openvswitch/arpmgrd.pid
-ExecStart=/sbin/ip netns exec swns /usr/bin/arpmgrd --detach --pidfile -vSYSLOG:INFO
-PIDFile=/var/run/openvswitch/arpmgrd.pid
+ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-arpmgrd.pid
+ExecStart=/sbin/ip netns exec swns /usr/bin/ops-arpmgrd --detach --pidfile -vSYSLOG:INFO
+PIDFile=/var/run/openvswitch/ops-arpmgrd.pid
 Restart=on-abort
 
 [Install]
