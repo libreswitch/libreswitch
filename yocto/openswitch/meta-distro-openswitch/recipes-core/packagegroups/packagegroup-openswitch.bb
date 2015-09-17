@@ -42,8 +42,8 @@ RDEPENDS_packagegroup-ops-base = "\
     xinetd \
     ops-init \
     virtual/switchd \
-    ${@bb.utils.contains('MACHINE_FEATURES', 'ops-sim', 'ops-switchd-sim-plugin', '',d)} \
-    ${@bb.utils.contains('MACHINE_FEATURES', 'broadcom', 'ops-switchd-bcm-plugin', '',d)} \
+    ${@bb.utils.contains('MACHINE_FEATURES', 'ops-container', 'ops-switchd-container-plugin', '',d)} \
+    ${@bb.utils.contains('MACHINE_FEATURES', 'broadcom', 'ops-switchd-opennsl-plugin', '',d)} \
     ops-ovsdb \
     virtual/ops-hw-config \
     ops-cfgd ops-fand ops-ledd ops-pmd ops-powerd ops-sysd ops-tempd \
