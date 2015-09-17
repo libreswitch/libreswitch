@@ -5,7 +5,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 DEPENDS = "ops-utils ops-ovsdb"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-arpmgrd;protocol=http\
-           file://arpmgrd.service"
+           file://ops-arpmgrd.service"
 
 SRCREV = "${AUTOREV}"
 
@@ -17,10 +17,10 @@ S = "${WORKDIR}/git"
 
 do_install_append() {
      install -d ${D}${systemd_unitdir}/system
-     install -m 0644 ${WORKDIR}/arpmgrd.service ${D}${systemd_unitdir}/system/
+     install -m 0644 ${WORKDIR}/ops-arpmgrd.service ${D}${systemd_unitdir}/system/
 }
 
 SYSTEMD_PACKAGES = "${PN}"
-SYSTEMD_SERVICE_${PN} = "arpmgrd.service"
+SYSTEMD_SERVICE_${PN} = "ops-arpmgrd.service"
 
 inherit openswitch cmake systemd
