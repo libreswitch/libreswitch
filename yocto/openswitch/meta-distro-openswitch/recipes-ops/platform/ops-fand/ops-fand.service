@@ -8,9 +8,9 @@ After=ovsdb-server.service ops-init.service
 Type=forking
 CPUSchedulingPolicy=rr
 CPUSchedulingPriority=7
-ExecStartPre=/bin/rm -f /var/run/openvswitch/fand.pid
-ExecStart=/sbin/ip netns exec nonet /usr/bin/fand --detach --pidfile -vSYSLOG:INFO
-PIDFile=/var/run/openvswitch/fand.pid
+ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-fand.pid
+ExecStart=/sbin/ip netns exec nonet /usr/bin/ops-fand --detach --pidfile -vSYSLOG:INFO
+PIDFile=/var/run/openvswitch/ops-fand.pid
 Restart=on-abort
 
 [Install]

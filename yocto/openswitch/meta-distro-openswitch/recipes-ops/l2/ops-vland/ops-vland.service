@@ -1,16 +1,16 @@
 # Copyright (C) 2015 Hewlett Packard Enterprise Development LP
 
 [Unit]
-Description=OpenSwitch initfd Module Daemon
+Description=OpenSwitch VLAN Daemon
 After=ovsdb-server.service ops-init.service
 
 [Service]
 Type=forking
 CPUSchedulingPolicy=rr
 CPUSchedulingPriority=3
-ExecStartPre=/bin/rm -f /var/run/openvswitch/intfd.pid
-ExecStart=/sbin/ip netns exec nonet /usr/bin/intfd --detach --pidfile -vSYSLOG:INFO
-PIDFile=/var/run/openvswitch/intfd.pid
+ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-vland.pid
+ExecStart=/sbin/ip netns exec nonet /usr/bin/ops-vland --detach --pidfile -vSYSLOG:INFO
+PIDFile=/var/run/openvswitch/ops-vland.pid
 Restart=on-abort
 
 [Install]

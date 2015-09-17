@@ -6,7 +6,7 @@ DEPENDS = "ops-utils ops-config-yaml ops-ovsdb"
 RDEPENDS_${PN} = "dmidecode"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-sysd;protocol=https \
-           file://sysd.service \
+           file://ops-sysd.service \
 "
 
 SRCREV = "${AUTOREV}"
@@ -19,10 +19,10 @@ S = "${WORKDIR}/git"
 
 do_install_append() {
     install -d ${D}${systemd_unitdir}/system
-    install -m 0644 ${WORKDIR}/sysd.service ${D}${systemd_unitdir}/system
+    install -m 0644 ${WORKDIR}/ops-sysd.service ${D}${systemd_unitdir}/system
 }
 
 SYSTEMD_PACKAGES = "${PN}"
-SYSTEMD_SERVICE_${PN} = "sysd.service"
+SYSTEMD_SERVICE_${PN} = "ops-sysd.service"
 
 inherit openswitch cmake systemd pkgconfig
