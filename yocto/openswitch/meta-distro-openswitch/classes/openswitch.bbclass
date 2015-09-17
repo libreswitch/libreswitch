@@ -8,7 +8,7 @@ CFLAGS += "-DHALON"
 
 # Do cmake builds in debug mode
 EXTRA_OECMAKE+="-DCMAKE_BUILD_TYPE=Debug"
-EXTRA_OECMAKE+="${@bb.utils.contains('MACHINE_FEATURES', 'ops-sim', '-DPLATFORM_SIMULATION=ON', '',d)}"
+EXTRA_OECMAKE+="${@bb.utils.contains('MACHINE_FEATURES', 'ops-container', '-DPLATFORM_SIMULATION=ON', '',d)}"
 EXTRA_OECMAKE+="${@base_conditional('SITEINFO_ENDIANNESS', 'le', '-DCPU_LITTLE_ENDIAN=ON', '-DCPU_BIG_ENDIAN=ON', d)}"
 
 # Add debug directory for packages

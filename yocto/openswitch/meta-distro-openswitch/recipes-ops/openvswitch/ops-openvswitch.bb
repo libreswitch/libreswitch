@@ -25,7 +25,7 @@ RPROVIDES_${PN} = "virtual/switchd"
 
 RDEPENDS_${PN} = "openssl procps util-linux-uuidgen util-linux-libuuid coreutils \
   python perl perl-module-strict sed gawk grep ops-ovsdb \
-  ${@bb.utils.contains('MACHINE_FEATURES', 'ops-sim', 'openvswitch-sim-switch', '',d)} \
+  ${@bb.utils.contains('MACHINE_FEATURES', 'ops-container', 'openvswitch-sim-switch', '',d)} \
 "
 
 RDEPENDS_python-ops-ovsdb = "python-io python-netclient python-datetime \
@@ -34,7 +34,7 @@ RDEPENDS_python-ops-ovsdb = "python-io python-netclient python-datetime \
 EXTRA_OECONF += "TARGET_PYTHON=${bindir}/python \
                  TARGET_PERL=${bindir}/perl \
                  --disable-static --enable-shared\
-                 ${@bb.utils.contains('MACHINE_FEATURES', 'ops-sim', '--enable-simulator-provider', '',d)} \
+                 ${@bb.utils.contains('MACHINE_FEATURES', 'ops-container', '--enable-simulator-provider', '',d)} \
                  "
 FILES_ops-ovsdb = "/run /var/run /var/log /var/volatile ${bindir}/ovsdb* \
   ${sbindir}/ovsdb-server ${datadir}/ovsdbmonitor ${sysconfdir}/openvswitch/ \
@@ -83,7 +83,7 @@ do_install_append() {
     if ${@bb.utils.contains('MACHINE_FEATURES','broadcom','true','false',d)}; then
         install -m 0644 ${WORKDIR}/switchd_bcm.service ${D}${systemd_unitdir}/system/switchd.service
     fi
-    if ${@bb.utils.contains('MACHINE_FEATURES','ops-sim','true','false',d)}; then
+    if ${@bb.utils.contains('MACHINE_FEATURES','ops-container','true','false',d)}; then
         install -m 0644 ${WORKDIR}/switchd_sim.service ${D}${systemd_unitdir}/system/switchd.service
     fi
     install -d ${D}${sysconfdir}/tmpfiles.d
