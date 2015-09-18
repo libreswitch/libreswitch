@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-installer_version="0.5"
+installer_version="1.0"
 
 # check if stdout is a terminal...
 if [ -t 1 ]; then
@@ -28,98 +28,280 @@ echo -e "${bold}OpenSwitch ONIE installer (version $installer_version) for $MACH
 # Set system partition (bit 0) attributes.
 attr_bitmask="0x0000000000000001"
 label="OpenSwitch"
-mount_point=/mnt/nos
+config_label="$label Conf"
+primary_label="$label 1"
+secondary_label="$label 2"
+mount_point=/mnt/ops
+config_mount_point=/mnt/ops/tmp
+INSTALLING_FROM_OPS=false
 
-setup_nos_partition()
+# Install NOS on the same block device as ONIE
+NOS_DISK=$(blkid | awk '/LABEL="ONIE-BOOT"/ {print substr ($1,0,8)}')
+ACTIVE_PARTITION_NUMBER=-1
+INACTIVE_PARTITION_NUMBER=-1
+INSTALLING_PARTITION_NUMBER=-1
+INSTALLING_PARTITION_LABEL=""
+INSTALLING_BOOT_ENTRY=0
+PREVIOUS_BOOT_ENTRY=0
+OPS_CLEAN_INSTALL=${OPS_CLEAN_INSTALL:-false}
+
+setup_nos_partitions()
 {
-    echo
-    echo -e "${bold} --- Creating a new NOS partition (#${NOS_PARTITION_NUMBER}, label $label) --- ${low}"
-    first_sector=$(($(sgdisk -i $((${NOS_PARTITION_NUMBER} - 1)) ${NOS_DISK} | grep 'Last sector:' | awk '{ print $3 }') + 1))
-    sgdisk --new=${NOS_PARTITION_NUMBER}:${first_sector}:+${NOS_PARTITION_SIZE} \
-       --typecode=${NOS_PARTITION_NUMBER}:8300 \
-       --attributes=${NOS_PARTITION_NUMBER}:=:$attr_bitmask \
-       --change-name=${NOS_PARTITION_NUMBER}:"$label"  ${NOS_DISK} || {
-            echo -e "${red}ERROR${normal}: Failed to create partition ${NOS_DISK}${NOS_PARTITION_NUMBER}!"
+    # Find old legacy partitions and remove them
+    # This can be removed in the future
+    OLD_PARTITION_NUMBER=$(blkid | awk "/LABEL=\"$label\"/ {print substr (\$1,9,length(\$1)-9)}")
+    if [ -n "$OLD_PARTITION_NUMBER" ]; then
+        echo
+        echo -e "${bold} --- Removing legacy $label partition --- ${low}"
+        sgdisk -d ${OLD_PARTITION_NUMBER} ${NOS_DISK} || {
+            echo -e "${red}ERROR${normal}: Failed to delete partition ${NOS_DISK}${OLD_PARTITION_NUMBER}!"
             exit 1
         }
-    partprobe ${NOS_DISK}
+        partprobe ${NOS_DISK}
+    fi
 
-    echo
-    echo -e "${bold} --- Formatting NOS partition in ext4 --- ${low}"
-    mkfs.ext4 -L "$label" -q ${NOS_DISK}${NOS_PARTITION_NUMBER}
+    # Find if we have a config partition
+    CONFIG_PARTITION_NUMBER=$(blkid | awk "/LABEL=\"$config_label\"/ {print substr (\$1,9,length(\$1)-9)}")
+    PRIMARY_PARTITION_NUMBER=$(blkid | awk "/LABEL=\"$primary_label\"/ {print substr (\$1,9,length(\$1)-9)}")
+    SECONDARY_PARTITION_NUMBER=$(blkid | awk "/LABEL=\"$secondary_label\"/ {print substr (\$1,9,length(\$1)-9)}")
+    if ! $OPS_CLEAN_INSTALL && [ -n "$CONFIG_PARTITION_NUMBER" ]; then
+        echo
+        echo -e "${bold} --- Existing installation found, installing on the inactive partition --- ${low}"
+
+        # We have a config partition, find the active partition
+        if ! $INSTALLING_FROM_OPS ; then
+            mount -t ext4 ${NOS_DISK}${CONFIG_PARTITION_NUMBER} $config_mount_point
+        fi
+        active_grub_entry=$(grub-editenv $config_mount_point/boot/grub/grubenv list | awk -F= '/^saved_entry/ { print $2 }')
+        if ! $INSTALLING_FROM_OPS ; then
+            umount $config_mount_point
+        fi
+
+        if [ -n "$active_grub_entry" ] && [ $active_grub_entry == 0 ]; then
+            INACTIVE_PARTITION_LABEL="$secondary_label"
+            INACTIVE_PARTITION_NUMBER=$SECONDARY_PARTITION_NUMBER
+            INSTALLING_BOOT_ENTRY=1
+            PREVIOUS_BOOT_ENTRY=0
+        else
+            INACTIVE_PARTITION_LABEL="$primary_label"
+            INACTIVE_PARTITION_NUMBER=$PRIMARY_PARTITION_NUMBER
+            INSTALLING_BOOT_ENTRY=0
+            PREVIOUS_BOOT_ENTRY=1
+        fi
+
+        if mount | grep -q ${NOS_DISK}${INACTIVE_PARTITION_NUMBER} ; then
+            echo -e "${red}ERROR${normal}: The inactive partition is currently mounted (${NOS_DISK}${INACTIVE_PARTITION_NUMBER}). Aborting!"
+            exit 1
+        fi
+
+        echo
+        echo -e "${bold} --- Formating the inactive partition ($INACTIVE_PARTITION_LABEL, #${INACTIVE_PARTITION_NUMBER}) --- ${low}"
+        mkfs.ext4 -L "$INACTIVE_PARTITION_LABEL" -q ${NOS_DISK}${INACTIVE_PARTITION_NUMBER} || {
+            echo -e "${red}ERROR${normal}: Failed to format partition ${NOS_DISK}${INACTIVE_PARTITION_NUMBER}!"
+            exit 1
+        }
+        INSTALLING_PARTITION_NUMBER=${INACTIVE_PARTITION_NUMBER}
+        INSTALLING_PARTITION_LABEL=${INACTIVE_PARTITION_LABEL}
+    else
+        if $INSTALLING_FROM_OPS ; then
+            echo -e "${red}ERROR${normal}: Unable to find existing config partition, aborting!"
+            exit 1
+        fi
+
+        if ! $OPS_CLEAN_INSTALL ; then
+            echo
+            echo -e "${bold} --- Not previous installation found, performing a clean installation --- ${low}"
+        else
+            echo
+            echo -e "${bold} --- Performing a forced clean installation --- ${low}"
+        fi
+
+        # Create the partitions
+        if [ -z "$CONFIG_PARTITION_NUMBER" ] ; then
+            CONFIG_PARTITION_NUMBER=$(($(sgdisk -p ${NOS_DISK} | awk END'{print $1}') + 1))
+            echo
+            echo -e "${bold} --- Creating the configuration partition (#${CONFIG_PARTITION_NUMBER}, label $config_label) --- ${low}"
+            first_sector=$(($(sgdisk -i $((${CONFIG_PARTITION_NUMBER} - 1)) ${NOS_DISK} | grep 'Last sector:' | awk '{ print $3 }') + 1))
+            sgdisk --new=${CONFIG_PARTITION_NUMBER}:${first_sector}:+${CONFIG_PARTITION_SIZE} \
+               --typecode=${CONFIG_PARTITION_NUMBER}:8300 \
+               --attributes=${CONFIG_PARTITION_NUMBER}:=:$attr_bitmask \
+               --change-name=${CONFIG_PARTITION_NUMBER}:"$config_label"  ${NOS_DISK} || {
+                    echo -e "${red}ERROR${normal}: Failed to create partition ${NOS_DISK}${CONFIG_PARTITION_NUMBER}!"
+                    exit 1
+                }
+            partprobe ${NOS_DISK}
+        fi
+
+        if [ -z "$PRIMARY_PARTITION_NUMBER" ] ; then
+            PRIMARY_PARTITION_NUMBER=$((${CONFIG_PARTITION_NUMBER} + 1))
+            echo
+            echo -e "${bold} --- Creating the primary partition (#${PRIMARY_PARTITION_NUMBER}, label $primary_label) --- ${low}"
+            first_sector=$(($(sgdisk -i $((${PRIMARY_PARTITION_NUMBER} - 1)) ${NOS_DISK} | grep 'Last sector:' | awk '{ print $3 }') + 1))
+            sgdisk --new=${PRIMARY_PARTITION_NUMBER}:${first_sector}:+${NOS_PARTITION_SIZE} \
+               --typecode=${PRIMARY_PARTITION_NUMBER}:8300 \
+               --attributes=${PRIMARY_PARTITION_NUMBER}:=:$attr_bitmask \
+               --change-name=${PRIMARY_PARTITION_NUMBER}:"$primary_label"  ${NOS_DISK} || {
+                    echo -e "${red}ERROR${normal}: Failed to create partition ${NOS_DISK}${PRIMARY_PARTITION_NUMBER}!"
+                    exit 1
+                }
+            partprobe ${NOS_DISK}
+        fi
+
+        if [ -z "$SECONDARY_PARTITION_NUMBER" ] ; then
+            SECONDARY_PARTITION_NUMBER=$((${PRIMARY_PARTITION_NUMBER} + 1))
+            echo
+            echo -e "${bold} --- Creating the secondary partition (#${SECONDARY_PARTITION_NUMBER}, label $secondary_label) --- ${low}"
+            first_sector=$(($(sgdisk -i $((${SECONDARY_PARTITION_NUMBER} - 1)) ${NOS_DISK} | grep 'Last sector:' | awk '{ print $3 }') + 1))
+            sgdisk --new=${SECONDARY_PARTITION_NUMBER}:${first_sector}:+${NOS_PARTITION_SIZE} \
+               --typecode=${SECONDARY_PARTITION_NUMBER}:8300 \
+               --attributes=${SECONDARY_PARTITION_NUMBER}:=:$attr_bitmask \
+               --change-name=${SECONDARY_PARTITION_NUMBER}:"$secondary_label"  ${NOS_DISK} || {
+                    echo -e "${red}ERROR${normal}: Failed to create partition ${NOS_DISK}${SECONDARY_PARTITION_NUMBER}!"
+                    exit 1
+                }
+            partprobe ${NOS_DISK}
+        fi
+
+        # Format the partitions
+        echo
+        echo -e "${bold} --- Formatting configuration partition in ext4 --- ${low}"
+        mkfs.ext4 -L "$config_label" -q ${NOS_DISK}${CONFIG_PARTITION_NUMBER}
+        echo
+        echo -e "${bold} --- Formatting primary partition in ext4 --- ${low}"
+        mkfs.ext4 -L "$primary_label" -q ${NOS_DISK}${PRIMARY_PARTITION_NUMBER}
+        echo
+        echo -e "${bold} --- Formatting secondary partition in ext4 --- ${low}"
+        mkfs.ext4 -L "$secondary_label" -q ${NOS_DISK}${SECONDARY_PARTITION_NUMBER}
+
+        INSTALLING_PARTITION_NUMBER=${PRIMARY_PARTITION_NUMBER}
+        INSTALLING_PARTITION_LABEL=$primary_label
+        INSTALLING_BOOT_ENTRY=0
+    fi
 }
 
 populate_rootfs()
 {
     echo
-    echo -e "${bold} --- Populating the root filesystem --- ${low}"
-    mkdir -p $mount_point
-    mount -t ext4 ${NOS_DISK}${NOS_PARTITION_NUMBER} $mount_point
+    echo -e "${bold} --- Populating the root filesystem at partition ${INSTALLING_PARTITION_LABEL} (${NOS_DISK}${INSTALLING_PARTITION_NUMBER}) --- ${low}"
+    mount -t ext4 ${NOS_DISK}${INSTALLING_PARTITION_NUMBER} $mount_point
     prev_dir=$(pwd)
     source_path=$(realpath "$0")
     cd $mount_point
     sed -e '1,/^exit_marker$/d' "$source_path" | gzip -cd - | cpio -idm || {
-        echo -e "${red}ERROR${normal}: Failed to populate the root filesystem on ${NOS_DISK}${NOS_PARTITION_NUMBER}!"
+        echo -e "${red}ERROR${normal}: Failed to populate the root filesystem on ${NOS_DISK}${INSTALLING_PARTITION_NUMBER}!"
         exit 1
     }
     echo
-    echo -e "${bold} --- Installing NOS GRUB --- ${low}"
-    sed -i -e "s/OPENSWITCH_BOOT_PART_NUM/${NOS_PARTITION_NUMBER}/g" ${mount_point}/boot/grub/grub.cfg
+    echo -e "${bold} --- Installing $label GRUB --- ${low}"
+    sed -i -e "s/OPENSWITCH_PRIMARY_PART_NUM/${PRIMARY_PARTITION_NUMBER}/g" \
+           -e "s/OPENSWITCH_SECONDARY_PART_NUM/${SECONDARY_PARTITION_NUMBER}/g" \
+           -e "s/OPENSWITCH_CONFIG_PART_NUM/${CONFIG_PARTITION_NUMBER}/g" \
+       ${mount_point}/boot/grub/grub.cfg
     ${mount_point}/usr/sbin/grub-install --force --boot-directory ${mount_point}/boot --recheck ${NOS_DISK} || {
-        echo -e "${red}ERROR${normal}: Failed to install the NOS GRUB!"
+        echo -e "${red}ERROR${normal}: Failed to install the $label GRUB!"
         exit 1
     }
     chattr +i ${mount_point}/boot/grub/i386-pc/core.img
+
+    # Update the grub environment
+    if ! $INSTALLING_FROM_OPS ; then
+        mount -t ext4 ${NOS_DISK}${CONFIG_PARTITION_NUMBER} $config_mount_point
+        mkdir -p ${config_mount_point}/boot/grub/
+        # We are mounting the config inside the installing partition to allow the chroot to reach it
+        chroot ${mount_point} /usr/bin/grub-editenv /tmp/boot/grub/grubenv set saved_entry=${INSTALLING_BOOT_ENTRY}
+#        chroot ${mount_point} /usr/bin/grub-editenv /tmp/boot/grub/grubenv set prev_saved_entry=${PREVIOUS_BOOT_ENTRY}
+        chroot ${mount_point} /usr/bin/grub-editenv /tmp/boot/grub/grubenv unset prev_saved_entry
+        umount $config_mount_point
+    else
+        grub-editenv $config_mount_point/boot/grub/grubenv set saved_entry=${INSTALLING_BOOT_ENTRY}
+#        grub-editenv $config_mount_point/boot/grub/grubenv set prev_saved_entry=${PREVIOUS_BOOT_ENTRY}
+        grub-editenv $config_mount_point/boot/grub/grubenv unset prev_saved_entry
+    fi
 
     cd $prev_dir
     umount $mount_point
 }
 
+# Make sure we are running in the ONIE or OPS environment.
+if [ "$(uname -n)" == "onie" ] ; then
+    # Get the running machine configuration info.
+    [ -r /etc/machine.conf ] && . /etc/machine.conf
 
-# Make sure we are running in the ONIE environment.
-[ "$(uname -n)" != "onie" ] && {
-    echo -e "${red}ERROR${normal}: This machine does not seem to be running ONIE; aborting!"
-    exit 1
-}
-
-# Get the running machine configuration info.
-[ -r /etc/machine.conf ] && . /etc/machine.conf
-
-# Make sure that the machine matches the firmware image.
-[ "$onie_machine" != "$INSTALLER_ONIE_MACHINE" ] && {
-    echo -e "${red}ERROR${normal}: This machine is not an $INSTALLER_ONIE_MACHINE; aborting!"
-    exit 1
-}
-
-NOS_DISK=$(blkid | awk "/LABEL=\"$label\"/ {print substr (\$1,0,8)}")
-if [ -n "${NOS_DISK}" ]; then
-    NOS_PARTITION_NUMBER=$(blkid | awk "/LABEL=\"$label\"/ {print substr (\$1,9,length(\$1)-9)}")
-
-    echo
-    echo -e "${bold} ---  Removing existing NOS partition (#${NOS_PARTITION_NUMBER}) --- ${low}"
-    # Delete the partition
-    sgdisk -d ${NOS_PARTITION_NUMBER} ${NOS_DISK} || {
-        echo -e "${red}ERROR${normal}: Failed to delete partition ${NOS_DISK}${NOS_PARTITION_NUMBER}!"
+    # Make sure that the machine matches the firmware image.
+    [ "$onie_machine" != "$INSTALLER_ONIE_MACHINE" ] && {
+        echo -e "${red}ERROR${normal}: This machine is not an $INSTALLER_ONIE_MACHINE; aborting!"
         exit 1
     }
-    partprobe ${NOS_DISK}
 else
-    # Install NOS on the same block device as ONIE
-    NOS_DISK=$(blkid | awk '/LABEL="ONIE-BOOT"/ {print substr ($1,0,8)}')
-
-    # Find next available partition
-    NOS_PARTITION_NUMBER=$(($(sgdisk -p ${NOS_DISK} | awk END'{print $1}') + 1))
-
-    if [ -z "${NOS_PARTITION_NUMBER}" ]; then
-        echo -e "${red}ERROR${normal}: Failed to find an available partition for installation!"
+    # Check we are running on $label
+    if [ $(awk -F= '/^NAME/ { print $2 } ' /etc/os-release) != "$label" ] ; then
+        echo -e "${red}ERROR${normal}: This machine does not seem to be running ONIE or $label; aborting!"
         exit 1
     fi
+
+    platform=$(ovs-vsctl get subsystem base other_info:platform_name)
+    if ! [[ $platform =~ $INSTALLER_ONIE_MACHINE ]] ; then
+        echo -e "${red}ERROR${normal}: This machine is not an $INSTALLER_ONIE_MACHINE; aborting!"
+        exit 1
+    fi
+
+    # Check you we are running as root
+    if [[ $EUID -ne 0 ]]; then
+        echo -e "${red}ERROR${normal}: Needs to run as root"
+        exit 1
+    fi
+
+    if $OPS_CLEAN_INSTALL ; then
+        echo -e "${red}ERROR${normal}: Clean install cannot be done from OpenSwitch, boot to ONIE for clean install. Aborting"
+        exit 1
+    fi
+
+    INSTALLING_FROM_OPS=true
+    config_mount_point=/var/local
 fi
 
-setup_nos_partition
+banner() {
+    cat << "EOF"
+
+                          .g8""8q.
+                        .dP'    `YM.
+                        dM'      `MM `7MMpdMAo.  .gP"Ya `7MMpMMMb.
+                        MM        MM   MM   `Wb ,M'   Yb  MM    MM
+   /            \       MM.      ,MP   MM    M8 8M""""""  MM    MM
+  |-----    -----|      `Mb.    ,dP'   MM   ,AP YM.    ,  MM    MM
+   \   \\  //   /         `"bmmd"'     MMbmmd'   `Mbmmd'.JMML  JMML.
+          //                           M
+         //                          .JMML.        ,,                ,,
+        //               .M"""bgd                  db   mm         `7MM
+   /   //  \\   \       ,MI    "Y                       MM           MM
+  |-----    -----|      `MMb.  `7M'    ,A    `MF'`7MM mmMMmm ,p6"bo  MMpMMMb.
+   \            /         `YMMNq.VA   ,VAA   ,V    MM   MM  6M'  OO  MM    MM
+                        .     `MM VA ,V  VA ,V     MM   MM  8M       MM    MM
+                        Mb     dM  VVV    VVV      MM   MM  YM.    , MM    MM
+                        P"Ybmmd"    W      W     .JMML. `MbmoYMbmd'.JMML  JMML.
+
+
+EOF
+}
+
+banner
+# Clear any left-over mounts
+umount $mount_point 2>/dev/null
+mkdir -p $mount_point
+if ! $INSTALLING_FROM_OPS ; then
+    umount $config_mount_point 2>/dev/null
+    mkdir -p $config_mount_point
+fi
+setup_nos_partitions
 populate_rootfs
 
 echo
 echo -e "${bold}OpenSwitch installation completed${normal}"
+
+if ! $INSTALLING_FROM_OPS ; then
+    echo
+    echo -e "${bold}Rebooting...${normal}"
+    reboot
+fi
 exit 0
 exit_marker

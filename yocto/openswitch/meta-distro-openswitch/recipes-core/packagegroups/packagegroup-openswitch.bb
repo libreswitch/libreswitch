@@ -69,7 +69,7 @@ RDEPENDS_packagegroup-ops-min = "\
     python-pyroute2 \
     yaml-cpp \
     libevent \
-    util-linux-uuidgen \
+    util-linux \
     iptables \
     "
 

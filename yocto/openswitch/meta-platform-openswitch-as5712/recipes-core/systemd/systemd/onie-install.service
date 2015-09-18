@@ -1,18 +1,12 @@
 [Unit]
-Description=Reboot
-Documentation=man:systemd-halt.service(8)
+Description=Setup ONIE install
 DefaultDependencies=no
-Requires=shutdown.target umount.target final.target
-After=shutdown.target umount.target final.target
+Requires=umount.target
+Before=umount.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/sbin/grub-reboot ONIE
-ExecStart=/bin/mkdir -p /mnt/onie-boot
-ExecStart=/bin/mount /dev/sda2 /mnt/onie-boot/
-ExecStart=/mnt/onie-boot/onie/tools/bin/onie-boot-mode -o install
-ExecStart=/bin/systemctl --force reboot
+ExecStart=/usr/sbin/grub-reboot --boot-directory=/var/local/boot ONIE
 
 [Install]
 WantedBy=onie-install.target
-

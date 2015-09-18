@@ -1,12 +1,12 @@
 # Copyright (C) 2015 Hewlett Packard Enterprise Development LP
 
-PR_append = "_as5712"
+PR_append = "_ops"
 
 FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 
-SRC_URI += "file://grub.cfg.in"
+SRC_URI += "file://10-grub-ops-common.cfg"
 
-include nfs.conf 
+include nfs.conf
 
 def get_default_ip(d):
     if d.getVar("BB_NO_NETWORK", True) == "1":
@@ -23,8 +23,9 @@ NFS_SERVER_PATH ??= "/srv/nfsroot-${MACHINE}"
 
 do_install_append () {
     install -d ${D}/boot/grub
-    sed -e "s?@@NFSROOTIP@@?${NFS_SERVER_IP}?" -e "s?@@NFSROOTPATH@@?${NFS_SERVER_PATH}?" \
-      ${WORKDIR}/grub.cfg.in > ${D}/boot/grub/grub.cfg
+    cat ${WORKDIR}/*.cfg > ${D}/boot/grub/grub.cfg
+    sed -i -e "s?@@NFSROOTIP@@?${NFS_SERVER_IP}?" -e "s?@@NFSROOTPATH@@?${NFS_SERVER_PATH}?" \
+      ${D}/boot/grub/grub.cfg
 }
 
 FILES_${PN} += "/boot/grub/grub.cfg"
