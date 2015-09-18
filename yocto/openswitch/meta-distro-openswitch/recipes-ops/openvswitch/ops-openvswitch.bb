@@ -91,6 +91,7 @@ do_install_append() {
     install -d ${D}${PYTHON_SITEPACKAGES_DIR}
     mv ${D}/${prefix}/share/openvswitch/python/ovs ${D}${PYTHON_SITEPACKAGES_DIR}
     install -m 0644 ${S}/vswitchd/vswitch.extschema ${D}/${prefix}/share/openvswitch/vswitch.extschema
+    install -m 0644 ${S}/vswitchd/vswitch.xml ${D}/${prefix}/share/openvswitch/vswitch.xml
     install -m 0644 ${S}/vswitchd/dhcp_leases.extschema ${D}/${prefix}/share/openvswitch/dhcp_leases.extschema
 }
 
