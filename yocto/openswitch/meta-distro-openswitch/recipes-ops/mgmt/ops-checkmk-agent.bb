@@ -27,6 +27,10 @@ do_install_prepend () {
     install -m 755 ${WORKDIR}/checkmk-agent.sh ${D}${bindir}/check_mk_agent
 }
 
+pkg_postinst_${PN} () {
+    ln -s /lib/systemd/system/checkmk-agent\@.service /etc/systemd/system/sockets.target.wants/checkmk-agent\@.service
+}
+
 SYSTEMD_PACKAGES = "${PN}"
 SYSTEMD_SERVICE_${PN} = "checkmk-agent@.service checkmk-agent.socket"
 
