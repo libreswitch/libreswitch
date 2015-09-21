@@ -539,7 +539,7 @@ trim: header
 .PHONY: changelog_manifest
 changelog_manifest: header
 	$(V) $(ECHO) "$(YELLOW)Generating Change Log Manifest ...$(GRAY)\n"
-	$(V) cd $(BUILDDIR) ; $(BUILD_ROOT)/tools/bin/changelog_projects.py
+	$(V) $(BUILD_ROOT)/tools/bin/generate_changelog_manifest.py
 
 # Git support
 .PHONY: git_pull

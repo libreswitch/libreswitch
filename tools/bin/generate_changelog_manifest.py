@@ -128,18 +128,14 @@ def generate_manifest_data(repositories):
     :param str repositories: Path of the recipe.
     :rtype: str
     """
-    path = abspath("../../build")
-
-    command = 'cd '+path
     #git checkout a la primera version
-    command += ' && ../yocto/poky/bitbake/bin/bitbake -s | grep \'gitAUTOINC*\' > ../tools/bin/tmp.txt'
-    system (command)
+    system ('make bake RECIPE=\'-s\' | grep \'gitAUTOINC*\' > build/changelog_tmp.txt')
     listprojects = repositories.keys()
 
     #it is going to store the name of the project and the git reference number
-    m = open('changelog.manifest','w')
+    m = open('build/changelog.manifest','w')
 
-    with open('tmp.txt') as f:
+    with open('build/changelog_tmp.txt') as f:
         for line in f:
             #Get the name of the project
             str1 = line.strip().find(" ")
@@ -151,7 +147,7 @@ def generate_manifest_data(repositories):
                 gitNumber = gitN[0:str3]
                 m.write(project_name + ';' + gitNumber+ ';' + repositories[project_name] +'\n')
         m.close()
-    os.remove("tmp.txt")
+    os.remove("build/changelog_tmp.txt")
 
 def main():
     """
@@ -162,7 +158,7 @@ def main():
 
     # Get root
     #root = abspath(dirname(__file__))
-    root = abspath("../../yocto")
+    root = abspath("yocto")
     #log.debug('Root is: {}'.format(root))
 
     # Find all changelog configurations
