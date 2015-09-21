@@ -39,7 +39,7 @@ EXTRA_OECONF += "TARGET_PYTHON=${bindir}/python \
 FILES_ops-ovsdb = "/run /var/run /var/log /var/volatile ${bindir}/ovsdb* \
   ${sbindir}/ovsdb-server ${datadir}/ovsdbmonitor ${sysconfdir}/openvswitch/ \
   ${libdir}/libovscommon.so.1* ${libdir}/libovsdb.so.1* \
-  ${sysconfdir}/tmpfiles.d/openswitch.conf /usr/share/openvswitch/*.ovsschema /usr/share/openvswitch/vswitch.extschema /usr/share/openvswitch/dhcp_leases.extschema"
+  ${sysconfdir}/tmpfiles.d/openswitch.conf /usr/share/openvswitch/*.ovsschema /usr/share/openvswitch/vswitch.extschema /usr/share/openvswitch/vswitch.xml /usr/share/openvswitch/dhcp_leases.extschema"
 
 inherit python-dir useradd
 
