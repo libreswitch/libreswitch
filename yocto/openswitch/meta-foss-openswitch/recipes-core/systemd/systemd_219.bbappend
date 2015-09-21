@@ -29,7 +29,7 @@ do_install_append() {
 
 # We use systemd core dump
 EXTRA_OECONF_remove = "--disable-coredump"
-
+EXTRA_OECONF += "--with-dns-servers=" ""
 FILES_${PN} += "${bindir}/coredumpctl"
 
 #pkg_postinst_udev-hwdb_prepend() {
