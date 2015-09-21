@@ -5,7 +5,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 DEPENDS = "ops-ovsdb"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-lacpd;protocol=http\
-           file://lacpd.service \
+           file://ops-lacpd.service \
 "
 
 SRCREV = "${AUTOREV}"
@@ -17,11 +17,18 @@ PV = "git${SRCPV}"
 S = "${WORKDIR}/git"
 
 do_install_append() {
-     install -d ${D}${systemd_unitdir}/system
-     install -m 0644 ${WORKDIR}/lacpd.service ${D}${systemd_unitdir}/system/
+    # This is a temporary change to rename lacpd to ops-lacpd
+    if [ -x ${D}${bindir}/ops-lacpd ]
+    then
+        echo "ops-lacpd already exists."
+    else
+        /bin/ln -f ${D}${bindir}/lacpd ${D}${bindir}/ops-lacpd
+    fi
+    install -d ${D}${systemd_unitdir}/system
+    install -m 0644 ${WORKDIR}/ops-lacpd.service ${D}${systemd_unitdir}/system/
 }
 
 SYSTEMD_PACKAGES = "${PN}"
-SYSTEMD_SERVICE_${PN} = "lacpd.service"
+SYSTEMD_SERVICE_${PN} = "ops-lacpd.service"
 
 inherit openswitch cmake systemd
