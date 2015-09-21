@@ -563,7 +563,7 @@ git_pull: header
 .PHONY: devenv_ct_init devenv_ct_test
 
 devenv_ct_init: dev_header
-	$(V)$(call BITBAKE,ops-vsi-native)
+	$(V)$(call BITBAKE,ops-ft-framework-native)
 	$(V) /bin/mkdir -p src
 	$(V) /bin/cp tools/pytest.ini src/pytest.ini
 	$(V) if [ ! -f .sandbox_uuid ] ; then \
