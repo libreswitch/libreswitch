@@ -8,9 +8,9 @@ After=ovsdb-server.service ops-init.service
 Type=forking
 CPUSchedulingPolicy=rr
 CPUSchedulingPriority=3
-ExecStartPre=/bin/rm -f /var/run/openvswitch/mgmtintfcfg.pid
-ExecStart=/usr/bin/mgmtintfcfg --detach --pidfile -vSYSLOG:INFO
-PIDFile=/var/run/openvswitch/mgmtintfcfg.pid
+ExecStartPre=/bin/rm -f /var/run/openvswitch/ops_mgmtintfcfg.pid
+ExecStart=/usr/bin/ops_mgmtintfcfg --detach --pidfile -vSYSLOG:INFO
+PIDFile=/var/run/openvswitch/ops_mgmtintfcfg.pid
 Restart=on-abort
 
 [Install]
