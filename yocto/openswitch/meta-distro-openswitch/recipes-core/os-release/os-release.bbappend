@@ -8,11 +8,14 @@ OS_RELEASE_FIELDS = "ID ID_LIKE NAME VERSION VERSION_ID PRETTY_NAME HOME_URL BUI
 
 HOME_URL="http://www.openswitch.net"
 
-def get_build_id(d):
-    import os
-    import pwd
-    return pwd.getpwuid(os.getuid())[0]
+# Leting the code here if we want to go back to USER name approach
+# def get_build_id(d):
+#     import os
+#     import pwd
+#     return pwd.getpwuid(os.getuid())[0]
+# BUILD_ID = "${@get_build_id(d)}"
 
-BUILD_ID = "${@get_build_id(d)}"
+BUILD_ID = "developer_image"
+
 
 include build_info.conf
