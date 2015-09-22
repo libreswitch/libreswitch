@@ -191,7 +191,7 @@ _switch-platform:
             $(call FATAL_ERROR,Unknown platform \"$(PLATFORM)\"; choose from {$(GREEN)$(PLATFORMS)$(GRAY)}) ; \
          fi ; \
 	 $(ECHO) -n Switching to platform $(PLATFORM)... ; \
-	 ln -sf bblayers.conf-$(PLATFORM) build/conf/bblayers.conf ; \
+	 ln -sf bblayers.conf-$(DISTRO)-$(PLATFORM) build/conf/bblayers.conf ; \
 	 echo $(PLATFORM) > .platform ; \
 	 echo -e " done\n"
 
