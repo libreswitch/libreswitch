@@ -1,0 +1,14 @@
+# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+
+[Unit]
+Description=OpenSwitch DHCP-TFTP Daemon
+After=ovsdb-server.service
+
+[Service]
+Type=oneshot
+ExecStartPre=/bin/rm -f /var/run/dhcp_tftp.pid
+ExecStart=/sbin/ip netns exec swns /usr/bin/dhcp_tftp
+PIDFile=/var/run/dhcp_tftp.pid
+
+[Install]
+WantedBy=multi-user.target
