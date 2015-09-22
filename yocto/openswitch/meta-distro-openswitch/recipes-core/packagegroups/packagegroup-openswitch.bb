@@ -45,7 +45,7 @@ RDEPENDS_packagegroup-ops-base = "\
     ${@bb.utils.contains('MACHINE_FEATURES', 'ops-container', 'ops-switchd-container-plugin', '',d)} \
     ${@bb.utils.contains('MACHINE_FEATURES', 'broadcom', 'ops-switchd-opennsl-plugin', '',d)} \
     ops-ovsdb \
-    virtual/ops-hw-config \
+    ops-hw-config \
     ops-cfgd ops-fand ops-ledd ops-pmd ops-powerd ops-sysd ops-tempd \
     ops-intfd ops-lacpd ops-lldpd ops-vland ops-arpmgrd \
     ops-script-utils \
