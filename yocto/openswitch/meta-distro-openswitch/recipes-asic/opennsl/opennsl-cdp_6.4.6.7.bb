@@ -2,7 +2,7 @@ SUMMARY = "OpenNSL CDP Release"
 LICENSE = "Proprietary & Apache-2.0 & GPLv2"
 LIC_FILES_CHKSUM = "file://bin/LICENSE;md5=77e9225d45f6d0bf956a506126c6fd4d"
 
-RDEPENDS_${PN} += "ops-utils systemd"
+DEPENDS_${PN} += "ops-utils systemd"
 
 PROVIDES = "virtual/opennsl"
 RPROVIDES_${PN} = "virtual/opennsl"
