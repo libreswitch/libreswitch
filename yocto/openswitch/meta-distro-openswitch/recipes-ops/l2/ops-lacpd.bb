@@ -17,13 +17,6 @@ PV = "git${SRCPV}"
 S = "${WORKDIR}/git"
 
 do_install_append() {
-    # This is a temporary change to rename lacpd to ops-lacpd
-    if [ -x ${D}${bindir}/ops-lacpd ]
-    then
-        echo "ops-lacpd already exists."
-    else
-        /bin/ln -f ${D}${bindir}/lacpd ${D}${bindir}/ops-lacpd
-    fi
     install -d ${D}${systemd_unitdir}/system
     install -m 0644 ${WORKDIR}/ops-lacpd.service ${D}${systemd_unitdir}/system/
 }
