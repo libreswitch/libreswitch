@@ -6,7 +6,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 DEPENDS = "ops-utils ops-config-yaml ops-ovsdb libevent openssl"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-lldpd;protocol=http \
-	  file://lldpd.service \
+	  file://ops-lldpd.service \
 "
 
 SRCREV="${AUTOREV}"
@@ -31,14 +31,14 @@ do_configure() {
 }
 
 # Disable readline to skip GPL linking
-EXTRA_OECONF = "--enable-ovsdb --disable-privsep --without-readline"
+EXTRA_OECONF = "--enable-ovsdb --disable-privsep --without-readline --without-systemdsystemunitdir"
 
 do_install_append() {
      install -d ${D}${systemd_unitdir}/system
-     install -m 0644 ${WORKDIR}/lldpd.service ${D}${systemd_unitdir}/system/
+     install -m 0644 ${WORKDIR}/ops-lldpd.service ${D}${systemd_unitdir}/system/
 }
 
 SYSTEMD_PACKAGES = "${PN}"
-SYSTEMD_SERVICE_${PN} = "lldpd.service"
+SYSTEMD_SERVICE_${PN} = "ops-lldpd.service"
 
 FILES_${PN} += "/usr/share/zsh usr/lib/sysusers.d"

@@ -8,9 +8,9 @@ After=ovsdb-server.service ops-init.service
 Type=forking
 CPUSchedulingPolicy=rr
 CPUSchedulingPriority=3
-ExecStartPre=/bin/rm -f /var/run/openvswitch/lldpd.pid
-ExecStart=/sbin/ip netns exec swns /usr/sbin/lldpd --detach --pidfile -vSYSLOG:INFO
-PIDFile=/var/run/openvswitch/lldpd.pid
+ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-lldpd.pid
+ExecStart=/sbin/ip netns exec swns /usr/sbin/ops-lldpd --detach --pidfile -vSYSLOG:INFO
+PIDFile=/var/run/openvswitch/ops-lldpd.pid
 Restart=on-abort
 
 [Install]
