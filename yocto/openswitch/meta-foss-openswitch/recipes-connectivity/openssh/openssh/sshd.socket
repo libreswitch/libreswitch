@@ -1,0 +1,11 @@
+[Unit]
+Conflicts=sshd.service
+
+[Socket]
+ExecStartPre=@BASE_BINDIR@/mkdir -p /var/run/sshd
+ListenStream=22
+Accept=yes
+MaxConnections=16
+
+[Install]
+WantedBy=sockets.target
