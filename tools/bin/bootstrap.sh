@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Definitions
-SERVER_URL=http://archive.openswitch.net/
+SERVER_URL=https://archive.openswitch.net/
 CORKSCREW=corkscrew-2.0
 CORKSCREW_PACKAGE=$CORKSCREW.tar.gz
 BOOTSTRAP_TMP=/tmp/$DISTRO-tmp-$USER/
