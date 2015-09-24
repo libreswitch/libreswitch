@@ -51,6 +51,10 @@ oe_runnpm_native() {
 	[ -n "${HTTP_PROXY}" ] && export NPM_CONFIG_PROXY="${HTTP_PROXY}"
 	[ -n "${HTTPS_PROXY}" ] && export NPM_CONFIG_HTTPS_PROXY="${HTTPS_PROXY}"
 
+    # Workaround: npm doesn't pass the proxy parameters to git, so we have to pass them thru the config file
+	git config --global http.proxy "${http_proxy}"
+	git config --global https.proxy "${https_proxy}"
+
 	bbnote NPM native architecture: ${NPM_ARCH_NATIVE}
 	bbnote NPM cache directory: ${NPM_CONFIG_CACHE}
 	bbnote NPM HTTP proxy: ${NPM_CONFIG_PROXY}
