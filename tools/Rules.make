@@ -423,7 +423,7 @@ devenv_clean: dev_header
 DEVENV_BRANCH?=master
 
 define DEVENV_ADD
-	if ! grep -q $(1) .devenv 2>/dev/null ; then \
+	if ! grep -q '^$(1)$$' .devenv 2>/dev/null ; then \
 	  $(call DEVTOOL, modify --extract $(1) $(BUILD_ROOT)/src/$(1)) ; \
 	  pushd . > /dev/null ; \
 	  cd $(BUILD_ROOT)/src/$(1) ; \
