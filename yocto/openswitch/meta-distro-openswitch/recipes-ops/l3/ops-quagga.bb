@@ -9,7 +9,7 @@ DEPENDS = "ops-utils ops-ovsdb ncurses perl-native openssl"
 RDEPENDS_${PN} += "iproute2"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-quagga;protocol=http \
-    file://zebra.service file://bgpd.service \
+    file://ops-zebra.service file://ops-bgpd.service \
 "
 
 SRCREV="${AUTOREV}"
@@ -30,14 +30,14 @@ EXTRA_OECONF = "--disable-doc --disable-ripd \
 
 do_install_append() {
      install -d ${D}${systemd_unitdir}/system
-     install -m 0644 ${WORKDIR}/zebra.service ${D}${systemd_unitdir}/system/
-     install -m 0644 ${WORKDIR}/bgpd.service ${D}${systemd_unitdir}/system/
+     install -m 0644 ${WORKDIR}/ops-zebra.service ${D}${systemd_unitdir}/system/
+     install -m 0644 ${WORKDIR}/ops-bgpd.service ${D}${systemd_unitdir}/system/
      # Remove non-ovs configuration files
      rm -Rf ${D}${sysconfdir}*
      rm -Rf ${D}/usr/include/quagga/*
 }
 
 SYSTEMD_PACKAGES = "${PN}"
-SYSTEMD_SERVICE_${PN} = "zebra.service bgpd.service"
+SYSTEMD_SERVICE_${PN} = "ops-zebra.service ops-bgpd.service"
 
 inherit openswitch autotools pkgconfig systemd

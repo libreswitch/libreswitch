@@ -1,0 +1,17 @@
+# OpenSwitch 'ops-bgpd' service script
+
+[Unit]
+Description=OpenSwitch BGPD Daemon
+After=ovsdb-server.service ops-init.service
+
+[Service]
+Type=forking
+CPUSchedulingPolicy=rr
+CPUSchedulingPriority=3
+ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-bgpd.pid
+ExecStart=/sbin/ip netns exec swns /usr/sbin/ops-bgpd --detach --pidfile -vSYSLOG:INFO
+PIDFile=/var/run/openvswitch/ops-bgpd.pid
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target

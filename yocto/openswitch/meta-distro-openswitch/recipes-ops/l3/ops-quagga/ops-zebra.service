@@ -1,0 +1,17 @@
+# OpenSwitch 'ops-zebra' daemon service script
+
+[Unit]
+Description=OpenSwitch Zebra Daemon
+After=ovsdb-server.service ops-init.service
+
+[Service]
+Type=forking
+CPUSchedulingPolicy=rr
+CPUSchedulingPriority=3
+ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-zebra.pid
+ExecStart=/sbin/ip netns exec swns /usr/sbin/ops-zebra --detach --pidfile -vSYSLOG:INFO
+PIDFile=/var/run/openvswitch/ops-zebra.pid
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target
