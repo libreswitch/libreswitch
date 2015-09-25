@@ -4,7 +4,7 @@
 SERVER_URL=https://archive.openswitch.net/
 CORKSCREW=corkscrew-2.0
 CORKSCREW_PACKAGE=$CORKSCREW.tar.gz
-BOOTSTRAP_TMP=/tmp/$DISTRO-tmp-$USER/
+BOOTSTRAP_TMP=$BUILD_ROOT/build/tmp
 
 error () {
     echo
@@ -89,4 +89,4 @@ sanity_checks
 if ! which corkscrew >/dev/null 2>&1 ; then
     setup_corkscrew
 fi
-
+rm -Rf $BOOTSTRAP_TMP
