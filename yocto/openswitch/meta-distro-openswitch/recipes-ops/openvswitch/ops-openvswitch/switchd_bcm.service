@@ -9,7 +9,7 @@ Type=forking
 Environment="KNET_KCOM=bcm-knet"
 CPUSchedulingPolicy=rr
 CPUSchedulingPriority=10
-ExecStart=/sbin/ip netns exec swns /usr/bin/netserve -d 1943 /usr/sbin/ovs-vswitchd --no-chdir --pidfile -vSYSLOG:INFO
+ExecStart=/sbin/ip netns exec swns /usr/bin/netserve -d 1943 /usr/sbin/ops-switchd --no-chdir --pidfile -vSYSLOG:INFO
 WorkingDirectory=/var/run/openvswitch
 PIDFile=/var/run/netserve.pid
 Restart=on-abort
