@@ -8,9 +8,9 @@ After=ovsdb-server.service
 Type=oneshot
 CPUSchedulingPolicy=rr
 CPUSchedulingPriority=7
-ExecStartPre=/bin/rm -f /var/run/cfgd.pid
-ExecStart=/usr/bin/cfgd
-PIDFile=/var/run/cfgd.pid
+ExecStartPre=/bin/rm -f /var/run/ops_cfgd.pid
+ExecStart=/usr/bin/ops_cfgd
+PIDFile=/var/run/ops_cfgd.pid
 
 [Install]
 WantedBy=multi-user.target
