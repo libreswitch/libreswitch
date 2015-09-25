@@ -2,7 +2,9 @@ SUMMARY = "OpenSwitch REST Service Daemon"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://setup.py;beginline=1;endline=15;md5=718b8f9952f79dfe2d10ad2e7e01f255"
 
-RDEPENDS_${PN} = "python-argparse python-json python-ops-ovsdb python-distribute python-tornado python-html python-pkgutil python-subprocess python-numbers python-inflect python-xml"
+DEPENDS = "ops-openvswitch ops-ovsdb"
+
+RDEPENDS_${PN} = "python-argparse python-json python-ops-ovsdb python-distribute python-tornado python-html python-pkgutil python-subprocess python-numbers python-inflect python-xml ops-restapi"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-restd;protocol=http \
            file://restd.service \
@@ -19,6 +21,13 @@ S = "${WORKDIR}/git"
 do_install_prepend() {
      install -d ${D}${systemd_unitdir}/system
      install -m 0644 ${WORKDIR}/restd.service ${D}${systemd_unitdir}/system/
+}
+
+do_install_append() {
+      # Generating REST API file for use by ops-restapi module
+      install -d ${STAGING_DIR_TARGET}/srv/www/api
+      cd ${S}/opslib
+      PYTHONPATH=${STAGING_DIR_TARGET}/${PYTHON_SITEPACKAGES_DIR}:${PYTHONPATH} python apidocgen.py ${STAGING_DIR_TARGET}/${prefix}/share/openvswitch/vswitch.extschema ${STAGING_DIR_TARGET}/${prefix}/share/openvswitch/vswitch.xml > ${STAGING_DIR_TARGET}/srv/www/api/ops-restapi.json
 }
 
 SYSTEMD_PACKAGES = "${PN}"
