@@ -5,6 +5,7 @@ BB_GENERATE_MIRROR_TARBALLS = "0"
 # Most of the code requires this flag right now, otherwise the
 # structures in OVS get corrupted. This needs to be removed soon
 CFLAGS += "-DHALON"
+CFLAGS += "-DOPS"
 
 # Do cmake builds in debug mode
 EXTRA_OECMAKE+="-DCMAKE_BUILD_TYPE=Debug"
