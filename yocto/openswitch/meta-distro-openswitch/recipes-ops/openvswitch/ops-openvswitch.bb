@@ -2,7 +2,7 @@ SUMMARY = "OpenVSwitch for OpenSwitch"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 
-DEPENDS = "openssl python perl systemd ops-utils libtool"
+DEPENDS = "openssl python perl systemd ops-utils libtool ops"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-openvswitch;protocol=http \
    file://ovsdb-server.service \
@@ -27,6 +27,7 @@ RDEPENDS_${PN} = "openssl procps util-linux-uuidgen util-linux-libuuid coreutils
   python perl perl-module-strict sed gawk grep ops-ovsdb \
   ${@bb.utils.contains('MACHINE_FEATURES', 'ops-container', 'openvswitch-sim-switch', '',d)} \
 "
+RDEPENDS_ops-ovsdb = "ops"
 
 RDEPENDS_python-ops-ovsdb = "python-io python-netclient python-datetime \
   python-logging python-threading python-math python-fcntl python-resource"
@@ -39,7 +40,7 @@ EXTRA_OECONF += "TARGET_PYTHON=${bindir}/python \
 FILES_ops-ovsdb = "/run /var/run /var/log /var/volatile ${bindir}/ovsdb* \
   ${sbindir}/ovsdb-server ${datadir}/ovsdbmonitor ${sysconfdir}/openvswitch/ \
   ${libdir}/libovscommon.so.1* ${libdir}/libovsdb.so.1* \
-  ${sysconfdir}/tmpfiles.d/openswitch.conf /usr/share/openvswitch/*.ovsschema /usr/share/openvswitch/vswitch.extschema /usr/share/openvswitch/vswitch.xml /usr/share/openvswitch/dhcp_leases.extschema"
+  ${sysconfdir}/tmpfiles.d/openswitch.conf"
 
 inherit python-dir useradd
 
@@ -67,12 +68,22 @@ do_configure_prepend() {
 }
 
 do_compile_prepend() {
-    ${PYTHON} ${S}/vswitchd/sanitize.py ${S}/vswitchd/vswitch.extschema ${S}/vswitchd/vswitch.ovsschema
-    ${PYTHON} ${S}/vswitchd/sanitize.py ${S}/vswitchd/dhcp_leases.extschema ${S}/vswitchd/dhcp_leases.ovsschema
+    cp ${STAGING_DIR_TARGET}/usr/share/openvswitch/vswitch.extschema ${S}/vswitchd/vswitch.extschema
+    cp ${STAGING_DIR_TARGET}/usr/share/openvswitch/vswitch.ovsschema ${S}/vswitchd/vswitch.ovsschema
+    cp ${STAGING_DIR_TARGET}/usr/share/openvswitch/vswitch.xml ${S}/vswitchd/vswitch.xml
+    cp ${STAGING_DIR_TARGET}/usr/share/openvswitch/dhcp_leases.extschema ${S}/vswitchd/dhcp_leases.extschema
+    cp ${STAGING_DIR_TARGET}/usr/share/openvswitch/dhcp_leases.ovsschema ${S}/vswitchd/dhcp_leases.ovsschema
+    cp ${STAGING_DIR_TARGET}/usr/share/openvswitch/dhcp_leases.xml ${S}/vswitchd/dhcp_leases.xml
+    cp ${STAGING_DIR_TARGET}/usr/share/openvswitch/configdb.ovsschema ${S}/vswitchd/configdb.ovsschema
+
+    # ${PYTHON} ${S}/vswitchd/sanitize.py ${S}/vswitchd/vswitch.extschema ${S}/vswitchd/vswitch.ovsschema
+    # ${PYTHON} ${S}/vswitchd/sanitize.py ${S}/vswitchd/dhcp_leases.extschema ${S}/vswitchd/dhcp_leases.ovsschema
     touch ${S}/vswitchd/vswitch.xml
 }
 
 do_install_append() {
+    # Need to remove files to prevent double-install by autotools - these are already installed from ops.
+    rm -f ${D}/${prefix}/share/openvswitch/*.ovsschema
     install -m 0644 lib/libovscommon.pc ${D}/${libdir}/pkgconfig/
     install -m 0644 lib/libsflow.pc ${D}/${libdir}/pkgconfig/
     install -m 0644 lib/libopenvswitch.pc ${D}/${libdir}/pkgconfig/
@@ -91,9 +102,6 @@ do_install_append() {
     echo "d /run/openvswitch/ 0770 - ovsdb_users -" > ${D}${sysconfdir}/tmpfiles.d/openswitch.conf
     install -d ${D}${PYTHON_SITEPACKAGES_DIR}
     mv ${D}/${prefix}/share/openvswitch/python/ovs ${D}${PYTHON_SITEPACKAGES_DIR}
-    install -m 0644 ${S}/vswitchd/vswitch.extschema ${D}/${prefix}/share/openvswitch/vswitch.extschema
-    install -m 0644 ${S}/vswitchd/vswitch.xml ${D}/${prefix}/share/openvswitch/vswitch.xml
-    install -m 0644 ${S}/vswitchd/dhcp_leases.extschema ${D}/${prefix}/share/openvswitch/dhcp_leases.extschema
 }
 
 pkg_postinst_ops-ovsdb () {
