@@ -7,6 +7,7 @@ Description=OVSDB Server Daemon
 Type=forking
 CPUSchedulingPolicy=rr
 CPUSchedulingPriority=7
+ExecStartPre=/bin/mkdir -p /var/local/openvswitch
 ExecStartPre=/bin/sh -c '/usr/bin/test -f /var/run/openvswitch/ovsdb.db || /usr/bin/ovsdb-tool create /var/run/openvswitch/ovsdb.db /usr/share/openvswitch/vswitch.ovsschema'
 ExecStartPre=/bin/sh -c '/usr/bin/test -f /var/local/openvswitch/config.db || /usr/bin/ovsdb-tool create /var/local/openvswitch/config.db /usr/share/openvswitch/configdb.ovsschema'
 ExecStartPre=/bin/sh -c '/usr/bin/test -f /var/local/openvswitch/dhcp_leases.db || /usr/bin/ovsdb-tool create /var/local/openvswitch/dhcp_leases.db /usr/share/openvswitch/dhcp_leases.ovsschema'
