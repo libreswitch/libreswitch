@@ -4,7 +4,5 @@ if [ x$reason = xBOUND ] || [ x$reason = xRENEW ]; then
 	if [ -n "${new_openswitch_ztp+x}" ]; then
                 autoprovision ${new_openswitch_ztp}
 	fi
-
+        dhcphostname ${new_host_name}
 fi
-
-dhcphostname ${new_host_name}
