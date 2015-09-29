@@ -6,9 +6,9 @@ After=ovsdb-server.service
 
 [Service]
 Type=simple
-ExecStartPre=/bin/rm -f /var/run/dhcp_tftp.pid
-ExecStart=/sbin/ip netns exec swns /usr/bin/dhcp_tftp
-PIDFile=/var/run/dhcp_tftp.pid
+ExecStartPre=/bin/rm -f /var/run/ops_dhcp_tftp.pid
+ExecStart=/sbin/ip netns exec swns /usr/bin/ops_dhcp_tftp
+PIDFile=/var/run/ops_dhcp_tftp.pid
 
 [Install]
 WantedBy=multi-user.target
