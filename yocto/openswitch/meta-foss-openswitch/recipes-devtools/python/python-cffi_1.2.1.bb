@@ -17,3 +17,4 @@ S = "${WORKDIR}/${SRCNAME}-${PV}"
 inherit pypi
 
 CLEANBROKEN = "1"
+BBCLASSEXTEND = "native"

@@ -18,3 +18,4 @@ INHIBIT_PACKAGE_STRIP = "1"
 inherit pypi
 
 CLEANBROKEN = "1"
+BBCLASSEXTEND = "native"

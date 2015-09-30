@@ -2,7 +2,7 @@ SUMMARY = "OpenSwitch REST Service Daemon"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://setup.py;beginline=1;endline=15;md5=718b8f9952f79dfe2d10ad2e7e01f255"
 
-DEPENDS = "python-native ops-openvswitch ops-ovsdb"
+DEPENDS = "python-inflect-native python-tornado-native ops-openvswitch ops-ovsdb"
 
 RDEPENDS_${PN} = "python-argparse python-json python-ops-ovsdb python-distribute python-tornado python-html python-pkgutil python-subprocess python-numbers python-inflect python-xml ops-restapi"
 
@@ -25,17 +25,17 @@ do_install_prepend() {
 
 do_install_append () {
       # Generating REST API file for use by ops-restapi module
-      install -d ${STAGING_DIR_TARGET}/srv/www/api
+      install -d ${D}/srv/www/api
       cd ${S}/opslib
-      touch ${STAGING_DIR_TARGET}/srv/www/api/ops-restapi.json
-      # Guard against missing Python library
-      if -e ${STAGING_DIR_TARGET}/${PYTHON_SITEPACKAGES_DIR}/inflect.py
-      then
-            PYTHONPATH=${STAGING_DIR_TARGET}/${PYTHON_SITEPACKAGES_DIR}:${PYTHONPATH} python apidocgen.py ${STAGING_DIR_TARGET}/${prefix}/share/openvswitch/vswitch.extschema ${STAGING_DIR_TARGET}/${prefix}/share/openvswitch/vswitch.xml > ${STAGING_DIR_TARGET}/srv/www/api/ops-restapi.json
-      fi
+      # We do not have a native ovsdb-python package, so we use the one
+      # from the target by hacking the PYTHONPATH
+      PYTHONPATH=${STAGING_DIR_TARGET}/${PYTHON_SITEPACKAGES_DIR}:${PYTHONPATH} ${PYTHON} apidocgen.py ${STAGING_DIR_TARGET}/${prefix}/share/openvswitch/vswitch.extschema ${STAGING_DIR_TARGET}/${prefix}/share/openvswitch/vswitch.xml > ${D}/srv/www/api/ops-restapi.json
 }
+
 
 SYSTEMD_PACKAGES = "${PN}"
 SYSTEMD_SERVICE_${PN} = "restd.service"
 
-inherit openswitch setuptools systemd
+inherit openswitch setuptools systemd pythonnative
+
+FILES_${PN} += "/srv/www/api/ops-restapi.json"
