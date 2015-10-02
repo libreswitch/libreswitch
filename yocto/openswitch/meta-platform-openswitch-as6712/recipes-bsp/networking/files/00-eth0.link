@@ -1,0 +1,8 @@
+[Match]
+Path=pci-0000:00:14.0
+
+[Link]
+Description=Out of Band Management Port
+Name=eth0
+MTUBytes=1500
+
