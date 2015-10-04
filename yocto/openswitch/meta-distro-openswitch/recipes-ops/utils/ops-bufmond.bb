@@ -10,7 +10,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-bufmond;protocol=https \
     file://bufmond.service \
 "
 
-SRCREV = "${AUTOREV}"
+SRCREV = "82ff830544a9d1ed97a7fcb3b6b57cbefa9df3ed"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.

@@ -8,7 +8,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-dhcp-tftp;protocol=http \
            file://dhcp_tftp.service \
 "
 
-SRCREV="${AUTOREV}"
+SRCREV = "ac687d9596cc91f0d3e6e229b5bc4103a59303af"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.

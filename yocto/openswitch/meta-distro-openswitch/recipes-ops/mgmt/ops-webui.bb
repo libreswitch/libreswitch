@@ -5,7 +5,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 SRC_URI = "git://git.openswitch.net/openswitch/ops-webui;protocol=http \
 "
 
-SRCREV="${AUTOREV}"
+SRCREV = "c57b8cf00562d0389d0cd364136ca3606e022628"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.

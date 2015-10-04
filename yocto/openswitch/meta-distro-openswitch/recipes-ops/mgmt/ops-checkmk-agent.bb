@@ -10,7 +10,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-checkmk-agent;protocol=http \
            file://checkmk-agent.socket \
 "
 
-SRCREV = "${AUTOREV}"
+SRCREV = "fa07cae60254093ff8ee166cd2cd251fe33808a5"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
