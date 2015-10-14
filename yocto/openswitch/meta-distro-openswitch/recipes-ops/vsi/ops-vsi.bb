@@ -16,6 +16,6 @@ inherit setuptools
 
 RDEPENDS_${PN} = "mininet python-pytest"
 DEPENDS_class-native = "mininet-native python-pytest-native python-pytest-timeout-native \
-                        python-pyyaml-native util-linux-native"
+                        python-pyyaml-native util-linux-native python-smartpm-native"
 
 BBCLASSEXTEND = "native"
