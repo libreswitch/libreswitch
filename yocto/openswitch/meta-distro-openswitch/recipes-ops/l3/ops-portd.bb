@@ -7,7 +7,7 @@ DEPENDS = "ops-utils ops-ovsdb"
 SRC_URI = "git://git.openswitch.net/openswitch/ops-portd;protocol=http\
            file://ops-portd.service"
 
-SRCREV = "e747e9deae1b11920fc39832f26eda02d9db3e5d"
+SRCREV = "d389457583a6b0f0c8fdd919aa23f75ff4940f50"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
