@@ -41,21 +41,16 @@ endif
 # Console color escape sequences for bold/bright colors
 ifeq ($(MAKE_TERMOUT),)
 RED=\033[1;31m
-GREEN=\033[1;32m
-YELLOW=\033[1;33m
 BLUE=\033[1;34m
 PURPLE=\033[1;35m
 CYAN=\033[1;36m
-WHITE=\033[1;37m
 #This is actually "reset"
 GRAY=\033[0m
 else
 RED=
-GREEN=
-YELLOW=
 BLUE=
+PURPLE=
 CYAN=
-WHITE=
 GRAY=
 endif
 
@@ -86,47 +81,47 @@ export BUILD_ROOT=$(CURDIR)
 all:: header
 
 help::
-	@$(ECHO) "$(RED)Build System for $(DISTRO)$(GRAY)\n"
+	@$(ECHO) "$(CYAN)Build System for $(DISTRO)$(GRAY)\n"
 	@$(ECHO) "$$HELP_TEXT"
 
 ifeq ($(CONFIGURED_PLATFORM),undefined)
 define HELP_TEXT
 The platform type is not configured.  To configure it, please run:
 
-    $(YELLOW)make configure PLATFORM=$(GRAY)<platform>
+    $(BLUE)make configure PLATFORM=$(GRAY)<platform>
 
-where <platform> is one of: $(GREEN)$(PLATFORMS)$(GRAY)
+where <platform> is one of: $(PURPLE)$(PLATFORMS)$(GRAY)
 
 endef
 else
 define HELP_TEXT
-Platform: $(GREEN)$(CONFIGURED_PLATFORM)$(GRAY)
+Platform: $(PURPLE)$(CONFIGURED_PLATFORM)$(GRAY)
 
 The following primary targets are available:
 
-    $(YELLOW)all$(GRAY)                 : build the default targets for the platform
-    $(YELLOW)fs$(GRAY)                  : build the File System (if the FS is decoupled from the kernel)
-    $(YELLOW)kernel$(GRAY)              : build the Linux kernel
-    $(YELLOW)sdk$(GRAY)                 : build the SDK installer for the platform
+    $(BLUE)all$(GRAY)                 : build the default targets for the platform
+    $(BLUE)fs$(GRAY)                  : build the File System (if the FS is decoupled from the kernel)
+    $(BLUE)kernel$(GRAY)              : build the Linux kernel
+    $(BLUE)sdk$(GRAY)                 : build the SDK installer for the platform
 
 Additional development/maintenance targets:
 
-    $(YELLOW)bake RECIPE= $(GRAY)       : bitbake the specified RECIPE, e.g. RECIPE="-s" shows all package names
-    $(YELLOW)clean$(GRAY)               : cleans the build but not the shared state
-    $(YELLOW)cleansstate RECIPE= $(GRAY): clean RECIPE including shared state, keeps any download
-    $(YELLOW)distclean$(GRAY)           : removes generated files, and returns to a configurable state
-    $(YELLOW)devshell RECIPE= $(GRAY)   : start a devshell for RECIPE
-    $(YELLOW)help$(GRAY)                : this, see also $(BLUE)$(DISTRO_HELP_LINK)$(GRAY)
-    $(YELLOW)switch-platform$(GRAY)     : change to a different platform
-    $(YELLOW)show-platform$(GRAY)       : show current platform
+    $(BLUE)bake RECIPE= $(GRAY)       : bitbake the specified RECIPE, e.g. RECIPE="-s" shows all package names
+    $(BLUE)clean$(GRAY)               : cleans the build but not the shared state
+    $(BLUE)cleansstate RECIPE= $(GRAY): clean RECIPE including shared state, keeps any download
+    $(BLUE)distclean$(GRAY)           : removes generated files, and returns to a configurable state
+    $(BLUE)devshell RECIPE= $(GRAY)   : start a devshell for RECIPE
+    $(BLUE)help$(GRAY)                : this, see also $(BLUE)$(DISTRO_HELP_LINK)$(GRAY)
+    $(BLUE)switch-platform$(GRAY)     : change to a different platform
+    $(BLUE)show-platform$(GRAY)       : show current platform
 
 endef
 endif
 export HELP_TEXT
 
 header:: .platform
-	@$(ECHO) "$(RED)Build System for $(DISTRO)$(GRAY)\n"
-	@$(ECHO) "Platform: $(GREEN)$(CONFIGURED_PLATFORM)$(GRAY)"
+	@$(ECHO) "$(CYAN)Build System for $(DISTRO)$(GRAY)\n"
+	@$(ECHO) "Platform: $(PURPLE)$(CONFIGURED_PLATFORM)$(GRAY)"
 	@$(ECHO)
 
 .platform:
@@ -138,16 +133,16 @@ endif
 $(eval $(call PARSE_ARGUMENTS,configure))
 PLATFORM?=$(EXTRA_ARGS)
 configure:
-	@$(ECHO) "$(RED)Build System for $(DISTRO)$(GRAY)"
+	@$(ECHO) "$(CYAN)Build System for $(DISTRO)$(GRAY)"
 	$(V) if [ -f .platform ] ; then \
 	    $(call FATAL_ERROR,$(DISTRO) is already configured; you need to run distclean to change the configuration) ; \
 	  fi
 	$(V)\
 	 if ! [ -d yocto/*/meta-platform-$(DISTRO)-$(PLATFORM) ] || [ "$(PLATFORM)" == "" ] ; then \
-	    $(call FATAL_ERROR,Unknown platform \"$(PLATFORM)\"; choose from {$(GREEN)$(PLATFORMS)$(GRAY)}) ; \
+	    $(call FATAL_ERROR,Unknown platform \"$(PLATFORM)\"; choose from {$(PURPLE)$(PLATFORMS)$(GRAY)}) ; \
 	 fi ;
 	@$(ECHO) "Configuring for platform $(PLATFORM)...\n"
-	@$(ECHO) "\n$(GREEN)Configuring yocto...$(GRAY)"
+	@$(ECHO) "\n$(PURPLE)Configuring yocto...$(GRAY)"
 	$(V) \
 	 mkdir -p build/conf ; rm -f build/conf/*.conf ; \
 	 sed -e "s|##YOCTO_ROOT##|$(BUILD_ROOT)/yocto/poky|" tools/config/bblayers.conf.in > build/conf/bblayers.conf ; \
@@ -176,7 +171,7 @@ configure:
 	$(V) mkdir -p images
 	$(V) tools/bin/bootstrap.sh
 	$(V) echo $(PLATFORM) > .platform
-	$(V) $(ECHO) "\n$(GREEN)Configuration completed successfully!\n$(GRAY)"
+	$(V) $(ECHO) "\n$(PURPLE)Configuration completed successfully!\n$(GRAY)"
 
 $(eval $(call PARSE_ARGUMENTS,switch-platform))
 PLATFORM?=$(EXTRA_ARGS)
@@ -188,7 +183,7 @@ _switch-platform:
             $(call FATAL_ERROR,Set the environment variable PLATFORM to select the new platform) ; \
          fi ;\
 	 if ! [ -d yocto/*/meta-platform-$(DISTRO)-$(PLATFORM) ] ; then \
-            $(call FATAL_ERROR,Unknown platform \"$(PLATFORM)\"; choose from {$(GREEN)$(PLATFORMS)$(GRAY)}) ; \
+            $(call FATAL_ERROR,Unknown platform \"$(PLATFORM)\"; choose from {$(PURPLE)$(PLATFORMS)$(GRAY)}) ; \
          fi ; \
 	 $(ECHO) -n Switching to platform $(PLATFORM)... ; \
 	 ln -sf bblayers.conf-$(DISTRO)-$(PLATFORM) build/conf/bblayers.conf ; \
@@ -203,7 +198,7 @@ clean:: header
 	$(V)$(ECHO) "Cleaning completed.\n"
 
 distclean::
-	$(V)$(ECHO) "$(GREEN)Distcleaning...$(GRAY)"
+	$(V)$(ECHO) "$(PURPLE)Distcleaning...$(GRAY)"
 	$(V)rm -Rf .platform .devenv images src build nfsroot* tools/bin/{corkscrew,python}
 	$(V)find -type l -lname 'images/*' -print0 | xargs -r0 rm -f
 	$(V)$(ECHO) "Distcleaning completed. You need to reconfigure to build again\n"

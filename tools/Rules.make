@@ -76,7 +76,7 @@ endef
 # Parameters: first argument is the message
 define WARNING
 	$(ECHO) ; \
-	 $(ECHO) "$(YELLOW)WARNING:$(GRAY) $(1)" ; \
+	 $(ECHO) "$(BLUE)WARNING:$(GRAY) $(1)" ; \
 	 $(ECHO)
 endef
 
@@ -120,7 +120,7 @@ build/conf/local.conf: .platform
 	   -e "s|##DISTRO_ARCHIVE_ADDRESS##|$(DISTRO_ARCHIVE_ADDRESS)|" \
 	   tools/config/local.conf.in > $@
 	$(V)if [ -n "$(SSTATE_DIR)" ] && [ -d $(SSTATE_DIR) ] && [ -w $(SSTATE_DIR) ] ; then \
-	      $(ECHO) "$(YELLOW)Using shared state cache from $(SSTATE_DIR)...$(GRAY)\n" ; \
+	      $(ECHO) "$(BLUE)Using shared state cache from $(SSTATE_DIR)...$(GRAY)\n" ; \
 	      sed -i -e "s|^#SSTATE_DIR.*|SSTATE_DIR = \"$(SSTATE_DIR)\"|" $@ ; \
 	 fi
 
@@ -139,7 +139,7 @@ _KERNEL_TARGET ?= _kernel
 
 DISTRO_KERNEL_SYMBOLS_FILE ?= $(BASE_VMLINUX_FILE)
 _kernel:
-	$(V) $(ECHO) "$(YELLOW)Building kernel...$(GRAY)\n"
+	$(V) $(ECHO) "$(BLUE)Building kernel...$(GRAY)\n"
 	$(V)$(call BITBAKE,virtual/kernel)
 	$(V) $(MAKE) _kernel_links
 	$(V) $(ECHO)
@@ -160,7 +160,7 @@ endif
 fs: header _fs
 
 _fs images/fs-$(CONFIGURED_PLATFORM):
-	$(V) $(ECHO) "$(YELLOW)Building fs ($(DISTRO_FS_TARGET))...$(GRAY)\n"
+	$(V) $(ECHO) "$(BLUE)Building fs ($(DISTRO_FS_TARGET))...$(GRAY)\n"
 	$(V)$(call BITBAKE,$(DISTRO_FS_TARGET))
 	$(V) $(MAKE) _fs_links
 	$(V) $(ECHO)
@@ -300,7 +300,7 @@ sdk: header _sdk
 	$(V) ln -fs $(BUILD_ROOT)/build/tmp/deploy/sdk/$(DISTRO)-glibc-`uname -m`-*-toolchain-*.sh images
 
 _sdk:
-	$(V) $(ECHO) "$(YELLOW)Building SDK...$(GRAY)\n"
+	$(V) $(ECHO) "$(BLUE)Building SDK...$(GRAY)\n"
 	$(V)$(call BITBAKE,meta-toolchain-$(DISTRO))
 
 # Used to generate the dtb for the board
@@ -325,7 +325,7 @@ build/tmp/sysroots/$(HOST_ARCH)-linux/usr/bin/uboot-mkimage:
 # FIT image for uboot
 .PHONY: itb
 itb:: images/$(CONFIGURED_PLATFORM).itb
-	$(V) $(ECHO) "$(YELLOW)Building itb file...$(GRAY)\n"
+	$(V) $(ECHO) "$(BLUE)Building itb file...$(GRAY)\n"
 	$(V)$(MAKE) images/$(CONFIGURED_PLATFORM).itb
 
 images/$(CONFIGURED_PLATFORM).itb:: $(DISTRO_PLATFORM_ITS_FILE) $(MKIMAGE)
@@ -339,7 +339,7 @@ onie-installer: header _kernel_links _fs _onie-installer
 
 DISTRO_ONIE_INSTALLER_FILE?= $(BASE_ONIE_INSTALLER_FILE)
 _onie-installer::
-	$(V) $(ECHO) "$(YELLOW)Building ONIE Installer file ($(ONIE_INSTALLER_RECIPE))...$(GRAY)\n"
+	$(V) $(ECHO) "$(BLUE)Building ONIE Installer file ($(ONIE_INSTALLER_RECIPE))...$(GRAY)\n"
 	$(V)$(call BITBAKE,$(ONIE_INSTALLER_RECIPE))
 	$(V)ln -sf $(DISTRO_ONIE_INSTALLER_FILE) images/`basename $(DISTRO_ONIE_INSTALLER_FILE)`
 
@@ -357,7 +357,7 @@ endif
 REVIEWUSER?=$(USER)
 
 setup-git-review:
-	$(V) $(ECHO) "$(YELLOW)Setting up git-review system...$(GRAY)\n"
+	$(V) $(ECHO) "$(BLUE)Setting up git-review system...$(GRAY)\n"
 	$(V)$(MAKE) _setup-git-review
 
 _setup-git-review:: $(addprefix .git/hooks/,$(notdir $(wildcard $(BUILD_ROOT)/tools/bin/hooks/*)))
@@ -384,7 +384,7 @@ dev_header: header
 	fi
 
 devenv_init: header
-	$(V) $(ECHO) "$(YELLOW)Configuring development enviroment...$(GRAY)\n"
+	$(V) $(ECHO) "$(BLUE)Configuring development enviroment...$(GRAY)\n"
 	$(V) $(call BITBAKE,meta-ide-support)
 	$(V) touch .devenv
 	$(V) $(MAKE) setup-git-review
@@ -411,7 +411,7 @@ devenv_cscope: header
 	$(V) if !  which cscope > /dev/null ; then \
 	  $(call FATAL_ERROR,Could not find cscope in your path, please install it.) ; \
 	fi
-	$(V) $(ECHO) "$(YELLOW)Updating cscope indexes for development environment...$(GRAY)\n"
+	$(V) $(ECHO) "$(BLUE)Updating cscope indexes for development environment...$(GRAY)\n"
 	$(V)find $(STAGING_DIR_TARGET)/usr/include -type f -name "*.[chxsS]" -print > $(BUILD_ROOT)/src/cscope.files
 	$(V)find $(BUILD_ROOT)/src -type f -name "*.[chxsS]" -print >> $(BUILD_ROOT)/src/cscope.files
 	$(V)cd $(BUILD_ROOT)/src/ ; cscope -b -q -k
@@ -435,7 +435,7 @@ define DEVENV_ADD
 	  sed -e "s/##RECIPE##/$(1)/g" $(BUILD_ROOT)/tools/devenv-recipe-template.make >> $(BUILD_ROOT)/src/Rules.make ; \
 	  echo $(1) >> $(BUILD_ROOT)/.devenv ; \
 	else \
-	  $(ECHO) "$(YELLOW)$(1)$(GRAY) is already in your devenv" ; \
+	  $(ECHO) "$(BLUE)$(1)$(GRAY) is already in your devenv" ; \
 	fi ;
 endef
 
@@ -506,7 +506,7 @@ devenv_patch_recipe: dev_header
 devenv_refresh: dev_header _devenv_refresh
 
 _devenv_refresh:
-	$(V) $(ECHO) "$(YELLOW)Updating all the repositories on the developer environment...$(GRAY)"
+	$(V) $(ECHO) "$(BLUE)Updating all the repositories on the developer environment...$(GRAY)"
 	$(V) while read repo ; do \
 	  echo -e "\nUpdating src/$$repo" ; \
 	  pushd . >/dev/null ; \
@@ -514,12 +514,12 @@ _devenv_refresh:
 	  git pull --rebase || $(ECHO) "${RED}WARNING: git pull failed, skipping this error$(GRAY)" ; \
 	  popd >/dev/null ; \
 	done < .devenv
-	$(V) $(ECHO) "\n$(GREEN)Update completed$(GRAY)"
+	$(V) $(ECHO) "\n$(PURPLE)Update completed$(GRAY)"
 
 # Trim Support
 .PHONY: trim
 trim: header
-	$(V) $(ECHO) "$(YELLOW)Trimming build directory to reduce size...$(GRAY)\n"
+	$(V) $(ECHO) "$(BLUE)Trimming build directory to reduce size...$(GRAY)\n"
 	$(V) $(ECHO) "Removing old images..."
 	$(V) find -L $(DEPLOY_DIR_IMAGE_ALL) -xtype l | xargs readlink > $(BUILDDIR)/trim_keep
 	$(V) find -L $(DEPLOY_DIR_IMAGE_ALL) -xtype l | xargs readlink | awk -F\- '{$$NF=""; OFS="-"; print}' > $(BUILDDIR)/trim_patterns
@@ -538,7 +538,7 @@ trim: header
 # Git support
 .PHONY: changelog_manifest
 changelog_manifest: header
-	$(V) $(ECHO) "$(YELLOW)Generating Change Log Manifest ...$(GRAY)\n"
+	$(V) $(ECHO) "$(BLUE)Generating Change Log Manifest ...$(GRAY)\n"
 	$(V) $(BUILD_ROOT)/tools/bin/generate_changelog_manifest.py
 
 # Git support
@@ -557,7 +557,7 @@ git_pull: header
 	$(V)if test -f .devenv ; then \
 	  echo ; $(MAKE) _devenv_refresh ; \
 	 else \
-	  $(ECHO) "\n$(GREEN)Update completed$(GRAY)" ; \
+	  $(ECHO) "\n$(PURPLE)Update completed$(GRAY)" ; \
 	 fi
 
 .PHONY: devenv_ct_init devenv_ct_test
