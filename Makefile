@@ -88,7 +88,7 @@ ifeq ($(CONFIGURED_PLATFORM),undefined)
 define HELP_TEXT
 The platform type is not configured.  To configure it, please run:
 
-    $(BLUE)make configure PLATFORM=$(GRAY)<platform>
+    $(BLUE)make configure $(GRAY)<platform>
 
 where <platform> is one of: $(PURPLE)$(PLATFORMS)$(GRAY)
 
