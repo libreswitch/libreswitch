@@ -181,12 +181,17 @@ _switch-platform:
 	$(V)\
 	 if [ "$(PLATFORM)" == "" ] ; then \
             $(call FATAL_ERROR,Set the environment variable PLATFORM to select the new platform) ; \
-         fi ;\
+     fi ;\
 	 if ! [ -d yocto/*/meta-platform-$(DISTRO)-$(PLATFORM) ] ; then \
             $(call FATAL_ERROR,Unknown platform \"$(PLATFORM)\"; choose from {$(PURPLE)$(PLATFORMS)$(GRAY)}) ; \
-         fi ; \
+     fi ; \
 	 $(ECHO) -n Switching to platform $(PLATFORM)... ; \
 	 ln -sf bblayers.conf-$(DISTRO)-$(PLATFORM) build/conf/bblayers.conf ; \
+	 if [ -f .devenv ] ; then \
+		if ! grep -q "$(BUILD_ROOT)/build/workspace" build/conf/bblayers.conf ; then \
+			sed --follow-symlinks -i 's|\(.*$(BUILD_ROOT)/yocto/.*/meta-platform-$(DISTRO)-$(PLATFORM) \\\)|\1\n  $(BUILD_ROOT)/build/workspace \\|' build/conf/bblayers.conf ; \
+		fi ;\
+	 fi ; \
 	 echo $(PLATFORM) > .platform ; \
 	 echo -e " done\n"
 
