@@ -8,7 +8,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-pmd;protocol=http \
            file://ops-pmd.service \
 "
 
-SRCREV = "1412e68bcfbb34c0570dd3bccc2c735611e57abd"
+SRCREV = "0f508f453dba49c0d6a3ad21069b1a18e0cb67d0"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
