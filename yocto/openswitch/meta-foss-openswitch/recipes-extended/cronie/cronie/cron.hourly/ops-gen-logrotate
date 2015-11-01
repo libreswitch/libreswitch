@@ -1,0 +1,88 @@
+#!/usr/bin/env python
+# Copyright (C) 2015 Bert Vermeulen <bert@biot.com>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# This python script reads logrotate configuration from OVSDB and updates
+# /etc/logrotate-ops.conf if needed.
+
+import os
+import re
+
+import ovs.db.idl
+
+# OPENSWITCH_TODO: Need to pull this from the build env
+OVSDB_CONN = 'unix:/var/run/openvswitch/db.sock'
+
+# OPENSWITCH_TODO: Need to pull this from the build env
+OVSDB_SCHEMA = '/usr/share/openvswitch/vswitch.ovsschema'
+
+CONFIG_FILE = '/etc/logrotate-ops.conf'
+
+
+# period, maxsize, target
+def read_ovsdb():
+    results = {}
+    try:
+        schema_helper = ovs.db.idl.SchemaHelper(location=OVSDB_SCHEMA)
+        schema_helper.register_columns('System', ['logrotate_config'])
+        idl = ovs.db.idl.Idl(OVSDB_CONN, schema_helper)
+        while not idl.run():
+            # Wait for initial fetch to complete.
+            pass
+
+        if idl.tables['System'].rows:
+            for ovs_rec in idl.tables['System'].rows.itervalues():
+                results = dict(ovs_rec.logrotate_config)
+
+        idl.close()
+    except Exception as e:
+        raise Exception("OVSDB error: %s" % e)
+
+    return results
+
+
+def generate_config_file(config):
+    periods = ('hourly', 'daily', 'weekly', 'monthly', 'yearly')
+    changed = False
+    new_file = []
+    f = open(CONFIG_FILE).read()
+    for line in f.split('\n'):
+        new_file.append(line)
+        m = re.search('^(\s*)(\S+)\s*(.*)\s*$', line)
+        if not m:
+            continue
+        if m.group(2) in periods and 'period' in config:
+            if m.group(2) != config['period']:
+                new_file[-1] = "%s%s" % (m.group(1), config['period'])
+                changed = True
+        elif m.group(2) in config and m.group(3) != str(config[m.group(2)]):
+            ln = "%s%s %s" % (m.group(1), m.group(2), str(config[m.group(2)]))
+            new_file[-1] = ln
+            changed = True
+
+    if changed:
+        open(CONFIG_FILE + '.new', 'w').write('\n'.join(new_file))
+        # Atomic operation.
+        os.rename(CONFIG_FILE + '.new', CONFIG_FILE)
+
+
+#
+# main
+#
+
+try:
+    config = read_ovsdb()
+    generate_config_file(config)
+except Exception as e:
+    print "Error: %s" % e
