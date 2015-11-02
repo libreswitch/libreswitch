@@ -1,0 +1,258 @@
+--- judy-1.0.5.orig/doc/Makefile.am	2007-05-22 08:38:41.000000000 -0600
++++ judy-1.0.5/doc/Makefile.am	2015-10-14 11:47:57.154834958 -0600
+@@ -96,7 +96,7 @@
+ 
+ 
+ man/man3/Judy: 
+-	../tool/jhton ext/Judy_3.htm | grep -v '^[   ]*$$' | sed -e 's/\.C//' >  man/man3/Judy
++	$(top_srcdir)/tool/jhton ext/Judy_3.htm | grep -v '^[   ]*$$' | sed -e 's/\.C//' >  man/man3/Judy
+ 
+ man/man3/Judy1:
+ 	../tool/jhton ext/Judy1_3.htm | grep -v '^[   ]*$$' | sed -e 's/\.C//' > man/man3/Judy1
+--- judy-1.0.5.orig/Makefile.am	2007-05-22 08:38:41.000000000 -0600
++++ judy-1.0.5/Makefile.am	2015-10-14 11:49:22.793413398 -0600
+@@ -10,7 +10,7 @@
+ # test (for libJudy).
+ #SUBDIRS = src tool doc test make_includes
+ #SUBDIRS = src/JudyCommon src/JudyL src/Judy1 src/JudySL src/JudyHS src/obj
+-SUBDIRS = src tool doc test
++SUBDIRS = src
+ 
+ # These files will be included in our tarballs, even though automake knows
+ # nothing else about them.
+--- judy-1.0.5.orig/src/Judy1/Makefile.am	2007-05-22 08:38:41.000000000 -0600
++++ judy-1.0.5/src/Judy1/Makefile.am	2015-10-14 13:07:34.552712583 -0600
+@@ -1,4 +1,4 @@
+-INCLUDES =  -I. -I.. -I../JudyCommon/ 
++INCLUDES =  -I$(srcdir) -I$(top_srcdir)/src -I$(top_srcdir)/src/JudyCommon/
+ AM_CFLAGS = -DJUDY1 @WARN_CFLAGS@ 
+ 
+ noinst_LTLIBRARIES = libJudy1.la libnext.la libprev.la libcount.la libinline.la
+@@ -17,71 +17,74 @@
+ libinline_la_SOURCES = j__udy1Test.c
+ libinline_la_CFLAGS = $(AM_CFLAGS) -DJUDYGETINLINE
+ 
+-Judy1Tables.c: Judy1TablesGen.c
+-	$(CC) $(INCLUDES) $(AM_CFLAGS) @CFLAGS@ -o Judy1TablesGen Judy1TablesGen.c; ./Judy1TablesGen
++Judy1Tables.c: Judy1TablesGen
++	./Judy1TablesGen
++	
++Judy1TablesGen : ../JudyCommon/JudyTables.c
++	gcc $(INCLUDES) $(AM_CFLAGS) @CFLAGS@ -o $@ $^
+ 
+ Judy1ByCount.c:../JudyCommon/JudyByCount.c
+-	cp -f ../JudyCommon/JudyByCount.c      		Judy1ByCount.c   
++	cp -f $^ $@
+ 
+ Judy1Cascade.c:../JudyCommon/JudyCascade.c
+-	cp -f ../JudyCommon/JudyCascade.c      		Judy1Cascade.c
++	cp -f $^ $@
+ 
+ Judy1Count.c:../JudyCommon/JudyCount.c
+-	cp -f ../JudyCommon/JudyCount.c        		Judy1Count.c
++	cp -f $^ $@
+ 
+ Judy1CreateBranch.c:../JudyCommon/JudyCreateBranch.c
+-	cp -f ../JudyCommon/JudyCreateBranch.c 		Judy1CreateBranch.c
++	cp -f $^ $@
+ 
+ Judy1Decascade.c:../JudyCommon/JudyDecascade.c
+-	cp -f ../JudyCommon/JudyDecascade.c    		Judy1Decascade.c
++	cp -f $^ $@
+ 
+ Judy1Unset.c:../JudyCommon/JudyDel.c
+-	cp -f ../JudyCommon/JudyDel.c          		Judy1Unset.c
++	cp -f $^ $@
+ 
+ Judy1First.c:../JudyCommon/JudyFirst.c
+-	cp -f ../JudyCommon/JudyFirst.c        		Judy1First.c
++	cp -f $^ $@
+ 
+ Judy1FreeArray.c:../JudyCommon/JudyFreeArray.c
+-	cp -f ../JudyCommon/JudyFreeArray.c    		Judy1FreeArray.c
++	cp -f $^ $@
+ 
+ Judy1Test.c:../JudyCommon/JudyGet.c
+-	cp -f ../JudyCommon/JudyGet.c          		Judy1Test.c
++	cp -f $^ $@
+ 
+ j__udy1Test.c:../JudyCommon/JudyGet.c
+-	cp -f ../JudyCommon/JudyGet.c          		j__udy1Test.c
++	cp -f $^ $@
+ 
+ Judy1SetArray.c:../JudyCommon/JudyInsArray.c
+-	cp -f ../JudyCommon/JudyInsArray.c     		Judy1SetArray.c
++	cp -f $^ $@
+ 
+ Judy1Set.c:../JudyCommon/JudyIns.c
+-	cp -f ../JudyCommon/JudyIns.c          		Judy1Set.c
++	cp -f $^ $@
+ 
+ Judy1InsertBranch.c:../JudyCommon/JudyInsertBranch.c
+-	cp -f ../JudyCommon/JudyInsertBranch.c 		Judy1InsertBranch.c
++	cp -f $^ $@
+ 
+ Judy1MallocIF.c:../JudyCommon/JudyMallocIF.c
+-	cp -f ../JudyCommon/JudyMallocIF.c     		Judy1MallocIF.c
++	cp -f $^ $@
+ 
+ Judy1MemActive.c:../JudyCommon/JudyMemActive.c
+-	cp -f ../JudyCommon/JudyMemActive.c    		Judy1MemActive.c
++	cp -f $^ $@
+ 
+ Judy1MemUsed.c:../JudyCommon/JudyMemUsed.c
+-	cp -f ../JudyCommon/JudyMemUsed.c      		Judy1MemUsed.c
++	cp -f $^ $@
+ 
+ Judy1Next.c:../JudyCommon/JudyPrevNext.c
+-	cp -f ../JudyCommon/JudyPrevNext.c     		Judy1Next.c
++	cp -f $^ $@
+ 
+ Judy1Prev.c:../JudyCommon/JudyPrevNext.c
+-	cp -f ../JudyCommon/JudyPrevNext.c     		Judy1Prev.c
++	cp -f $^ $@
+ 
+ Judy1NextEmpty.c:../JudyCommon/JudyPrevNextEmpty.c
+-	cp -f ../JudyCommon/JudyPrevNextEmpty.c		Judy1NextEmpty.c
++	cp -f $^ $@
+ 
+ Judy1PrevEmpty.c:../JudyCommon/JudyPrevNextEmpty.c
+-	cp -f ../JudyCommon/JudyPrevNextEmpty.c		Judy1PrevEmpty.c
++	cp -f $^ $@
+ 
+ Judy1TablesGen.c:../JudyCommon/JudyTables.c
+-	cp -f ../JudyCommon/JudyTables.c	        Judy1TablesGen.c
++	cp -f $^ $@
+ 
+ DISTCLEANFILES = .deps Makefile 
+ 
+--- judy-1.0.5.orig/src/JudyCommon/Makefile.am	2007-05-22 08:38:41.000000000 -0600
++++ judy-1.0.5/src/JudyCommon/Makefile.am	2015-10-14 11:28:11.469978683 -0600
+@@ -1,4 +1,4 @@
+-INCLUDES =  -I. -I..
++INCLUDES =  -I$(srcdir) -I$(top_srcdir)/src
+ AM_CFLAGS = @CFLAGS@ @WARN_CFLAGS@ 
+ 
+ noinst_LTLIBRARIES = libJudyMalloc.la
+--- judy-1.0.5.orig/src/JudyHS/Makefile.am	2007-05-22 08:38:41.000000000 -0600
++++ judy-1.0.5/src/JudyHS/Makefile.am	2015-10-14 11:46:35.424144975 -0600
+@@ -1,4 +1,4 @@
+-INCLUDES =  -I. -I.. -I../JudyCommon/ 
++INCLUDES =  -I$(srcdir) -I$(top_srcdir)/src -I$(top_srcdir)/src/JudyCommon/
+ AM_CFLAGS = @CFLAGS@ @WARN_CFLAGS@ 
+ 
+ noinst_LTLIBRARIES = libJudyHS.la
+--- judy-1.0.5.orig/src/JudyL/Makefile.am	2007-05-22 08:38:41.000000000 -0600
++++ judy-1.0.5/src/JudyL/Makefile.am	2015-10-14 12:59:15.146164668 -0600
+@@ -1,4 +1,4 @@
+-INCLUDES =  -I. -I.. -I../JudyCommon/ 
++INCLUDES =  -I$(srcdir) -I$(top_srcdir)/src -I$(top_srcdir)/src/JudyCommon/
+ AM_CFLAGS = -DJUDYL @WARN_CFLAGS@ 
+ 
+ noinst_LTLIBRARIES = libJudyL.la libnext.la libprev.la libcount.la libinline.la
+@@ -17,71 +17,74 @@
+ libinline_la_SOURCES = j__udyLGet.c
+ libinline_la_CFLAGS = $(AM_CFLAGS) -DJUDYGETINLINE
+ 
+-JudyLTables.c: JudyLTablesGen.c
+-	$(CC) $(INCLUDES) $(AM_CFLAGS) @CFLAGS@ -o JudyLTablesGen JudyLTablesGen.c; ./JudyLTablesGen 
++JudyLTables.c: JudyLTablesGen
++	./JudyLTablesGen
++	
++JudyLTablesGen: ../JudyCommon/JudyTables.c
++	gcc $(INCLUDES) $(AM_CFLAGS) @CFLAGS@ -o $@ $^
+ 
+ JudyLByCount.c:   ../JudyCommon/JudyByCount.c
+-	cp -f ../JudyCommon/JudyByCount.c      		JudyLByCount.c   
++	cp -f $^ $@
+ 
+ JudyLCascade.c:../JudyCommon/JudyCascade.c
+-	cp -f ../JudyCommon/JudyCascade.c       	JudyLCascade.c
++	cp -f $^ $@
+ 
+ JudyLCount.c:../JudyCommon/JudyCount.c
+-	cp -f ../JudyCommon/JudyCount.c        		JudyLCount.c
++	cp -f $^ $@
+ 
+ JudyLCreateBranch.c:../JudyCommon/JudyCreateBranch.c 
+-	cp -f ../JudyCommon/JudyCreateBranch.c 		JudyLCreateBranch.c
++	cp -f $^ $@
+ 
+ JudyLDecascade.c:../JudyCommon/JudyDecascade.c    
+-	cp -f ../JudyCommon/JudyDecascade.c    		JudyLDecascade.c
++	cp -f $^ $@
+ 
+ JudyLDel.c:../JudyCommon/JudyDel.c       
+-	cp -f ../JudyCommon/JudyDel.c          		JudyLDel.c
++	cp -f $^ $@
+ 
+ JudyLFirst.c:../JudyCommon/JudyFirst.c
+-	cp -f ../JudyCommon/JudyFirst.c        		JudyLFirst.c
++	cp -f $^ $@
+ 
+ JudyLFreeArray.c:../JudyCommon/JudyFreeArray.c    
+-	cp -f ../JudyCommon/JudyFreeArray.c    		JudyLFreeArray.c
++	cp -f $^ $@
+ 
+ JudyLGet.c:../JudyCommon/JudyGet.c       
+-	cp -f ../JudyCommon/JudyGet.c          		JudyLGet.c
++	cp -f $^ $@
+ 
+ j__udyLGet.c:../JudyCommon/JudyGet.c 
+-	cp -f ../JudyCommon/JudyGet.c          		j__udyLGet.c
++	cp -f $^ $@
+ 
+ JudyLInsArray.c:../JudyCommon/JudyInsArray.c     
+-	cp -f ../JudyCommon/JudyInsArray.c     		JudyLInsArray.c
++	cp -f $^ $@
+ 
+ JudyLIns.c:../JudyCommon/JudyIns.c      
+-	cp -f ../JudyCommon/JudyIns.c          		JudyLIns.c
++	cp -f $^ $@
+ 
+ JudyLInsertBranch.c:../JudyCommon/JudyInsertBranch.c
+-	cp -f ../JudyCommon/JudyInsertBranch.c 		JudyLInsertBranch.c
++	cp -f $^ $@
+ 
+ JudyLMallocIF.c:../JudyCommon/JudyMallocIF.c     
+-	cp -f ../JudyCommon/JudyMallocIF.c     		JudyLMallocIF.c
++	cp -f $^ $@
+ 
+ JudyLMemActive.c:../JudyCommon/JudyMemActive.c
+-	cp -f ../JudyCommon/JudyMemActive.c    		JudyLMemActive.c
++	cp -f $^ $@
+ 
+ JudyLMemUsed.c:../JudyCommon/JudyMemUsed.c   
+-	cp -f ../JudyCommon/JudyMemUsed.c      		JudyLMemUsed.c
++	cp -f $^ $@
+ 
+ JudyLNext.c:../JudyCommon/JudyPrevNext.c
+-	cp -f ../JudyCommon/JudyPrevNext.c     		JudyLNext.c
++	cp -f $^ $@
+ 
+ JudyLPrev.c:../JudyCommon/JudyPrevNext.c
+-	cp -f ../JudyCommon/JudyPrevNext.c     		JudyLPrev.c
++	cp -f $^ $@
+ 
+ JudyLNextEmpty.c:../JudyCommon/JudyPrevNextEmpty.c
+-	cp -f ../JudyCommon/JudyPrevNextEmpty.c		JudyLNextEmpty.c
++	cp -f $^ $@
+ 
+ JudyLPrevEmpty.c:../JudyCommon/JudyPrevNextEmpty.c
+-	cp -f ../JudyCommon/JudyPrevNextEmpty.c		JudyLPrevEmpty.c
++	cp -f $^ $@
+ 	
+ JudyLTablesGen.c:../JudyCommon/JudyTables.c
+-	cp -f ../JudyCommon/JudyTables.c       	 	JudyLTablesGen.c
++	cp -f $^ $@
+ 
+ DISTCLEANFILES = .deps Makefile 
+ 
+--- judy-1.0.5.orig/src/JudySL/Makefile.am	2007-05-22 08:38:41.000000000 -0600
++++ judy-1.0.5/src/JudySL/Makefile.am	2015-10-14 11:46:35.516143530 -0600
+@@ -1,4 +1,4 @@
+-INCLUDES =  -I. -I.. -I../JudyCommon/ 
++INCLUDES =  -I$(srcdir) -I$(top_srcdir)/src -I$(top_srcdir)/src/JudyCommon/
+ AM_CFLAGS = @CFLAGS@ @WARN_CFLAGS@ 
+ 
+ noinst_LTLIBRARIES = libJudySL.la
