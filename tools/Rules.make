@@ -83,7 +83,7 @@ endef
 # Parameters: first argument is the recipe to bake
 define BITBAKE
 	cd $(BUILDDIR) ; umask 002 ; \
-	 $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake $(1)
+	 $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake $(if $(VERBOSE),-v,) $(1)
 endef
 
 # Parameters: first argument is the recipe to bake
