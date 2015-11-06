@@ -16,3 +16,6 @@ do_install_append() {
       cp ${D}${sysconfdir}/pam.d/common-password ${D}${sysconfdir}/pam.d/common-password-access
       cp ${D}${sysconfdir}/pam.d/common-session ${D}${sysconfdir}/pam.d/common-session-access
 }
+
+# Enable Audit framework on OpenSwitch
+PACKAGECONFIG += "audit"
