@@ -1,7 +1,7 @@
 # Copyright (C) 2015 Hewlett Packard Enterprise Development LP
 
 [Unit]
-Description=OpenSwitch Switch Daemon for Simulator
+Description=Open vSwitch Switch Daemon for the Simulator
 After=ovsdb-server-sim.service
 
 [Service]
