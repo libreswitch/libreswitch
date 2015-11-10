@@ -61,6 +61,11 @@ HOST_INTERPRETER := $(shell readelf -a /bin/sh | grep interpreter | awk '{ print
 UUIDGEN_NATIVE=$(STAGING_DIR_NATIVE)/usr/bin/uuidgen
 PYTEST_NATIVE=$(STAGING_DIR_NATIVE)/usr/bin/py.test
 
+# Static Code Analysis tool. Right now we support Fortify, but others like coverity could be added
+SCA_TOOLCHAIN ?= fortify
+SCA_TOOL ?= sourceanalyzer
+SCA_TOOL_SCAN_CMD ?= -scan -b $$(basename $$(pwd)) -f $$(basename $$(pwd)).fpr
+
 # Leave blank to use default location
 SSTATE_DIR?=""
 

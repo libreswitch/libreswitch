@@ -11,6 +11,13 @@
 ##RECIPE##-reconfigure:
 	$(V)$(call BITBAKE, -f -c configure ##RECIPE##)
 
+##RECIPE##-sca-analysis:
+	$(V)if ! which $(SCA_TOOL) > /dev/null ; then \
+		$(call FATAL_ERROR,unable to find the tool $(SCA_TOOL) used by the static analysis toolchain ($(SCA_TOOLCHAIN))) ; \
+	 fi
+	$(V)$(ECHO) "$(BLUE)Running static analysis ($(SCA_TOOLCHAIN))...$(GRAY)\n"
+	$(V) cd src/##RECIPE## ; $(SCA_TOOL) $(SCA_TOOL_SCAN_CMD)
+
 $(eval $(call PARSE_ARGUMENTS,##RECIPE##-deploy))
 TARGET?=$(EXTRA_ARGS)
 ifneq ($(findstring ##RECIPE##-deploy,$(MAKECMDGOALS)),)
