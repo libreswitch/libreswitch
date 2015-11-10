@@ -9,5 +9,8 @@ tools/bin/python
 tools/bin/corkscrew
 nfsroot*
 
-# Exclude enterprise layer
-yocto/halon
+# Exclude layers providing additional functionality ...
+/yocto/*/
+# ... and keep the layers providing basic OpenSwitch functionality
+!/yocto/openswitch/
+!/yocto/poky/
