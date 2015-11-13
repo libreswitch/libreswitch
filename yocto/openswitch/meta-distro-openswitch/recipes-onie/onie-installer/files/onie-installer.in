@@ -223,7 +223,7 @@ populate_rootfs()
 }
 
 # Make sure we are running in the ONIE or OPS environment.
-if [ "$(uname -n)" == "onie" ] ; then
+if [ $(awk -F= '/^NAME/ { print $2 } ' /etc/os-release) == \"onie\" ] ; then
     # Get the running machine configuration info.
     [ -r /etc/machine.conf ] && . /etc/machine.conf
 
