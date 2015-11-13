@@ -1,0 +1,81 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// Author: @AUTHOR@
+
+// Global test headers
+#include <gtest/gtest.h>
+#include <gmock/gmock.h>
+#include <stdlib.h> // for getenv()
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+// The fixture for testing class
+class @TESTNAME@ : public::testing::Test {
+protected:
+
+  @TESTNAME@() {
+    // You can do set-up work for each test here.
+  }
+
+  virtual ~@TESTNAME@()
+  {
+    // You can do clean-up work that doesn't throw exceptions here.
+  }
+
+  virtual void SetUp()
+  {
+    // Code here will be called immediately after the constructor (right
+    // before each test).
+    unsigned int seed = 0;
+
+    if (getenv("OPS_TEST_SEED") != NULL) {
+        unsigned int seed = strtoul(getenv("OPS_TEST_SEED"), NULL, 0);
+    }
+
+    if (errno != 0 || seed == 0) {
+        int random_fd = open("/dev/urandom", O_RDONLY);
+        ssize_t result = read(random_fd, &seed, sizeof(int));
+        close(random_fd);
+        ASSERT_EQ(result, 4);
+    }
+
+    RecordProperty("seed", seed);
+    srand(seed);
+  }
+
+  virtual void TearDown()
+  {
+    // Code here will be called immediately after each test (right
+    // before the destructor).
+  }
+
+  // Objects declared here can be used by all tests in the test case for
+  // @TESTNAME@.
+};
+
+TEST_F(@TESTNAME@, boundary) {
+  // Use ASSERT if the test should not continue upon failure of this check
+  ASSERT_EQ(true, true);
+}
+
+TEST_F(@TESTNAME@, random) {
+  // Use EXPECT when the test can continue upon failure of the check
+  EXPECT_EQ(true, false);
+}
+
+// Add as many tests as you want with TEST_F macro...
+// TEST_F(@TESTNAME@, foo) {
+// }

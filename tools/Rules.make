@@ -56,6 +56,7 @@ BASE_OVA_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(DISTRO_FS
 BASE_BOX_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(DISTRO_FS_TARGET)-$(CONFIGURED_PLATFORM).box
 BASE_ONIE_INSTALLER_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(ONIE_INSTALLER_FILE)
 BASE_DOCKER_IMAGE = openswitch/${CONFIGURED_PLATFORM}
+HOST_INTERPRETER := $(shell readelf -a /bin/sh | grep interpreter | awk '{ print substr($$4, 0, length($$4)-1)}')
 
 UUIDGEN_NATIVE=$(STAGING_DIR_NATIVE)/usr/bin/uuidgen
 PYTEST_NATIVE=$(STAGING_DIR_NATIVE)/usr/bin/py.test
@@ -95,6 +96,18 @@ endef
 define DEVTOOL
 	 cd $(BUILDDIR) ; umask 002 ; \
 	 $(BUILD_ROOT)/yocto/poky/scripts/devtool $(1) || exit 1
+endef
+
+UT_PARAMS ?= --gtest_shuffle
+
+define EXECUTE_UT_TEST_HARNESS
+LD_LIBRARY_PATH=$(STAGING_DIR_TARGET)/usr/lib $(HOST_INTERPRETER) $(1) $(UT_PARAMS)
+endef
+
+VALGRIND ?= valgrind
+VALGRIND_OPTIONS = --leak-check=full --show-reachable=yes --track-origins=yes
+define EXECUTE_UT_TEST_HARNESS_ON_VALGRIND
+LD_LIBRARY_PATH=$(STAGING_DIR_TARGET)/usr/lib $(VALGRIND) $(VALGRIND_OPTIONS) $(HOST_INTERPRETER) $(1) $(UT_PARAMS)
 endef
 
 # Rule to regenerate the site.conf file if proxies changed

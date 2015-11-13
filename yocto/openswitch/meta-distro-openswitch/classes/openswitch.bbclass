@@ -31,4 +31,6 @@ PACKAGE_DEBUG_SPLIT_STYLE??="debug-file-directory"
 # For debugging/development purposes on devtool
 EXTERNALSRC_BUILD??="${S}/build"
 
+DEPENDS += "gmock gtest"
+
 inherit siteinfo
