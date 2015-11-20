@@ -1,0 +1,120 @@
+diff --git a/targets/basic_routing/bmv2/main.c b/targets/basic_routing/bmv2/main.c
+index 2080b48..7078c5c 100644
+--- a/targets/basic_routing/bmv2/main.c
++++ b/targets/basic_routing/bmv2/main.c
+@@ -32,6 +32,7 @@ limitations under the License.
+ 
+ #include <errno.h>
+ #include <stdbool.h>
++#include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
+diff --git a/targets/basic_routing/main.c b/targets/basic_routing/main.c
+index 218c070..908d516 100644
+--- a/targets/basic_routing/main.c
++++ b/targets/basic_routing/main.c
+@@ -32,6 +32,7 @@ limitations under the License.
+ 
+ #include <errno.h>
+ #include <stdbool.h>
++#include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
+diff --git a/targets/copy_to_cpu/main.c b/targets/copy_to_cpu/main.c
+index 218c070..908d516 100644
+--- a/targets/copy_to_cpu/main.c
++++ b/targets/copy_to_cpu/main.c
+@@ -32,6 +32,7 @@ limitations under the License.
+ 
+ #include <errno.h>
+ #include <stdbool.h>
++#include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
+diff --git a/targets/l2_switch/bmv2/main.c b/targets/l2_switch/bmv2/main.c
+index 082e8f3..b2d74cc 100644
+--- a/targets/l2_switch/bmv2/main.c
++++ b/targets/l2_switch/bmv2/main.c
+@@ -32,6 +32,7 @@ limitations under the License.
+ 
+ #include <errno.h>
+ #include <stdbool.h>
++#include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
+diff --git a/targets/l2_switch/main.c b/targets/l2_switch/main.c
+index 01e1edf..de14faa 100644
+--- a/targets/l2_switch/main.c
++++ b/targets/l2_switch/main.c
+@@ -32,6 +32,7 @@ limitations under the License.
+ 
+ #include <errno.h>
+ #include <stdbool.h>
++#include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
+diff --git a/targets/sai_p4/main.c b/targets/sai_p4/main.c
+index ab9b1ad..725c871 100644
+--- a/targets/sai_p4/main.c
++++ b/targets/sai_p4/main.c
+@@ -32,6 +32,7 @@ limitations under the License.
+ 
+ #include <errno.h>
+ #include <stdbool.h>
++#include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
+diff --git a/targets/simple_router/main.c b/targets/simple_router/main.c
+index 2f2e33b..91dbb76 100644
+--- a/targets/simple_router/main.c
++++ b/targets/simple_router/main.c
+@@ -32,6 +32,7 @@ limitations under the License.
+ 
+ #include <errno.h>
+ #include <stdbool.h>
++#include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
+diff --git a/targets/switch/bmv2/main.c b/targets/switch/bmv2/main.c
+index 8d646d6..fcf4b16 100644
+--- a/targets/switch/bmv2/main.c
++++ b/targets/switch/bmv2/main.c
+@@ -32,6 +32,7 @@ limitations under the License.
+ 
+ #include <errno.h>
+ #include <stdbool.h>
++#include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
+diff --git a/targets/switch/main.c b/targets/switch/main.c
+index d6e0ce7..f7bce28 100644
+--- a/targets/switch/main.c
++++ b/targets/switch/main.c
+@@ -16,6 +16,7 @@ limitations under the License.
+ 
+ #include <errno.h>
+ #include <stdbool.h>
++#include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
+diff --git a/tools/new_target_template/main.c b/tools/new_target_template/main.c
+index 218c070..908d516 100644
+--- a/tools/new_target_template/main.c
++++ b/tools/new_target_template/main.c
+@@ -32,6 +32,7 @@ limitations under the License.
+ 
+ #include <errno.h>
+ #include <stdbool.h>
++#include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
