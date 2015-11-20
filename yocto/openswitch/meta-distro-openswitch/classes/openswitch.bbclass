@@ -14,8 +14,15 @@ DEBUG_BUILD = "1"
 def enable_devenv_profiling(d):
     externalsrc = d.getVar('EXTERNALSRC', True)
     if externalsrc:
-        return bb.utils.contains('EXTRA_IMAGE_FEATURES', 'ops-devenv-profiling', '-p', '',d)
+        if os.path.isfile(os.path.join(d.getVar('TOPDIR', True), 'devenv-coverage-enabled')):
+            d.setVar("INHIBIT_PACKAGE_STRIP", "1")
+            d.prependVarFlag('do_compile', 'prefuncs', "profile_compile_prefunc ")
+            return "-fprofile-arcs -ftest-coverage"
     return ""
+
+python profile_compile_prefunc() {
+    bb.warn('Profiling enabled for package %s on the devenv' % (d.getVar('PN', True)))
+}
 
 # Debug flags is used by DEBUG_OPTIMIZATION that is used by SELECTED_OPTIMIZATION when DEBUG_BUILD is 1
 DEBUG_FLAGS = "${@enable_devenv_profiling(d)}"
