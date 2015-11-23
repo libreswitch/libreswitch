@@ -39,6 +39,7 @@ RDEPENDS_packagegroup-ops-base = "\
     cronie \
     inetutils-ping inetutils-ping6 inetutils-hostname inetutils-ifconfig \
     inetutils-tftp inetutils-traceroute inetutils-ftp inetutils-telnet \
+    iputils-traceroute6 \
     wget curl \
     xinetd \
     ops-init \
