@@ -3,7 +3,6 @@
 [Unit]
 Description=OpenSwitch Switch Daemon for Simulator
 After=ovsdb-server.service ops-init.service openvswitch-sim.service
-Requires=openvswitch-sim.service
 
 [Service]
 Type=forking
