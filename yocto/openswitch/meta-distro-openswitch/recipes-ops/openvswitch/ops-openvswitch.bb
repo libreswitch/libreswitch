@@ -48,7 +48,9 @@ FILES_python-ops-ovsdb = "${PYTHON_SITEPACKAGES_DIR}/ovs"
 
 FILES_${PN} = "${bindir}/ovs-appctl ${bindir}/ovs-pki ${bindir}/ovs-vsctl \
  /var/local/openvswitch ${sbindir}/ops-switchd \
- ${libdir}/libofproto.so.1* ${libdir}/libopenvswitch.so.1* ${libdir}/libsflow.so.1*"
+ ${libdir}/libofproto.so.1* ${libdir}/libopenvswitch.so.1* ${libdir}/libsflow.so.1* \
+ ${libdir}/libopsyaml.so.1* \
+"
 
 USERADD_PACKAGES = "${PN}"
 
