@@ -72,3 +72,12 @@ do_configure() {
 	sed -i 's|^hardcode_libdir_flag_spec=.*|hardcode_libdir_flag_spec=""|g' *libtool
 	sed -i 's|^runpath_var=LD_RUN_PATH|runpath_var=_NO_RPATH_|g' *libtool
 }
+
+do_install_append() {
+	# Gross hack to deal with the fact that this file is getting
+	# libstdc++.la hardcoded in it and programs trying to link
+	# against libthrift by way of libthrift.la are failing because
+	# libtool is picking up the hosts' libstdc++.la file.
+	find "${D}" -name libthrift.la -print0 |
+	xargs -r0 sed -r -i 's:\S*/\S+/libstdc\+\+\.la::'
+}
