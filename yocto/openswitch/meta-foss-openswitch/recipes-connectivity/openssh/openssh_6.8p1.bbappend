@@ -3,3 +3,5 @@
 PR_append = "_openswitch"
 
 FILESEXTRAPATHS_prepend := "${THISDIR}/openssh:"
+
+RDEPENDS_${PN} += "${PN}-sftp ${PN}-sftp-server"
