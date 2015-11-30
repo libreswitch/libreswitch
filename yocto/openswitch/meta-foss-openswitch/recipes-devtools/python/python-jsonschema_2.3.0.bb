@@ -30,6 +30,8 @@ RDEPENDS_${PN} = "\
     python-pkgutil \
     python-re \
     python-subprocess \
+    python-pprint \
+    python-contextlib \
 "
 
 BBCLASSEXTEND = "native nativesdk"
