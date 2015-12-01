@@ -1,7 +1,7 @@
 # Copyright (C) 2015 Hewlett Packard Enterprise Development LP
 
-LICENSE = "Proprietary"
-LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Proprietary;md5=0557f9d92cf58f2ccdd50f62f8ac0b28"
+LICENSE = "BSD-3-Clause"
+LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/BSD-3-Clause;md5=550794465ba0ec5312d6919e203a55f9"
 
 PR = "1"
 S = "${WORKDIR}"
