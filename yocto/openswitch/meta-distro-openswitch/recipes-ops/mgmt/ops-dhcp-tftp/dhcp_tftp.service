@@ -2,7 +2,7 @@
 
 [Unit]
 Description=OpenSwitch DHCP-TFTP Daemon
-After=ovsdb-server.service
+After=ovsdb-server.service ops-init.service
 
 [Service]
 Type=simple
