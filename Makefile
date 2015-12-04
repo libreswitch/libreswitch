@@ -134,6 +134,10 @@ $(eval $(call PARSE_ARGUMENTS,configure))
 PLATFORM?=$(EXTRA_ARGS)
 configure::
 	@$(ECHO) "$(CYAN)Build System for $(DISTRO)$(GRAY)"
+	$(V)$(MAKE) _configure PLATFORM=$(PLATFORM)
+
+.PHONY: _configure
+_configure:
 	$(V) if [ -f .platform ] ; then \
 	    $(call FATAL_ERROR,$(DISTRO) is already configured; you need to run distclean to change the configuration) ; \
 	  fi
