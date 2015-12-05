@@ -45,8 +45,7 @@ RDEPENDS_packagegroup-ops-base = "\
     libcap-bin \
     ops-init \
     virtual/switchd \
-    ${@bb.utils.contains('MACHINE_FEATURES', 'ops-container', 'ops-switchd-container-plugin', '',d)} \
-    ${@bb.utils.contains('MACHINE_FEATURES', 'broadcom', 'ops-switchd-opennsl-plugin', '',d)} \
+    virtual/ops-switchd-switch-api-plugin \
     ops-ovsdb \
     ops-hw-config \
     ops-cfgd ops-fand ops-ledd ops-pmd ops-powerd ops-sysd ops-tempd \
