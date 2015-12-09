@@ -26,6 +26,6 @@ S = "${WORKDIR}/${SRCNAME}-${PV}"
 
 inherit setuptools
 
-DEPENDS += "python-libyaml python-cython-native"
+DEPENDS += "libyaml python-cython-native"
 
 BBCLASSEXTEND = "native"
