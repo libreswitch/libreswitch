@@ -42,6 +42,7 @@ RDEPENDS_packagegroup-ops-base = "\
     iputils-traceroute6 \
     wget curl \
     xinetd \
+    libcap-bin \
     ops-init \
     virtual/switchd \
     ${@bb.utils.contains('MACHINE_FEATURES', 'ops-container', 'ops-switchd-container-plugin', '',d)} \
