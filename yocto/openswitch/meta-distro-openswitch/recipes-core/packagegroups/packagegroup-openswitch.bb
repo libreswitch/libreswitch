@@ -64,6 +64,7 @@ RDEPENDS_packagegroup-ops-base = "\
     ops-ansible \
     ops-chef \
     ops-ntpd \
+    strongswan \
 "
 
 RDEPENDS_packagegroup-ops-base_append_arm = "\
