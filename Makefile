@@ -139,7 +139,7 @@ configure::
 .PHONY: _configure
 _configure:
 	$(V) if [ -f .platform ] ; then \
-	    $(call FATAL_ERROR,$(DISTRO) is already configured; you need to run distclean to change the configuration) ; \
+	    $(call FATAL_ERROR,$(DISTRO) is already configured; you need to run switch-platform if you want to reconfigure to another platform) ; \
 	  fi
 	$(V)\
 	 if ! [ -d yocto/*/meta-platform-$(DISTRO)-$(PLATFORM) ] || [ "$(PLATFORM)" == "" ] ; then \
