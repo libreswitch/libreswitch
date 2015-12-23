@@ -12,7 +12,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-quagga;protocol=http \
     file://ops-zebra.service file://ops-bgpd.service \
 "
 
-SRCREV = "29987ffe61cf6aed21a8778664ce1b6c0368b040"
+SRCREV = "205db2d3cf5c65233ed549e775b489a0ceb1cf54"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
@@ -28,13 +28,20 @@ EXTRA_OECONF = "--disable-doc --disable-ripd \
  --enable-ovsdb \
 "
 
+FILES_${PN} += "/usr/share/opsplugins"
+
 do_install_append() {
-     install -d ${D}${systemd_unitdir}/system
-     install -m 0644 ${WORKDIR}/ops-zebra.service ${D}${systemd_unitdir}/system/
-     install -m 0644 ${WORKDIR}/ops-bgpd.service ${D}${systemd_unitdir}/system/
-     # Remove non-ovs configuration files
-     rm -Rf ${D}${sysconfdir}*
-     rm -Rf ${D}/usr/include/quagga/*
+    install -d ${D}${systemd_unitdir}/system
+    install -m 0644 ${WORKDIR}/ops-zebra.service ${D}${systemd_unitdir}/system/
+    install -m 0644 ${WORKDIR}/ops-bgpd.service ${D}${systemd_unitdir}/system/
+    # Remove non-ovs configuration files
+    rm -Rf ${D}${sysconfdir}*
+    rm -Rf ${D}/usr/include/quagga/*
+
+    install -d ${D}/usr/share/opsplugins
+    for plugin in $(find ${S}/ops/opsplugins -name "*.py"); do \
+        install -m 0644 ${plugin} ${D}/usr/share/opsplugins
+    done
 }
 
 SYSTEMD_PACKAGES = "${PN}"
