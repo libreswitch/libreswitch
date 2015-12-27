@@ -151,21 +151,20 @@ _configure:
 	 mkdir -p build/conf ; rm -f build/conf/*.conf ; \
 	 sed -e "s|##YOCTO_ROOT##|$(BUILD_ROOT)/yocto/poky|" tools/config/bblayers.conf.in > build/conf/bblayers.conf ; \
 	 for repo in yocto/*/meta* ; do \
-            [[ "$$repo" =~ "yocto/poky" ]] && continue ; \
-            repo_name=`basename $$repo` ; \
-            if [[ "$$repo_name" =~ meta-platform-.* ]] || [[ "$$repo_name" =~ meta-distro.* ]] ; then \
-                if [ "$$repo_name" == "meta-distro-$(DISTRO)" ] ; then \
-	           layer_dep=`cat $(BUILD_ROOT)/$$repo/.layer_dep 2>/dev/null` ; \
-	           test -z "$$layer_dep" || echo "  $(BUILD_ROOT)/$$layer_dep \\" >> build/conf/bblayers.conf ; \
-	           echo "  $(BUILD_ROOT)/$$repo \\" >> build/conf/bblayers.conf ; \
-	        fi ; \
-                continue ; \
+	    [[ "$$repo" =~ "yocto/poky" ]] && continue ; \
+	    repo_name=`basename $$repo` ; \
+	    if [[ "$$repo_name" =~ meta-distro.* ]] ; then \
+	        layer_dep=`cat $(BUILD_ROOT)/$$repo/.layer_dep 2>/dev/null` ; \
+	        test -z "$$layer_dep" || echo "  $(BUILD_ROOT)/$$layer_dep \\" >> build/conf/bblayers.conf ; \
+	        [ "$$repo_name" == "meta-distro-$(DISTRO)" ] && echo "  $(BUILD_ROOT)/$$repo \\" >> build/conf/bblayers.conf ; \
+	    elif [[ "$$repo_name" =~ meta-platform-.* ]] ; then \
+	        continue ; \
 	    else \
-		echo "  $(BUILD_ROOT)/$$repo \\" >> build/conf/bblayers.conf ; \
+	        echo "  $(BUILD_ROOT)/$$repo \\" >> build/conf/bblayers.conf ; \
 	    fi ; \
 	 done ; \
 	 for repo in yocto/*/meta-platform-$(DISTRO)-* ; do \
-            [[ "$$repo" =~ "^yocto/poky" ]] && continue ; \
+	    [[ "$$repo" =~ "^yocto/poky" ]] && continue ; \
 	    cp build/conf/bblayers.conf build/conf/bblayers.conf-$${repo##*platform-} ; \
 	    layer_dep=`cat $(BUILD_ROOT)/$$repo/.layer_dep 2>/dev/null` ; \
 	    test -z "$$layer_dep" || echo "  $(BUILD_ROOT)/$$layer_dep \\" >> build/conf/bblayers.conf-$${repo##*platform-} ; \
