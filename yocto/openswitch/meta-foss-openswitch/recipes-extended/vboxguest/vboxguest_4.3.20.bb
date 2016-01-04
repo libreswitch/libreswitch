@@ -5,7 +5,7 @@ LICENSE = "GPLv2"
 LIC_FILES_CHKSUM = "file://COPYING;md5=e197d5641bb35b29d46ca8c4bf7f2660"
 
 SRC_URI = "http://download.virtualbox.org/virtualbox/${PV}/VirtualBox-${PV}.tar.bz2 \
-	file://vboxguest-modules.conf \
+	file://vboxguest.service \
 "
 
 SRC_URI[md5sum] = "cf3f25644aa0fae1029e8b362bd4375e"
@@ -13,7 +13,7 @@ SRC_URI[sha256sum] = "1484f8e9993ec4fe3892c5165db84d238713d2506e147ed8236541ece6
 
 S = "${WORKDIR}/VirtualBox-${PV}"
 
-inherit module-base kernel-module-split
+inherit module-base kernel-module-split systemd
 
 addtask make_scripts after do_patch before do_compile
 do_make_scripts[lockfiles] = "${TMPDIR}/kernel-scripts.lock"
@@ -49,13 +49,14 @@ do_install() {
                    CC="${KERNEL_CC}" LD="${KERNEL_LD}" \
 		   M=${WORKDIR}/modules modules_install
 
-	install -d ${D}/etc/modules-load.d/
-	install -m 0644 ${WORKDIR}/vboxguest-modules.conf ${D}/etc/modules-load.d/
 	install -d ${D}/sbin
 	install -m 0755 ${S}/src/VBox/Additions/linux/sharedfolders/mount.vboxsf ${D}/sbin
+        install -d ${D}${systemd_unitdir}/system
+        install -m 644 ${WORKDIR}/*.service ${D}${systemd_unitdir}/system
 }
 
 # add all splitted modules to PN RDEPENDS, PN can be empty now
 KERNEL_MODULES_META_PACKAGE = "${PN}"
 FILES_${PN} = "/sbin/mount.vboxsf /etc/modules-load.d/vboxguest-modules.conf"
 
+SYSTEMD_SERVICE_${PN} = "vboxguest.service"

@@ -39,7 +39,7 @@ FEATURE_PACKAGES_package-management = "${ROOTFS_PKGMANAGE}"
 SPLASH ?= "psplash"
 FEATURE_PACKAGES_splash = "${SPLASH}"
 
-FEATURE_PACKAGES_vagrant-tweaks = "sudo vboxguest"
+FEATURE_PACKAGES_vagrant-tweaks = "sudo vboxguest open-vm-tools"
 
 IMAGE_INSTALL_COMPLEMENTARY = '${@complementary_globs("IMAGE_FEATURES", d)}'
 

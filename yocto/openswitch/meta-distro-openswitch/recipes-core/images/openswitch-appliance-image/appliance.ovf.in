@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Envelope vmw:buildId="build-3018522" xmlns="http://schemas.dmtf.org/ovf/envelope/1" xmlns:cim="http://schemas.dmtf.org/wbem/wscim/1/common" xmlns:ovf="http://schemas.dmtf.org/ovf/envelope/1" xmlns:rasd="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_ResourceAllocationSettingData" xmlns:vmw="http://www.vmware.com/schema/ovf" xmlns:vssd="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_VirtualSystemSettingData" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <References>
+    <File ovf:href="@@DISK_BOOT_NAME@@" ovf:id="file1" ovf:size="@@DISK_BOOT_VMDK_SIZE@@"/>
+  </References>
+  <DiskSection>
+    <Info>Virtual disk information</Info>
+    <Disk ovf:capacity="@@DISK_BOOT_CAPACITY@@" ovf:capacityAllocationUnits="byte * 2^10" ovf:diskId="vmdisk1" ovf:fileRef="file1" ovf:format="http://www.vmware.com/interfaces/specifications/vmdk.html#streamOptimized"/>
+  </DiskSection>
+  <NetworkSection>
+    <Info>The list of logical networks</Info>
+    <Network ovf:name="nat">
+      <Description>The nat network</Description>
+    </Network>
+    <Network ovf:name="hostonly">
+      <Description>The hostonly network</Description>
+    </Network>
+  </NetworkSection>
+  <VirtualSystem ovf:id="@@DISTRO_NAME@@ Appliance">
+    <Info>A virtual machine</Info>
+    <Name>@@DISTRO_NAME@@ Appliance</Name>
+    <OperatingSystemSection ovf:id="102" vmw:osType="*other3xLinux64Guest">
+      <Info>The kind of installed guest operating system</Info>
+      <Description>@@DISTRO_NAME@@ Appliance</Description>
+      <vbox:OSType ovf:required="false">Linux</vbox:OSType>
+    </OperatingSystemSection>
+    <VirtualHardwareSection>
+      <Info>Virtual hardware requirements</Info>
+      <System>
+        <vssd:ElementName>Virtual Hardware Family</vssd:ElementName>
+        <vssd:InstanceID>0</vssd:InstanceID>
+        <vssd:VirtualSystemIdentifier>@@DISTRO_NAME@@ Appliance</vssd:VirtualSystemIdentifier>
+        <vssd:VirtualSystemType>vmx-07 vmx-08</vssd:VirtualSystemType>
+      </System>
+      <Item>
+        <rasd:AllocationUnits>hertz * 10^6</rasd:AllocationUnits>
+        <rasd:Description>Number of Virtual CPUs</rasd:Description>
+        <rasd:ElementName>@@CORE_NUMBER@@ virtual CPU(s)</rasd:ElementName>
+        <rasd:InstanceID>1</rasd:InstanceID>
+        <rasd:ResourceType>3</rasd:ResourceType>
+        <rasd:VirtualQuantity>@@CORE_NUMBER@@</rasd:VirtualQuantity>
+      </Item>
+      <Item>
+        <rasd:AllocationUnits>byte * 2^20</rasd:AllocationUnits>
+        <rasd:Description>Memory Size</rasd:Description>
+        <rasd:ElementName>@@RAM_SIZE@@ MB of memory</rasd:ElementName>
+        <rasd:InstanceID>2</rasd:InstanceID>
+        <rasd:ResourceType>4</rasd:ResourceType>
+        <rasd:VirtualQuantity>@@RAM_SIZE@@</rasd:VirtualQuantity>
+      </Item>
+      <Item ovf:required="false">
+        <rasd:Address>0</rasd:Address>
+        <rasd:Description>USB Controller (EHCI)</rasd:Description>
+        <rasd:ElementName>usb</rasd:ElementName>
+        <rasd:InstanceID>3</rasd:InstanceID>
+        <rasd:ResourceSubType>vmware.usb.ehci</rasd:ResourceSubType>
+        <rasd:ResourceType>23</rasd:ResourceType>
+        <vmw:Config ovf:required="false" vmw:key="ehciEnabled" vmw:value="true"/>
+      </Item>
+      <Item>
+        <rasd:Address>0</rasd:Address>
+        <rasd:Description>IDE Controller</rasd:Description>
+        <rasd:ElementName>ideController0</rasd:ElementName>
+        <rasd:InstanceID>4</rasd:InstanceID>
+        <rasd:ResourceType>5</rasd:ResourceType>
+      </Item>
+      <Item>
+        <rasd:AddressOnParent>0</rasd:AddressOnParent>
+        <rasd:Description>Disk Image</rasd:Description>
+        <rasd:ElementName>disk0</rasd:ElementName>
+        <rasd:HostResource>ovf:/disk/vmdisk1</rasd:HostResource>
+        <rasd:InstanceID>5</rasd:InstanceID>
+        <rasd:Parent>4</rasd:Parent>
+        <rasd:ResourceType>17</rasd:ResourceType>
+      </Item>
+      <Item>
+        <rasd:AddressOnParent>2</rasd:AddressOnParent>
+        <rasd:AutomaticAllocation>true</rasd:AutomaticAllocation>
+        <rasd:Connection>nat</rasd:Connection>
+        <rasd:Description>E1000 ethernet adapter on &quot;nat&quot;</rasd:Description>
+        <rasd:ElementName>ethernet0</rasd:ElementName>
+        <rasd:InstanceID>6</rasd:InstanceID>
+        <rasd:ResourceSubType>E1000</rasd:ResourceSubType>
+        <rasd:ResourceType>10</rasd:ResourceType>
+        <vmw:Config ovf:required="false" vmw:key="wakeOnLanEnabled" vmw:value="false"/>
+      </Item>
+      <Item>
+        <rasd:AddressOnParent>3</rasd:AddressOnParent>
+        <rasd:AutomaticAllocation>false</rasd:AutomaticAllocation>
+        <rasd:Connection>hostonly</rasd:Connection>
+        <rasd:Description>E1000 ethernet adapter on &quot;hostonly&quot;</rasd:Description>
+        <rasd:ElementName>ethernet1</rasd:ElementName>
+        <rasd:InstanceID>7</rasd:InstanceID>
+        <rasd:ResourceSubType>E1000</rasd:ResourceSubType>
+        <rasd:ResourceType>10</rasd:ResourceType>
+        <vmw:Config ovf:required="false" vmw:key="wakeOnLanEnabled" vmw:value="false"/>
+      </Item>
+      <Item>
+        <rasd:AddressOnParent>4</rasd:AddressOnParent>
+        <rasd:AutomaticAllocation>false</rasd:AutomaticAllocation>
+        <rasd:Connection>hostonly</rasd:Connection>
+        <rasd:Description>E1000 ethernet adapter on &quot;hostonly&quot;</rasd:Description>
+        <rasd:ElementName>ethernet2</rasd:ElementName>
+        <rasd:InstanceID>8</rasd:InstanceID>
+        <rasd:ResourceSubType>E1000</rasd:ResourceSubType>
+        <rasd:ResourceType>10</rasd:ResourceType>
+        <vmw:Config ovf:required="false" vmw:key="wakeOnLanEnabled" vmw:value="false"/>
+      </Item>
+      <Item>
+        <rasd:AddressOnParent>5</rasd:AddressOnParent>
+        <rasd:AutomaticAllocation>false</rasd:AutomaticAllocation>
+        <rasd:Connection>hostonly</rasd:Connection>
+        <rasd:Description>E1000 ethernet adapter on &quot;hostonly&quot;</rasd:Description>
+        <rasd:ElementName>ethernet3</rasd:ElementName>
+        <rasd:InstanceID>9</rasd:InstanceID>
+        <rasd:ResourceSubType>E1000</rasd:ResourceSubType>
+        <rasd:ResourceType>10</rasd:ResourceType>
+        <vmw:Config ovf:required="false" vmw:key="wakeOnLanEnabled" vmw:value="false"/>
+      </Item>
+      <Item ovf:required="false">
+        <rasd:AutomaticAllocation>false</rasd:AutomaticAllocation>
+        <rasd:ElementName>video</rasd:ElementName>
+        <rasd:InstanceID>10</rasd:InstanceID>
+        <rasd:ResourceType>24</rasd:ResourceType>
+        <vmw:Config ovf:required="false" vmw:key="enable3DSupport" vmw:value="false" />
+        <vmw:Config ovf:required="false" vmw:key="use3dRenderer" vmw:value="automatic" />
+        <vmw:Config ovf:required="false" vmw:key="useAutoDetect" vmw:value="false" />
+        <vmw:Config ovf:required="false" vmw:key="videoRamSizeInKB" vmw:value="16384" />
+      </Item>
+      <Item ovf:required="false">
+        <rasd:AutomaticAllocation>false</rasd:AutomaticAllocation>
+        <rasd:ElementName>vmci</rasd:ElementName>
+        <rasd:InstanceID>11</rasd:InstanceID>
+        <rasd:ResourceSubType>vmware.vmci</rasd:ResourceSubType>
+        <rasd:ResourceType>1</rasd:ResourceType>
+      </Item>
+      <vmw:Config ovf:required="false" vmw:key="cpuHotAddEnabled" vmw:value="false"/>
+      <vmw:Config ovf:required="false" vmw:key="cpuHotRemoveEnabled" vmw:value="false"/>
+      <vmw:Config ovf:required="false" vmw:key="firmware" vmw:value="bios"/>
+      <vmw:Config ovf:required="false" vmw:key="memoryHotAddEnabled" vmw:value="false"/>
+      <vmw:Config ovf:required="false" vmw:key="nestedHVEnabled" vmw:value="false"/>
+      <vmw:Config ovf:required="false" vmw:key="powerOpInfo.powerOffType" vmw:value="soft"/>
+      <vmw:Config ovf:required="false" vmw:key="powerOpInfo.resetType" vmw:value="soft"/>
+      <vmw:Config ovf:required="false" vmw:key="powerOpInfo.standbyAction" vmw:value="checkpoint"/>
+      <vmw:Config ovf:required="false" vmw:key="powerOpInfo.suspendType" vmw:value="hard"/>
+      <vmw:Config ovf:required="false" vmw:key="tools.afterPowerOn" vmw:value="true"/>
+      <vmw:Config ovf:required="false" vmw:key="tools.afterResume" vmw:value="true"/>
+      <vmw:Config ovf:required="false" vmw:key="tools.beforeGuestShutdown" vmw:value="true"/>
+      <vmw:Config ovf:required="false" vmw:key="tools.beforeGuestStandby" vmw:value="true"/>
+      <vmw:Config ovf:required="false" vmw:key="tools.syncTimeWithHost" vmw:value="false"/>
+      <vmw:Config ovf:required="false" vmw:key="tools.toolsUpgradePolicy" vmw:value="manual"/>
+    </VirtualHardwareSection>
+    <vmw:BootOrderSection vmw:instanceId="5" vmw:type="disk">
+      <Info>Virtual hardware device boot order</Info>
+    </vmw:BootOrderSection>
+    <ProductSection ovf:class="ultra">
+      <Info>Information about the installed software</Info>
+      <Product>@@OVA_PRODUCT@@</Product>
+      <Vendor>@@OVA_VENDOR@@</Vendor>
+      <Version>@@OVA_VERSION@@</Version>
+      <VendorUrl>@@OVA_VENDOR_URL@@</VendorUrl>
+    </ProductSection>
+  </VirtualSystem>
+</Envelope>

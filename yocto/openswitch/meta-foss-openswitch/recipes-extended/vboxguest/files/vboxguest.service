@@ -1,0 +1,17 @@
+[Unit]
+Description=Virtual Box Guest Drivers
+ConditionVirtualization=oracle
+ConditionCapability=CAP_SYS_MODULE
+DefaultDependencies=no
+Conflicts=shutdown.target
+Before=sysinit.target shutdown.target
+After=systemd-modules-load.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/sbin/modprobe vboxvideo
+ExecStart=/sbin/modprobe vboxsf
+
+[Install]
+WantedBy=multi-user.target
