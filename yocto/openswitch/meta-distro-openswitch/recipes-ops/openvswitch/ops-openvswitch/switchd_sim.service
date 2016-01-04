@@ -6,8 +6,6 @@ After=ovsdb-server.service ops-init.service openvswitch-sim.service
 
 [Service]
 Type=forking
-CPUSchedulingPolicy=rr
-CPUSchedulingPriority=10
 ExecStart=/sbin/ip netns exec swns /usr/sbin/ops-switchd --no-chdir --pidfile --detach -vSYSLOG:INFO
 WorkingDirectory=/var/run/openvswitch
 PIDFile=/var/run/openvswitch/ops-switchd.pid

@@ -6,8 +6,6 @@ After=ovsdb-server.service ops-init.service
 
 [Service]
 Type=oneshot
-CPUSchedulingPolicy=rr
-CPUSchedulingPriority=10
 ExecStartPre=/bin/rm -f /var/run/bufmond.pid
 ExecStart=/usr/bin/bufmond
 PIDFile=/var/run/bufmond.pid
