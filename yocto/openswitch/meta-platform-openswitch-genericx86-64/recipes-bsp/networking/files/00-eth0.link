@@ -1,7 +1,0 @@
-[Match]
-Driver=pcnet32
-
-[Link]
-Description=Out of Band Management Port
-Name=eth0
-MTUBytes=1500

@@ -25,6 +25,7 @@ FILES_${PN} += "${sysconfdir}/profile.d/"
 do_install_append() {
     install -d ${D}${sysconfdir}/profile.d
     install -m 755 ${WORKDIR}/systemctl-alias.sh ${D}${sysconfdir}/profile.d/systemctl-alias.sh
+    ln -s /dev/null ${D}/etc/udev/rules.d/80-net-setup-link.rules
 }
 
 # We use systemd core dump
