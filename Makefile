@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+# Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-.PHONY: all clean configure distclean header switch-platform show-platform help
+.PHONY: all clean configure distclean header switch-platform show-platform show-platforms help
 
 # This allows an overlay layer to basically override the whole environment
 -include yocto/*/.distro_override
@@ -114,6 +114,7 @@ Additional development/maintenance targets:
     $(BLUE)help$(GRAY)                : this, see also $(BLUE)$(DISTRO_HELP_LINK)$(GRAY)
     $(BLUE)switch-platform$(GRAY)     : change to a different platform
     $(BLUE)show-platform$(GRAY)       : show current platform
+    $(BLUE)show-platforms$(GRAY)      : show available platforms for the current distribution
 
 endef
 endif
@@ -199,6 +200,9 @@ _switch-platform:
 	 echo -e " done\n"
 
 show-platform: header
+
+show-platforms: header
+	$(V)$(ECHO) "Available plaforms: $(PURPLE)$(PLATFORMS)$(GRAY)"
 
 clean:: header
 	$(V)$(ECHO) "Cleaning..."
