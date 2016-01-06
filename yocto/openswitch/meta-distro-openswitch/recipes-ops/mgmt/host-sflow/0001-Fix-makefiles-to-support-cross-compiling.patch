@@ -1,0 +1,131 @@
+From cce442785f22ffea7d0828fd54544fe8f0afe3bc Mon Sep 17 00:00:00 2001
+From: Diego Dompe <dompe@hpe.com>
+Date: Mon, 28 Dec 2015 13:32:54 -0600
+Subject: [PATCH] Fix makefiles to support cross compiling
+
+Signed-off-by: Diego Dompe <dompe@hpe.com>
+---
+ src/Linux/Makefile | 21 +++++++++++----------
+ src/json/Makefile  |  2 +-
+ src/sflow/Makefile |  3 +--
+ 3 files changed, 13 insertions(+), 13 deletions(-)
+
+diff --git a/src/Linux/Makefile b/src/Linux/Makefile
+index c508f25..5c266bc 100644
+--- a/src/Linux/Makefile
++++ b/src/Linux/Makefile
+@@ -5,10 +5,10 @@ HEADERS= hsflowd.h hsflowtokens.h hsflow_ethtool.h sflowovsd.h cpu_utils.h Makef
+ 
+ # compiler
+ #CC= g++
+-CC= gcc -std=gnu99
++CC?= gcc -std=gnu99
+ 
+ # optimization
+-OPT_FULL = -O3 -DNDEBUG
++OPT_FULL = -std=gnu99 -O3 -DNDEBUG
+ OPT_DEBUG = -g -ggdb
+ ifeq ($(OPT),)
+    OPT=$(OPT_FULL)
+@@ -22,7 +22,7 @@ LIBS += $(SFLOWDIR)/libsflow.a -lresolv -lpthread
+ # if ULOG is not set, assume it should be "yes" if the include file is present
+ # (So you can use "make ULOG=no" to compile without this feature)
+ ifeq ($(ULOG),)
+-   ULOG=$(shell if test -r /usr/include/linux/netfilter_ipv4/ipt_ULOG.h; then echo "yes"; else echo "no"; fi)
++   ULOG=$(shell if test -r $(TARGET_SYSROOT)/usr/include/linux/netfilter_ipv4/ipt_ULOG.h; then echo "yes"; else echo "no"; fi)
+ endif
+ ifeq ($(ULOG),yes)
+    CFLAGS += -DHSF_ULOG
+@@ -31,7 +31,7 @@ endif
+ # if NFLOG is not set, assume it should be "yes" if the include file is present
+ # (So you can use "make NFLOG=no" to compile without this feature)
+ ifeq ($(NFLOG),)
+-   NFLOG=$(shell if test -r /usr/include/libnfnetlink/libnfnetlink.h; then echo "yes"; else echo "no"; fi)
++   NFLOG=$(shell if test -r $(TARGET_SYSROOT)/usr/include/libnfnetlink/libnfnetlink.h; then echo "yes"; else echo "no"; fi)
+ endif
+ ifeq ($(NFLOG),yes)
+ #  CFLAGS += -I/usr/include/libnl3 -DHSF_NFLOG
+@@ -41,7 +41,7 @@ ifeq ($(NFLOG),yes)
+ endif
+ 
+ # make the inclusion of sflowovsd options
+-WITH_SFLOWOVSD=yes
++WITH_SFLOWOVSD ?= yes
+ 
+ # Cumulus Linux
+ ifeq ($(CUMULUS),)
+@@ -215,6 +215,8 @@ endif
+ INSTALL=install
+ 
+ # INSTROOT may be passed in, e.g. RPM_BUILD_ROOT
++INSTROOT ?= $(DESTDIR)
++
+ ifeq ($(INSTROOT),)
+    BIN_D=$(BINDIR)
+    INIT_D=$(INITDIR)
+@@ -275,13 +277,13 @@ install: $(INSTALLTGTS)
+ install-hsflowd: hsflowd
+    $(INSTALL) -d $(BIN_D)
+    $(INSTALL) -m 700 hsflowd $(BIN_D)
+-   if [ ! -e $(INIT_D)/hsflowd ]; then $(INSTALL) -d $(INIT_D); $(INSTALL) -m 755 $(HSFLOWD_INITSCRIPT) $(INIT_D)/hsflowd; fi
++   #if [ ! -e $(INIT_D)/hsflowd ]; then $(INSTALL) -d $(INIT_D); $(INSTALL) -m 755 $(HSFLOWD_INITSCRIPT) $(INIT_D)/hsflowd; fi
+    if [ ! -e $(CONF_D)/hsflowd.conf ]; then $(INSTALL) -d $(CONF_D); $(INSTALL) -m 644 scripts/hsflowd.conf $(CONF_D); fi
+ 
+ install-sflowovsd: sflowovsd
+    $(INSTALL) -d $(BIN_D)
+    $(INSTALL) -m 700 sflowovsd $(BIN_D)
+-   if [ ! -e $(INIT_D)/sflowovsd ]; then $(INSTALL) -d $(INIT_D); $(INSTALL) -m 755 $(SFLOWOVSD_INITSCRIPT) $(INIT_D)/sflowovsd; fi
++   #if [ ! -e $(INIT_D)/sflowovsd ]; then $(INSTALL) -d $(INIT_D); $(INSTALL) -m 755 $(SFLOWOVSD_INITSCRIPT) $(INIT_D)/sflowovsd; fi
+ 
+ #### SCHEDULE ####
+ 
+@@ -289,8 +291,8 @@ install-sflowovsd: sflowovsd
+ # necessary links into the /etc/init.d/rc*.d directories to start and stop the daemon
+ # at the required runlevels.
+ 
+-SCHEDULETGTS=schedule-hsflowd  
+-ifeq ($(WITH_SFLOWOVSD),yes)   
++SCHEDULETGTS=schedule-hsflowd
++ifeq ($(WITH_SFLOWOVSD),yes)
+    SCHEDULETGTS += schedule-sflowovsd
+ endif
+ 
+@@ -340,4 +342,3 @@ readJSON.o: readJSON.c $(HEADERS)
+ sflowovsd.o: sflowovsd.c $(HEADERS)
+ readContainerCounters.o: readContainerCounters.c $(HEADERS)
+ readAsicCounters.o: readAsicCounters.c $(HEADERS)
+-
+diff --git a/src/json/Makefile b/src/json/Makefile
+index 17e45fc..aeb382a 100644
+--- a/src/json/Makefile
++++ b/src/json/Makefile
+@@ -12,7 +12,7 @@ LDFLAGS=
+ 
+ #CC= g++
+ #CC= gcc -std=c99
+-CC= gcc
++CC ?= gcc
+ 
+ OBJS= cJSON.o
+ LIB=libjson.a
+diff --git a/src/sflow/Makefile b/src/sflow/Makefile
+index 8fc8524..2b6adfc 100644
+--- a/src/sflow/Makefile
++++ b/src/sflow/Makefile
+@@ -12,7 +12,7 @@ LDFLAGS=
+ 
+ #CC= g++
+ #CC= gcc -std=c99
+-CC= gcc
++CC ?= gcc
+ 
+ OBJS= sflow_agent.o \
+       sflow_sampler.o \
+@@ -38,4 +38,3 @@ sflow_agent.o: sflow_agent.c $(HEADERS)
+ sflow_sampler.o: sflow_sampler.c $(HEADERS)
+ sflow_poller.o: sflow_poller.c $(HEADERS)
+ sflow_receiver.o: sflow_receiver.c $(HEADERS)
+-
+-- 
+1.9.1
+
