@@ -2,7 +2,7 @@ SUMMARY = "OpenSwitch WebUI"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
-SRC_URI = "git://git.openswitch.net/openswitch/ops-webui;protocol=http \
+SRC_URI = "git://git.openswitch.net/openswitch/ops-webui;protocol=http;branch=release \
 "
 
 SRCREV = "589bffb79884da1cf2198207fbb45765d995a680"

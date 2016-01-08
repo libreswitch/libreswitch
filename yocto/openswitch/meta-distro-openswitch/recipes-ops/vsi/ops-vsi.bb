@@ -2,7 +2,7 @@ SUMMARY = "Mininet based Python Library for component & feature tests."
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
-SRC_URI = "git://git.openswitch.net/openswitch/ops-vsi;protocol=https"
+SRC_URI = "git://git.openswitch.net/openswitch/ops-vsi;protocol=https;branch=release"
 
 SRCREV = "aa8c72142a6c5be65b68f7ee3e2a1e3e02f40a78"
 

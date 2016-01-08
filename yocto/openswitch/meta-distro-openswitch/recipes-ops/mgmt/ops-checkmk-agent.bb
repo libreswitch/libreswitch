@@ -4,7 +4,7 @@ LIC_FILES_CHKSUM="file://${COMMON_LICENSE_DIR}/GPL-2.0;md5=801f80980d171dd642561
 
 RDEPENDS_${PN} = "bash"
 
-SRC_URI = "git://git.openswitch.net/openswitch/ops-checkmk-agent;protocol=http \
+SRC_URI = "git://git.openswitch.net/openswitch/ops-checkmk-agent;protocol=http;branch=release \
            file://checkmk-agent.sh \
            file://checkmk-agent@.service \
            file://checkmk-agent.socket \

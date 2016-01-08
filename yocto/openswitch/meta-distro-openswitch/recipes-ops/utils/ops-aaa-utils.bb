@@ -7,7 +7,7 @@ DEPENDS = "ops-ovsdb"
 
 RDEPENDS_${PN} = "python-argparse python-json python-ops-ovsdb python-distribute python-pam pam-plugin-radius-auth"
 
-SRC_URI = "git://git.openswitch.net/openswitch/ops-aaa-utils;protocol=http \
+SRC_URI = "git://git.openswitch.net/openswitch/ops-aaa-utils;protocol=http;branch=release \
            file://aaautils.service \
            file://server \
            file://useradd \

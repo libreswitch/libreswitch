@@ -4,7 +4,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 
 DEPENDS = "ops-utils ops-ovsdb"
 
-SRC_URI = "git://git.openswitch.net/openswitch/ops-arpmgrd;protocol=http\
+SRC_URI = "git://git.openswitch.net/openswitch/ops-arpmgrd;protocol=http;branch=release\
            file://ops-arpmgrd.service"
 
 SRCREV = "a358e75a97d9eb58ba89fe42473ac6ab8c481218"

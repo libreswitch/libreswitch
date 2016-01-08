@@ -5,7 +5,7 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=81bcece21748c91ba9992349a91ec11d\
 
 DEPENDS = "ops-utils ops-ovsdb"
 
-SRC_URI = "git://git.openswitch.net/openswitch/ops-cli;protocol=http \
+SRC_URI = "git://git.openswitch.net/openswitch/ops-cli;protocol=http;branch=release \
 "
 
 SRCREV = "16e853ab1f9c98027283932a08777150566e3543"
