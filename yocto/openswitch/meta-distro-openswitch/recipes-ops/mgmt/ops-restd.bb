@@ -4,7 +4,7 @@ LIC_FILES_CHKSUM = "file://setup.py;beginline=1;endline=15;md5=718b8f9952f79dfe2
 
 DEPENDS = "python-inflect-native python-tornado-native ops-openvswitch ops-ovsdb"
 
-RDEPENDS_${PN} = "python-argparse python-json python-ops-ovsdb python-distribute python-tornado python-html python-pkgutil python-subprocess python-numbers python-inflect python-xml ops-restapi python-unixadmin python-jsonschema"
+RDEPENDS_${PN} = "python-argparse python-json python-ops-ovsdb python-distribute python-tornado python-html python-pkgutil python-subprocess python-numbers python-inflect python-xml ops-restapi python-unixadmin python-jsonschema python-jsonpatch"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-restd;protocol=http \
            file://restd.service \
