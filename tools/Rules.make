@@ -439,7 +439,7 @@ devenv_clean: dev_header
 	$(V)$(call DEVTOOL, reset -a)
 	$(V)rm -Rf src .devenv
 
-DEVENV_BRANCH?=master
+DEVENV_BRANCH?=*auto*
 
 define DEVENV_ADD
 	if ! grep -q '^$(1)$$' .devenv 2>/dev/null ; then \
@@ -449,7 +449,12 @@ define DEVENV_ADD
 	  if [ -f .gitreview ] ; then \
 	    gitdir=$$(git rev-parse --git-dir); cp -f $(BUILD_ROOT)/tools/bin/hooks/* $${gitdir}/hooks/ ; \
 	  fi ; \
-	  git checkout $(DEVENV_BRANCH) || { $(call FATAL_ERROR, Unable to checkout the request branch '$(DEVENV_BRANCH)') ; } ; \
+	  DEVENV_BRANCH=$(DEVENV_BRANCH) ; \
+	  if [[ "$$DEVENV_BRANCH" == "*auto*" ]] ; then \
+	    DEVENV_BRANCH=`query-recipe.py --gitbranch $(1)` ; \
+	    $(ECHO) "$(WHITE)NOTE:$(GRAY) Checking out recipe branch: $(BLUE)$$DEVENV_BRANCH$(GRAY)" ; \
+	  fi ; \
+	  git checkout $$DEVENV_BRANCH || { $(call FATAL_ERROR, Unable to checkout the request branch '$$DEVENV_BRANCH') ; } ; \
 	  popd > /dev/null ; \
 	  sed -e "s/##RECIPE##/$(1)/g" $(BUILD_ROOT)/tools/devenv-recipe-template.make >> $(BUILD_ROOT)/src/Rules.make ; \
 	  echo $(1) >> $(BUILD_ROOT)/.devenv ; \
