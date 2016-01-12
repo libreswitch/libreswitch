@@ -64,6 +64,7 @@ RDEPENDS_packagegroup-ops-base = "\
     ops-ansible \
     ops-chef \
     ops-ntpd \
+    ops-supportability \
     strongswan \
 "
 
