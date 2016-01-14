@@ -1,10 +1,16 @@
-SUMMARY = "Programs used to build P4 for the P4 Behavioral Model"
+SUMMARY = "P4 Data Plane"
 HOMEPAGE = "https://github.com/p4lang/p4factory"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=2f3453ba8e98aaed11a290758a999e65"
 
+# This is the actual repository, but until the infrastructure issues are
+# sorted out, we can host the code on Github
+#
+# OPS_P4DP_REPO = "git.openswitch.net/openswitch/ops-p4dp"
+OPS_P4DP_REPO = "github.com/ops-p4/ops-p4dp.git"
+
 SRC_URI = "\
-	git://git.openswitch.net/openswitch/ops-p4factory;protocol=https;branch=feature/p4 \
+	git://${OPS_P4DP_REPO};protocol=https;branch=master \
 "
 SRCREV = "${AUTOREV}"
 PV = "git${SRCPV}"
@@ -30,11 +36,10 @@ RDEPENDS_${PN} = "\
 	thrift \
 "
 
+FILES_${PN} += "/usr/share/p4/switch_bmv2.json"
+
 inherit pythonnative
 inherit autotools-brokensep
 
 LIBTOOL = "${B}/${HOST_SYS}-libtool"
 EXTRA_OEMAKE = "'LIBTOOL=${LIBTOOL}'"
-
-do_install() {
-}
