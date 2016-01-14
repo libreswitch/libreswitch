@@ -4,11 +4,14 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 
 DEPENDS = "ops-ovsdb virtual/opennsl"
 
+PROVIDES += "virtual/ops-switchd-switch-api-plugin"
+RPROVIDES_${PN} += "virtual/ops-switchd-switch-api-plugin"
+
 SRC_URI = "git://git.openswitch.net/openswitch/ops-switchd-opennsl-plugin;protocol=http"
 
 FILES_${PN} = "${libdir}/openvswitch/plugins"
 
-SRCREV = "41f0af2cf75711b6e61acb1e68919faa3056ffd1"
+SRCREV = "e4fed0e589f09783cba51edf9774aee4fbe5d46e"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.

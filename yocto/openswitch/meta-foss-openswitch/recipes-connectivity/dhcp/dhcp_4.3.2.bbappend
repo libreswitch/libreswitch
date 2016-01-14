@@ -1,5 +1,7 @@
 # Copyright (C) 2015 Hewlett Packard Enterprise Development LP
 
+FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
+
 SRC_URI += "file://dhclient@.service file://dhclient-exit-hooks file://dhclient6@.service"
 
 do_install_append () {

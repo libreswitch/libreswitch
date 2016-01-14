@@ -6,8 +6,6 @@ After=ovsdb-server.service
 
 [Service]
 Type=oneshot
-CPUSchedulingPolicy=rr
-CPUSchedulingPriority=7
 ExecStartPre=/bin/rm -f /var/run/ops_cfgd.pid
 ExecStart=/usr/bin/ops_cfgd
 PIDFile=/var/run/ops_cfgd.pid

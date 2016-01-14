@@ -9,5 +9,6 @@ FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
 
 SRC_URI += "file://ops-fragment.cfg \
 	file://openvswitch.cfg \
+	file://strongswan-fragment.cfg \
 "
 

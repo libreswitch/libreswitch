@@ -6,8 +6,6 @@ After=cfgd.service
 
 [Service]
 Type=simple
-CPUSchedulingPolicy=rr
-CPUSchedulingPriority=7
 ExecStartPre=/bin/rm -f /var/run/restd.pid
 ExecStart=/usr/bin/restd
 PIDFile=/var/run/restd.pid

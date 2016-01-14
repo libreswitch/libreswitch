@@ -37,6 +37,7 @@ SRC_URI = "http://openvswitch.org/releases/openvswitch-2.3.1.tar.gz \
            file://custom-prefix-takes-precedence.patch \
            file://openvswitch-sim.service \
            file://ovsdb-server-sim.service \
+           file://openvswitch-mod.conf \
            "
 
 SRC_URI[md5sum] = "c008c1de0a8b6363b37afa599105d6d6"
@@ -80,6 +81,7 @@ FILES_${PN}-brcompat = "${sbindir}/ovs-brcompatd"
 
 FILES_${PN}-switch = "${sysconfdir}/init.d/openvswitch-switch \
            ${sysconfdir}/default/openvswitch-switch \
+           ${sysconfdir}/modules-load.d \
            "
 
 FILES_ovsdb = "/run /var/run /var/log /var/volatile ${bindir}/ovsdb* \
@@ -106,6 +108,8 @@ do_install_append() {
     install -d ${D}${systemd_unitdir}/system
     install -m 0644 ${WORKDIR}/ovsdb-server-sim.service ${D}${systemd_unitdir}/system
     install -m 0644 ${WORKDIR}/openvswitch-sim.service ${D}${systemd_unitdir}/system
+    install -d ${D}${sysconfdir}/modules-load.d/
+    install -m 0644 ${WORKDIR}/openvswitch-mod.conf ${D}${sysconfdir}/modules-load.d/openvswitch.conf
 
     install -d ${D}${sysconfdir}/tmpfiles.d
     echo "d /run/openvswitch-sim/ - - - -" > ${D}${sysconfdir}/tmpfiles.d/openswitch-sim.conf
