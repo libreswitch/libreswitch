@@ -61,7 +61,6 @@ RDEPENDS_packagegroup-ops-base = "\
     dnsmasq \
     ops-checkmk-agent \
     ops-ansible \
-    ops-chef \
     ops-ntpd \
     ops-supportability \
     strongswan \
