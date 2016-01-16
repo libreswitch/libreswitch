@@ -94,4 +94,5 @@ RDEPENDS_packagegroup-ops-core = "\
 RDEPENDS_packagegroup-ops-p4 = "\
     ops-switchd-p4switch-plugin \
     ops-p4dp \
+    ops-p4c \
     "

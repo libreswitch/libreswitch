@@ -8,7 +8,7 @@ PROVIDES += "virtual/ops-switchd-switch-api-plugin"
 RPROVIDES_${PN} += "virtual/ops-switchd-switch-api-plugin"
 
 # This is the repository we want to use
-# SRC_URI = "git://git.openswitch.net/openswitch/ops-switchd-p4container-plugin;protocol=http"
+# SRC_URI = "git://git.openswitch.net/openswitch/ops-switchd-p4switch-plugin;protocol=http"
 
 # This is the repository we'll be using until we get the code into the
 # above repository
@@ -24,4 +24,34 @@ PV = "git${SRCPV}"
 
 S = "${WORKDIR}/git"
 
-inherit openswitch cmake
+DEPENDS = "\
+        judy \
+        libedit \
+        nanomsg \
+        p4-hlir \
+        python-native \
+        python-pyyaml-native \
+        python-tenjin \
+        thrift \
+        thrift-native \
+        ops-p4c \
+"
+
+RDEPENDS_${PN} = "\
+        judy \
+        libedit \
+        libpcap \
+        nanomsg \
+        thrift \
+        libcrypto \
+        gmp \
+        libssl \
+        ops-ovsdb \
+"
+
+FILES_${PN} += "/usr/share/ovs_p4_plugin/switch_bmv2.json"
+
+inherit openswitch autotools-brokensep
+
+EXTRA_OECONF = "--enable-bmv2 --disable-static CPPFLAGS='${CPPFLAGS} -DHOST_BYTE_ORDER_CALLER'"
+EXTRA_OEMAKE = "PFX=${PKG_CONFIG_SYSROOT_DIR}"
