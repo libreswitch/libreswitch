@@ -132,10 +132,22 @@ build/conf/local.conf: .platform
            -e "s|##DISTRO_SSTATE_ADDRESS##|$(DISTRO_SSTATE_ADDRESS)|" \
 	   -e "s|##DISTRO_ARCHIVE_ADDRESS##|$(DISTRO_ARCHIVE_ADDRESS)|" \
 	   tools/config/local.conf.in > $@
-	$(V)if [ -n "$(SSTATE_DIR)" ] && [ -d $(SSTATE_DIR) ] && [ -w $(SSTATE_DIR) ] ; then \
+	$(V)if [ -n "$(SSTATE_DIR)" ] ; then \
+      if [ -d $(SSTATE_DIR) ] && [ -w $(SSTATE_DIR) ] ; then \
 	      $(ECHO) "$(BLUE)Using shared state cache from $(SSTATE_DIR)...$(GRAY)\n" ; \
 	      sed -i -e "s|^#SSTATE_DIR.*|SSTATE_DIR = \"$(SSTATE_DIR)\"|" $@ ; \
-	 fi
+      else \
+	      $(ECHO) "$(RED)IGNORING shared state cache $(SSTATE_DIR): not a writable directory$(GRAY)\n" ; \
+      fi \
+    fi
+	$(V)if [ -n "$(DL_DIR)" ] ; then \
+      if [ -d $(DL_DIR) ] && [ -w $(DL_DIR) ] ; then \
+	      $(ECHO) "$(BLUE)Using shared download directory from $(DL_DIR)...$(GRAY)\n" ; \
+	      sed -i -e "s|^#DL_DIR.*|DL_DIR = \"$(DL_DIR)\"|" $@ ; \
+      else \
+	      $(ECHO) "$(RED)IGNORING shared download directory $(DL_DIR): not a writable directory$(GRAY)\n" ; \
+      fi \
+    fi
 
 header:: build/conf/site.conf build/conf/local.conf
 
