@@ -1,8 +1,36 @@
 #!/bin/sh
 
-if [ x$reason = xBOUND ] || [ x$reason = xRENEW ]; then
-	if [ -n "${new_openswitch_ztp+x}" ]; then
+if [ x$reason = xBOUND ] || [ x$reason = xRENEW ] || [ x$reason = xBOUND6 ] || [ x$reason = xRENEW6 ]
+then
+        if [ -n "${new_openswitch_ztp+x}" ]; then
                 autoprovision ${new_openswitch_ztp}
-	fi
-        dhcphostname ${new_host_name}
+        fi
+        hostname="None"
+        dns_1="None"
+        dns_2="None"
+        if test -n "${new_host_name}"; then
+                hostname=${new_host_name}
+        fi
+        if test -n "${new_domain_name_servers}"; then
+                dhcp_nameserver=${new_domain_name_servers}
+        elif test -n "${new_dhcp6_name_servers}"; then
+                dhcp_nameserver=${new_dhcp6_name_servers}
+        fi
+        if test -n "${dhcp_nameserver}"; then
+                saveIFS=$IFS
+                IFS=" "
+                dhcp_nameserver_tmp=($dhcp_nameserver)
+                IFS=$saveIFS
+                count=${#dhcp_nameserver_tmp[@]}
+                if [ ${count} -eq 2 ]
+                then
+                        dns_1=${dhcp_nameserver_tmp[0]}
+                        dns_2=${dhcp_nameserver_tmp[1]}
+                fi
+                if [ ${count} -eq 1 ]
+                then
+                        dns_1=${dhcp_nameserver_tmp[0]}
+                fi
+        fi
+        dhcp_options "${hostname}" "${dns_1}" "${dns_2}"
 fi

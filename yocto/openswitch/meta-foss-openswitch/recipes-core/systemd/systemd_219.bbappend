@@ -33,6 +33,9 @@ EXTRA_OECONF_remove = "--disable-coredump"
 EXTRA_OECONF += "--with-dns-servers=" ""
 FILES_${PN} += "${bindir}/coredumpctl"
 
+# Enable Audit framework on OpenSwitch
+PACKAGECONFIG += "audit"
+
 #pkg_postinst_udev-hwdb_prepend() {
 #	# Abort script since causes problems for read-only fs
 #	if test -n "$D"; then

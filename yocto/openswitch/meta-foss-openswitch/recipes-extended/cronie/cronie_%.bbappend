@@ -12,3 +12,6 @@ do_install_append () {
     install -m 0755 ${WORKDIR}/cron.hourly/ops-gen-logrotate ${D}${sysconfdir}/cron.hourly/
     install -m 0755 ${WORKDIR}/cron.daily/logrotate-ops ${D}${sysconfdir}/cron.daily/
 }
+
+# Enable Audit framework on OpenSwitch
+PACKAGECONFIG += "audit"
