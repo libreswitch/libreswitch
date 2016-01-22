@@ -26,25 +26,25 @@ index c508f25..5c266bc 100644
 +OPT_FULL = -std=gnu99 -O3 -DNDEBUG
  OPT_DEBUG = -g -ggdb
  ifeq ($(OPT),)
-    OPT=$(OPT_FULL)
+ 	OPT=$(OPT_FULL)
 @@ -22,7 +22,7 @@ LIBS += $(SFLOWDIR)/libsflow.a -lresolv -lpthread
  # if ULOG is not set, assume it should be "yes" if the include file is present
  # (So you can use "make ULOG=no" to compile without this feature)
  ifeq ($(ULOG),)
--   ULOG=$(shell if test -r /usr/include/linux/netfilter_ipv4/ipt_ULOG.h; then echo "yes"; else echo "no"; fi)
-+   ULOG=$(shell if test -r $(TARGET_SYSROOT)/usr/include/linux/netfilter_ipv4/ipt_ULOG.h; then echo "yes"; else echo "no"; fi)
+-	ULOG=$(shell if test -r /usr/include/linux/netfilter_ipv4/ipt_ULOG.h; then echo "yes"; else echo "no"; fi)
++	ULOG=$(shell if test -r $(TARGET_SYSROOT)/usr/include/linux/netfilter_ipv4/ipt_ULOG.h; then echo "yes"; else echo "no"; fi)
  endif
  ifeq ($(ULOG),yes)
-    CFLAGS += -DHSF_ULOG
+ 	CFLAGS += -DHSF_ULOG
 @@ -31,7 +31,7 @@ endif
  # if NFLOG is not set, assume it should be "yes" if the include file is present
  # (So you can use "make NFLOG=no" to compile without this feature)
  ifeq ($(NFLOG),)
--   NFLOG=$(shell if test -r /usr/include/libnfnetlink/libnfnetlink.h; then echo "yes"; else echo "no"; fi)
-+   NFLOG=$(shell if test -r $(TARGET_SYSROOT)/usr/include/libnfnetlink/libnfnetlink.h; then echo "yes"; else echo "no"; fi)
+-	NFLOG=$(shell if test -r /usr/include/libnfnetlink/libnfnetlink.h; then echo "yes"; else echo "no"; fi)
++	NFLOG=$(shell if test -r $(TARGET_SYSROOT)/usr/include/libnfnetlink/libnfnetlink.h; then echo "yes"; else echo "no"; fi)
  endif
  ifeq ($(NFLOG),yes)
- #  CFLAGS += -I/usr/include/libnl3 -DHSF_NFLOG
+ #	CFLAGS += -I/usr/include/libnl3 -DHSF_NFLOG
 @@ -41,7 +41,7 @@ ifeq ($(NFLOG),yes)
  endif
  
@@ -61,21 +61,21 @@ index c508f25..5c266bc 100644
 +INSTROOT ?= $(DESTDIR)
 +
  ifeq ($(INSTROOT),)
-    BIN_D=$(BINDIR)
-    INIT_D=$(INITDIR)
+ 	BIN_D=$(BINDIR)
+ 	INIT_D=$(INITDIR)
 @@ -275,13 +277,13 @@ install: $(INSTALLTGTS)
  install-hsflowd: hsflowd
-    $(INSTALL) -d $(BIN_D)
-    $(INSTALL) -m 700 hsflowd $(BIN_D)
--   if [ ! -e $(INIT_D)/hsflowd ]; then $(INSTALL) -d $(INIT_D); $(INSTALL) -m 755 $(HSFLOWD_INITSCRIPT) $(INIT_D)/hsflowd; fi
-+   #if [ ! -e $(INIT_D)/hsflowd ]; then $(INSTALL) -d $(INIT_D); $(INSTALL) -m 755 $(HSFLOWD_INITSCRIPT) $(INIT_D)/hsflowd; fi
-    if [ ! -e $(CONF_D)/hsflowd.conf ]; then $(INSTALL) -d $(CONF_D); $(INSTALL) -m 644 scripts/hsflowd.conf $(CONF_D); fi
+ 	$(INSTALL) -d $(BIN_D)
+ 	$(INSTALL) -m 700 hsflowd $(BIN_D)
+-	if [ ! -e $(INIT_D)/hsflowd ]; then $(INSTALL) -d $(INIT_D); $(INSTALL) -m 755 $(HSFLOWD_INITSCRIPT) $(INIT_D)/hsflowd; fi
++	#if [ ! -e $(INIT_D)/hsflowd ]; then $(INSTALL) -d $(INIT_D); $(INSTALL) -m 755 $(HSFLOWD_INITSCRIPT) $(INIT_D)/hsflowd; fi
+ 	if [ ! -e $(CONF_D)/hsflowd.conf ]; then $(INSTALL) -d $(CONF_D); $(INSTALL) -m 644 scripts/hsflowd.conf $(CONF_D); fi
  
  install-sflowovsd: sflowovsd
-    $(INSTALL) -d $(BIN_D)
-    $(INSTALL) -m 700 sflowovsd $(BIN_D)
--   if [ ! -e $(INIT_D)/sflowovsd ]; then $(INSTALL) -d $(INIT_D); $(INSTALL) -m 755 $(SFLOWOVSD_INITSCRIPT) $(INIT_D)/sflowovsd; fi
-+   #if [ ! -e $(INIT_D)/sflowovsd ]; then $(INSTALL) -d $(INIT_D); $(INSTALL) -m 755 $(SFLOWOVSD_INITSCRIPT) $(INIT_D)/sflowovsd; fi
+ 	$(INSTALL) -d $(BIN_D)
+ 	$(INSTALL) -m 700 sflowovsd $(BIN_D)
+-	if [ ! -e $(INIT_D)/sflowovsd ]; then $(INSTALL) -d $(INIT_D); $(INSTALL) -m 755 $(SFLOWOVSD_INITSCRIPT) $(INIT_D)/sflowovsd; fi
++	#if [ ! -e $(INIT_D)/sflowovsd ]; then $(INSTALL) -d $(INIT_D); $(INSTALL) -m 755 $(SFLOWOVSD_INITSCRIPT) $(INIT_D)/sflowovsd; fi
  
  #### SCHEDULE ####
  
@@ -83,11 +83,11 @@ index c508f25..5c266bc 100644
  # necessary links into the /etc/init.d/rc*.d directories to start and stop the daemon
  # at the required runlevels.
  
--SCHEDULETGTS=schedule-hsflowd  
--ifeq ($(WITH_SFLOWOVSD),yes)   
+-SCHEDULETGTS=schedule-hsflowd	
+-ifeq ($(WITH_SFLOWOVSD),yes)	
 +SCHEDULETGTS=schedule-hsflowd
 +ifeq ($(WITH_SFLOWOVSD),yes)
-    SCHEDULETGTS += schedule-sflowovsd
+ 	SCHEDULETGTS += schedule-sflowovsd
  endif
  
 @@ -340,4 +342,3 @@ readJSON.o: readJSON.c $(HEADERS)
