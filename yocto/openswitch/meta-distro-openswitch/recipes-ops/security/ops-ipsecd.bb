@@ -8,7 +8,7 @@ DEPENDS = "ops-ovsdb doxygen-native gtest gmock strongswan"
 SRC_URI = "git://git.openswitch.net/openswitch/ops-ipsecd;protocol=http\
            file://ops-ipsecd.service"
 
-SRCREV="f09159fc5b16722e5b1b586e63dfc17d8299b5c0"
+SRCREV="f7b5235faf5f1f7bdec036229aab47b6e3fb616a"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
@@ -24,4 +24,4 @@ do_install_append() {
      install -m 0644 ${WORKDIR}/ops-ipsecd.service ${D}${systemd_unitdir}/system/
 }
 
-inherit openswitch systemd
+inherit openswitch systemd cmake
