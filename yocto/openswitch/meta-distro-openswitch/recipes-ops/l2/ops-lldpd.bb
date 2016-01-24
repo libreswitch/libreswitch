@@ -3,7 +3,7 @@ SUMMARY = "OpenSwitch LLDP Daemon"
 LICENSE = "ISC"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
-DEPENDS = "ops-utils ops-config-yaml ops-ovsdb libevent openssl"
+DEPENDS = "ops-utils ops-config-yaml ops-ovsdb libevent openssl ops-supportability"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-lldpd;protocol=http \
 	  file://ops-lldpd.service \
