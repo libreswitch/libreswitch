@@ -31,6 +31,7 @@ copy_configuration()
     path=$1
     rootfs=$2
     name=$3
+    link=$4
 
 grep -q "^lxc.rootfs" $path/config 2>/dev/null || echo "lxc.rootfs = $rootfs" >> $path/config
 cat <<EOF >> $path/config
@@ -42,10 +43,12 @@ lxc.autodev = 1
 lxc.kmsg = 0
 lxc.cap.drop = sys_module mac_admin mac_override sys_time
 
-lxc.network.type = veth
+lxc.network.type = macvlan
+lxc.network.macvlan.mode = private
 lxc.network.flags = up
-lxc.network.script.up = $BUILD_ROOT/tools/lxc/lxc-ifup
-lxc.network.script.down = $BUILD_ROOT/tools/lxc/lxc-ifdown 
+lxc.network.link = $link
+lxc.network.name = eth0
+lxc.network.mtu = 1500
 
 # When using LXC with apparmor, uncomment the next line to run unconfined:
 lxc.aa_profile = unconfined
@@ -133,6 +136,12 @@ if [ -z "$OPENSWITCH_IMAGE" ]; then
     exit 1
 fi
 
+link="eth0"
+if [ ! -z "$OPENSWITCH_LXC_MACVLAN_INTERFACE" ]; then
+    link="$OPENSWITCH_LXC_MACVLAN_INTERFACE"
+fi
+echo "Setting the external macvlan interface to $link"
+
 # detect rootfs
 config="$path/config"
 if [ -z "$rootfs" ]; then
@@ -143,8 +152,12 @@ if [ -z "$rootfs" ]; then
     fi
 fi
 
+copy_configuration $path $rootfs $name $link
+if [ -f "$LXC_MACHINE_CONFIG_SCRIPT" ]; then
+    source $LXC_MACHINE_CONFIG_SCRIPT
+    copy_machine_configuration $path $rootfs $name $link
+fi
 
-copy_configuration $path $rootfs $name
 if [ $? -ne 0 ]; then
     echo "failed to write configuration file"
     exit 1

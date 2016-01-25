@@ -225,25 +225,19 @@ _cleansstate:
 	$(V)$(call BITBAKE,-c cleansstate $(RECIPE))
 
 CONTAINER_NAME?=openswitch
-.PHONY: deploy_container
-deploy_container:
+.PHONY: deploy_lxc
+deploy_lxc:
 	$(V) if ! which lxc-create > /dev/null ; then \
 	  $(call FATAL_ERROR,LXC does not seems installed, could not find lxc-create) ; \
 	fi
-	$(V) if ! lsmod | grep -q openvswitch ; then \
-	  $(call FATAL_ERROR,OpenVswitch module not running on the host machine... please load the openvswitch kernel module) ; \
-	fi
-	$(V) if ! which ovs-vsctl > /dev/null ; then \
-	  $(call FATAL_ERROR,ovs-vsctl tool not available, please install the openvswitch tools) ; \
-	fi
 	$(V) if ! test -f images/`basename $(BASE_TARGZ_FS_FILE)` ; then \
-	  $(call FATAL_ERROR,Your platform has not generated a .tar.gz file that can be used to create the container) ; \
+	  $(call FATAL_ERROR,Your platform has not generated a .tar.gz file that can be used to create the LXC container) ; \
 	fi
-	$(V) $(ECHO) "Exporting an lxc-container with name '$(CONTAINER_NAME)' may ask for admin password..."
-	$(V) $(ECHO) -n "Checking that no container with the same name already exists..."
+	$(V) $(ECHO) "Exporting an LXC container with name '$(CONTAINER_NAME)' may ask for admin password..."
+	$(V) $(ECHO) -n "Checking that no LXC container with the same name already exists..."
 	$(V) if $(SUDO) lxc-info -n $(CONTAINER_NAME) >/dev/null 2>&1 ; then \
 	  echo ; \
-	  $(call FATAL_ERROR, A container '$(CONTAINER_NAME)' already exists... aborting.\nYou may remove it with 'sudo lxc-destroy -n $(CONTAINER_NAME)') ; \
+	  $(call FATAL_ERROR, A LXC container '$(CONTAINER_NAME)' already exists... aborting.\nYou may remove it with 'sudo lxc-destroy -n $(CONTAINER_NAME)') ; \
 	else \
 	  echo done ; \
 	fi
