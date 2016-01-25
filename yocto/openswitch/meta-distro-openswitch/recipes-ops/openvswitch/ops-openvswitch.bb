@@ -2,7 +2,7 @@ SUMMARY = "OpenVSwitch for OpenSwitch"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 
-DEPENDS = "openssl python perl systemd libtool ops"
+DEPENDS = "openssl python perl systemd libtool libyaml ops"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-openvswitch;protocol=http \
    file://ovsdb-server.service \
@@ -49,7 +49,6 @@ FILES_python-ops-ovsdb = "${PYTHON_SITEPACKAGES_DIR}/ovs"
 FILES_${PN} = "${bindir}/ovs-appctl ${bindir}/ovs-pki ${bindir}/ovs-vsctl \
  /var/local/openvswitch ${sbindir}/ops-switchd \
  ${libdir}/libofproto.so.1* ${libdir}/libopenvswitch.so.1* ${libdir}/libsflow.so.1* \
- ${libdir}/libopsyaml.so.1* \
 "
 
 USERADD_PACKAGES = "${PN}"
