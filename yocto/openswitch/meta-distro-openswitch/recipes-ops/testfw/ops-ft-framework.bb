@@ -18,8 +18,8 @@ RDEPENDS_${PN} = "ops-vsi python-pexpect python-paramiko python-ecdsa"
 DEPENDS_class-native = "ops-vsi-native python-pexpect-native python-paramiko-native python-ecdsa-native"
 
 do_install_append () {
-    cp ${S}/opstestfw/restEnv/server.crt ${STAGING_DIR_TARGET}/${PYTHON_SITEPACKAGES_DIR}/opstestfw/restEnv
-    cp ${S}/opstestfw/restEnv/server-private.key ${STAGING_DIR_TARGET}/${PYTHON_SITEPACKAGES_DIR}/opstestfw/restEnv
+    cp ${S}/opstestfw/restEnv/server.crt ${D}/${PYTHON_SITEPACKAGES_DIR}/opstestfw/restEnv
+    cp ${S}/opstestfw/restEnv/server-private.key ${D}/${PYTHON_SITEPACKAGES_DIR}/opstestfw/restEnv
 }
 
 BBCLASSEXTEND = "native"
