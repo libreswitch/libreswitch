@@ -1,0 +1,13 @@
+# Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
+[Unit]
+Description=OpenSwitch NTP Daemon
+After=ovsdb-server.service ops-init.service
+
+[Service]
+Type=simple
+ExecStartPre=/bin/rm -f /var/run/ops_ntpd.pid
+ExecStart=/usr/bin/ops_ntpd
+PIDFile=/var/run/ops_ntpd.pid
+
+[Install]
+WantedBy=multi-user.target
