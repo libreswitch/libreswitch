@@ -1,0 +1,15 @@
+# OpenSwitch 'ops-ospfd' service script
+
+[Unit]
+Description=OpenSwitch OSPFD Daemon
+After=ovsdb-server.service ops-init.service
+
+[Service]
+Type=forking
+ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-ospfd.pid
+ExecStart=/sbin/ip netns exec swns /usr/sbin/ops-ospfd --detach --pidfile -vSYSLOG:INFO
+PIDFile=/var/run/openvswitch/ops-ospfd.pid
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target
