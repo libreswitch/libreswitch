@@ -15,7 +15,7 @@ HOME_URL="http://www.openswitch.net"
 #     return pwd.getpwuid(os.getuid())[0]
 # BUILD_ID = "${@get_build_id(d)}"
 
-BUILD_ID = "developer_image"
+BUILD_ID = "${DISTRO_VERSION}-${METADATA_BRANCH}+${DATETIME}"
 
 
 include build_info.conf
