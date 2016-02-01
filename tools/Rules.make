@@ -571,7 +571,8 @@ changelog_manifest: header
 git_pull: header
 	$(V)$(ECHO) "Updating the base git repository..."
 	$(V)git pull --rebase || $(ECHO) "${RED}WARNING: git pull failed, skipping this error$(GRAY)"
-	$(V)for gitpath in `find yocto/ -maxdepth 2 -name .git` ; do \
+	$(V)$(ECHO) "Finding other .git dirs we need to update (skipping ./build and ./src)..."
+	$(V)for gitpath in `find ./ -maxdepth 4 -path ./.git -prune -o -path ./build -prune -o -path ./src -prune -o -name .git -prune -print` ; do \
 	   repo=`dirname $$gitpath` ; \
 	   $(ECHO) "\nUpdating the $$repo git repository..." ; \
 	   pushd . >/dev/null ; \
