@@ -7,7 +7,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-ntpd;protocol=http \
            file://ops-ntpd.service \
 "
 
-SRCREV = "4544ad54d51de14f4e4601df3913ac24fe104bae"
+SRCREV = "6721ec5860d5c984d89e58b23e0d07bf7199c32f"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
