@@ -10,7 +10,6 @@ PR = "r1"
 
 SRC_URI = "${SOURCEFORGE_MIRROR}/net-snmp/net-snmp-${PV}.tar.gz \
         file://init \
-        file://snmpd.conf \
         file://snmptrapd.conf \
         file://systemd-support.patch \
         file://snmpd.service \
@@ -41,7 +40,6 @@ do_install_append() {
     install -d ${D}${sysconfdir}/snmp
     install -d ${D}${sysconfdir}/init.d
     install -m 755 ${WORKDIR}/init ${D}${sysconfdir}/init.d/snmpd
-    install -m 644 ${WORKDIR}/snmpd.conf ${D}${sysconfdir}/snmp/
     install -m 644 ${WORKDIR}/snmptrapd.conf ${D}${sysconfdir}/snmp/
     install -d ${STAGING_BINDIR}
     install -m 0755 ${D}${bindir}/net-snmp-config ${STAGING_BINDIR}/
