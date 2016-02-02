@@ -20,7 +20,7 @@ inherit npm
 RDEPENDS_${PN} = "lighttpd"
 
 do_compile() {
-    oe_runnpm install     # Installs dependencies defined in package.json
+    ./tools/scripts/extract-node-tars
     oe_runnpm run buildprod
 }
 

@@ -55,7 +55,7 @@ RDEPENDS_packagegroup-ops-base = "\
     ops-dhcp-tftp \
     ops-intfd ops-lacpd ops-lldpd ops-vland ops-arpmgrd \
     ops-script-utils \
-    ops-cli ops-restd lighttpd \
+    ops-cli ops-restd ops-webui \
     ops-portd ops-quagga \
     ops-aaa-utils \
     ops-bufmond \
