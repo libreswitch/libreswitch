@@ -1,1 +1,2 @@
 %ovsdb_users ALL=(ALL) NOPASSWD: ALL
+%ops_admin ALL=(ALL) NOPASSWD: ALL

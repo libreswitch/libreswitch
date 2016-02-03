@@ -53,7 +53,7 @@ FILES_${PN} = "${bindir}/ovs-appctl ${bindir}/ovs-pki ${bindir}/ovs-vsctl \
 
 USERADD_PACKAGES = "${PN}"
 
-GROUPADD_PARAM_${PN} ="-g 1020 ovsdb_users"
+GROUPADD_PARAM_${PN} ="-g 1020 ovsdb_users;-o -g 1020 ovsdb-client;ops_netop;ops_admin"
 
 do_configure_prepend() {
     export OPEN_HALON_BUILD=1
