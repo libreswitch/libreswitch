@@ -12,11 +12,7 @@ PV = "git${SRCPV}"
 
 S = "${WORKDIR}/git"
 
-inherit setuptools
-
 RDEPENDS_${PN} = "python-pytest"
 DEPENDS_class-native = "python-pytest-native"
 
 BBCLASSEXTEND = "native"
-
-inherit openswitch setuptools systemd
