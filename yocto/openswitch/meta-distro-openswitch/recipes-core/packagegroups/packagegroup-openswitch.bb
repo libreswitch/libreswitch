@@ -40,9 +40,9 @@ RDEPENDS_packagegroup-ops-base = "\
     shadow \
     cronie \
     auditd audispd-plugins audit-python \
-    inetutils-ping inetutils-ping6 inetutils-hostname inetutils-ifconfig \
+    inetutils-hostname inetutils-ifconfig \
     inetutils-tftp inetutils-traceroute inetutils-ftp inetutils-telnet \
-    iputils-traceroute6 \
+    iputils-traceroute6 iputils-ping iputils-ping6 \
     wget curl \
     xinetd \
     libcap-bin \
