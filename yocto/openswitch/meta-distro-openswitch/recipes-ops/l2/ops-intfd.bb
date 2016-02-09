@@ -7,7 +7,7 @@ DEPENDS = "ops-utils ops-config-yaml ops-ovsdb ops-cli"
 SRC_URI = "git://git.openswitch.net/openswitch/ops-intfd;protocol=http\
            file://ops-intfd.service"
 
-SRCREV = "01f45eac388eb4a4b67e315c747807088370a6b3"
+SRCREV = "867fdaf96851942f00c87bb2d25289a7a61eabac"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
