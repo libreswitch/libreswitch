@@ -8,8 +8,12 @@ then
         hostname="None"
         dns_1="None"
         dns_2="None"
+        domainname="None"
         if test -n "${new_host_name}"; then
                 hostname=${new_host_name}
+        fi
+	if test -n "${new_domain_name}"; then
+                domainname=${new_domain_name}
         fi
         if test -n "${new_domain_name_servers}"; then
                 dhcp_nameserver=${new_domain_name_servers}
@@ -32,5 +36,5 @@ then
                         dns_1=${dhcp_nameserver_tmp[0]}
                 fi
         fi
-        dhcp_options "${hostname}" "${dns_1}" "${dns_2}"
+        dhcp_options "${hostname}" "${dns_1}" "${dns_2}" "${domainname}"
 fi
