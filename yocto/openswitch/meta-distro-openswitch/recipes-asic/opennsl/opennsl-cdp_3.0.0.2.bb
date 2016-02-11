@@ -5,7 +5,7 @@ LIC_FILES_CHKSUM = "file://bin/LICENSE;md5=e4111c2d8b944da9d44a0c458635d87f \
                     file://${COMMON_LICENSE_DIR}/GPL-2.0;md5=801f80980d171dd6425610833a22dbe6 \
                    "
 
-DEPENDS_${PN} += "ops-utils systemd"
+DEPENDS_${PN} += "systemd"
 
 PROVIDES = "virtual/opennsl"
 RPROVIDES_${PN} = "virtual/opennsl"
