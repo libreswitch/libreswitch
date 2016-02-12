@@ -1,5 +1,6 @@
 .platform
 .devenv
+.testenv
 .sandbox_uuid
 images/*
 src/*

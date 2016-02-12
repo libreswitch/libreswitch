@@ -211,7 +211,7 @@ clean:: header
 
 distclean::
 	$(V)$(ECHO) "$(PURPLE)Distcleaning...$(GRAY)"
-	$(V)rm -Rf .platform .devenv images src build nfsroot* tools/bin/{corkscrew,python}
+	$(V)rm -Rf .platform .devenv .testenv images src build nfsroot* tools/bin/{corkscrew,python}
 	$(V)find -type l -lname 'images/*' -print0 | xargs -r0 rm -f
 	$(V)$(ECHO) "Distcleaning completed. You need to reconfigure to build again\n"
 

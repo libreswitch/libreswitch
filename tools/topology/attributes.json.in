@@ -1,0 +1,13 @@
+[
+    {
+        "files": ["*"],
+        "modifiers": [
+            {
+                "nodes": ["type=openswitch"],
+                "attributes": {
+                    "image": "@TEST_IMAGE@"
+                }
+            }
+        ]
+    }
+]

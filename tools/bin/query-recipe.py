@@ -77,10 +77,10 @@ def _get_git_uri(rd):
 
 
 def _getvar(rd, var):
-    if var == '*gitrepo*':
+    if var == 'gitrepo':
         uri, _ = _get_git_uri(rd)
         return uri
-    elif var == '*gitbranch*':
+    elif var == 'gitbranch':
         uri , extras = _get_git_uri(rd)
         if extras and 'branch' in extras:
             return extras['branch']
@@ -106,15 +106,17 @@ def main():
     parser.add_argument('--gitrepo',
                         action='append_const',
                         dest='var',
-                        const='*gitrepo*',
+                        const='gitrepo',
                         help='Extract the git repo from SRC_URI.')
     parser.add_argument('--gitbranch',
                         action='append_const',
                         dest='var',
-                        const='*gitbranch*',
+                        const='gitbranch',
                         help='Extract the git branch from SRC_URI. (default: "master" if SRC_URI is git, but no branch specified)')
-    parser.add_argument('package',
+    parser.add_argument('packages', nargs='+',
                         help='Name of package to query')
+    parser.add_argument('-s', '--shellsyntax', action='store_true',
+                        help='Print the output in shell syntax')
 
     global args
     args = parser.parse_args()
@@ -145,15 +147,19 @@ def main():
     sys.stderr = old_stderr
 
     # parse the recipe file and print the requested variables
-    rd = _parse_recipe(workspace_path, tinfoil, args.package)
-    if len(args.var) == 1:
-        val = _getvar(rd, args.var[0])
-        if not val is None:
-            print("{}".format(val))
-    else:
-        for var in args.var:
-            val = _getvar(rd, var)
-            print("{}={}".format(var, '' if val is None else val))
+    for package in args.packages:
+        rd = _parse_recipe(workspace_path, tinfoil, package)
+        if len(args.var) == 1:
+            val = _getvar(rd, args.var[0])
+            if not val is None:
+                print("{}".format(val))
+        else:
+            for var in args.var:
+                val = _getvar(rd, var)
+                if args.shellsyntax :
+                    print("export {}={}".format(var, '' if val is None else val))
+                else:
+                    print("{}={}".format(var, '' if val is None else val))
 
 
 if __name__ == "__main__":
