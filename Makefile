@@ -191,7 +191,7 @@ _switch-platform:
      fi ; \
 	 $(ECHO) -n Switching to platform $(PLATFORM)... ; \
 	 ln -sf bblayers.conf-$(DISTRO)-$(PLATFORM) build/conf/bblayers.conf ; \
-	 if [ -f .devenv ] ; then \
+	 if [ -d $(BUILD_ROOT)/build/workspace ] ; then \
 		if ! grep -q "$(BUILD_ROOT)/build/workspace" build/conf/bblayers.conf ; then \
 			sed --follow-symlinks -i 's|\(.*$(BUILD_ROOT)/yocto/.*/meta-platform-$(DISTRO)-$(PLATFORM) \\\)|\1\n  $(BUILD_ROOT)/build/workspace \\|' build/conf/bblayers.conf ; \
 		fi ;\
