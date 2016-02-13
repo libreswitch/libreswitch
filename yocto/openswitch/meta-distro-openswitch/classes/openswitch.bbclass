@@ -100,4 +100,80 @@ EXTERNALSRC_BUILD??="${S}/build"
 
 DEPENDS += "gmock gtest"
 
+do_unit_test() {
+    :
+}
+
+do_gtest_harness() {
+    #don't run unit tests for non-checked-out code
+    if [ -f $1 ]; then
+        do_coverage_setup
+        #TODO: how to show this output to the developers? or at least hint them where the log is
+        LD_LIBRARY_PATH=${STAGING_DIR_TARGET}/usr/lib ${HOST_INTERPRETER} $1 ${GTEST_PARAMS}
+        do_coverage_report
+    fi
+}
+
+do_unit_test_base() {
+    export COVERAGE_ENABLED_FILE=${TOPDIR}/devenv-coverage-enabled
+    export HOST_INTERPRETER=$(readelf -a /bin/sh | grep interpreter | awk '{ print substr($4, 0, length($4)-1)}')
+    export GTEST_PARAMS="--gtest_shuffle"
+
+    do_coverage_vars_setup
+    do_unit_test
+}
+
+do_coverage_vars_setup() {
+    export MODULE_NAME="${PN}"
+    export COVERAGE_BASE_DIR=$(pwd)
+    export COVERAGE_REPORT_DIR="${COVERAGE_BASE_DIR}/coverage"
+    #lcov based coverage support for C/C++ code
+    export COVERAGE_EXCLUDE_PATTERN="c++* gmock* gtest* tests*"
+    export LCOV="lcov --rc lcov_branch_coverage=1"
+}
+
+do_coverage_setup() {
+    #Silently exit if coverage is not enabled
+    if [ ! -f $COVERAGE_ENABLED_FILE ]; then
+        return
+    fi
+
+    mkdir -p ${COVERAGE_REPORT_DIR}
+    ${LCOV} --zerocounters --directory ${COVERAGE_REPORT_DIR}
+}
+
+do_coverage_report() {
+    #Silently exit if coverage is not enabled
+    if [ ! -f $COVERAGE_ENABLED_FILE ]; then
+        return
+    fi
+
+    bbnote "Exclude pattern: ${COVERAGE_EXCLUDE_PATTERN}"
+    ${LCOV} --directory ${COVERAGE_BASE_DIR} --capture --output-file ${COVERAGE_REPORT_DIR}/${MODULE_NAME}.info
+
+    #lcov 1.10 bug workaround: when lcov is run on a folder "near" the info file, it doesn't remove files as expected
+    cd ${COVERAGE_REPORT_DIR}
+    ${LCOV} --remove ${MODULE_NAME}.info $COVERAGE_EXCLUDE_PATTERN --output-file ${MODULE_NAME}
+    cd ${COVERAGE_BASE_DIR}
+
+    #create HTML report
+    mkdir -p ${COVERAGE_REPORT_DIR}/html
+    genhtml ${COVERAGE_REPORT_DIR}/${MODULE_NAME} -o ${COVERAGE_REPORT_DIR}/html --demangle-cpp --branch-coverage
+    #This is not visible on the developer console due to our version of open embedded
+    bbplain "Coverage report is at ${COVERAGE_REPORT_DIR}/html/index.html"
+}
+
+#Workaround for bbplain not showing on the console when executed from a shell task
+python do_show_coverage_report() {
+    if os.path.isfile(os.path.join(d.getVar('TOPDIR', True), 'devenv-coverage-enabled')):
+        bb.plain('Coverage report is at %s/coverage/html/index.html' % (d.getVar('B', True)))
+}
+
+# Enable unit tests and coverage for devenv recipes (meaning they are in external src)
+python() {
+    externalsrc = d.getVar('EXTERNALSRC', True)
+    if externalsrc:
+        d.appendVarFlag('do_compile', 'postfuncs', "do_unit_test_base do_show_coverage_report ")
+}
+
 inherit siteinfo
