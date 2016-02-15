@@ -36,7 +36,7 @@ config_mount_point=/mnt/ops/tmp
 INSTALLING_FROM_OPS=false
 
 # Install NOS on the same block device as ONIE
-NOS_DISK=$(blkid | awk '/LABEL="ONIE-BOOT"/ {print substr ($1,0,8)}')
+: ${NOS_DISK:=$(blkid | awk '/LABEL="ONIE-BOOT"/ {print substr ($1,0,8)}')}
 ACTIVE_PARTITION_NUMBER=-1
 INACTIVE_PARTITION_NUMBER=-1
 INSTALLING_PARTITION_NUMBER=-1
@@ -45,11 +45,16 @@ INSTALLING_BOOT_ENTRY=0
 PREVIOUS_BOOT_ENTRY=0
 OPS_CLEAN_INSTALL=${OPS_CLEAN_INSTALL:-false}
 
+get_partition_number()
+{
+    blkid | grep "LABEL=\"$1\"" | sed 's/^.*\([0-9]\+\)\: LABEL.*/\1/'
+}
+
 setup_nos_partitions()
 {
     # Find old legacy partitions and remove them
     # This can be removed in the future
-    OLD_PARTITION_NUMBER=$(blkid | awk "/LABEL=\"$label\"/ {print substr (\$1,9,length(\$1)-9)}")
+    OLD_PARTITION_NUMBER=$(get_partition_number "$label")
     if [ -n "$OLD_PARTITION_NUMBER" ]; then
         echo
         echo -e "${bold} --- Removing legacy $label partition --- ${low}"
@@ -61,9 +66,9 @@ setup_nos_partitions()
     fi
 
     # Find if we have a config partition
-    CONFIG_PARTITION_NUMBER=$(blkid | awk "/LABEL=\"$config_label\"/ {print substr (\$1,9,length(\$1)-9)}")
-    PRIMARY_PARTITION_NUMBER=$(blkid | awk "/LABEL=\"$primary_label\"/ {print substr (\$1,9,length(\$1)-9)}")
-    SECONDARY_PARTITION_NUMBER=$(blkid | awk "/LABEL=\"$secondary_label\"/ {print substr (\$1,9,length(\$1)-9)}")
+    CONFIG_PARTITION_NUMBER=$(get_partition_number "$config_label")
+    PRIMARY_PARTITION_NUMBER=$(get_partition_number "$primary_label")
+    SECONDARY_PARTITION_NUMBER=$(get_partition_number "$secondary_label")
     if ! $OPS_CLEAN_INSTALL && [ -n "$CONFIG_PARTITION_NUMBER" ]; then
         echo
         echo -e "${bold} --- Existing installation found, installing on the inactive partition --- ${low}"
