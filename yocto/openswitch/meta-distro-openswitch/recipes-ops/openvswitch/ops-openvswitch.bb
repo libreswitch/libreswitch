@@ -10,6 +10,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-openvswitch;protocol=http \
    file://switchd_sim.service \
    file://switchd_p4sim.service \
    file://enable-jemalloc-ovsdb-server.patch \
+   file://partial-map-updates.patch \
 "
 
 SRCREV = "9a49144aa6ddee3b938aeeb094cc170125a3ecb7"
