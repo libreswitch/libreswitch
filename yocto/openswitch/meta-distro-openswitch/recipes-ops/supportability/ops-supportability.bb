@@ -37,7 +37,9 @@ do_install() {
 
 do_install_append(){
    install -d   ${D}/etc/openswitch/supportability
+   install -d   ${D}/usr/bin
    install -c -m 755 ${S}/conf/*.yaml ${D}/etc/openswitch/supportability/
+   install -c -m 755 ${S}/scripts/*   ${D}/usr/bin/
 }
 
 FILES_${PN} += "/usr/lib/cli/plugins/ \
