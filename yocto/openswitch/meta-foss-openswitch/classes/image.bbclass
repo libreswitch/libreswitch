@@ -192,7 +192,13 @@ ROOTFS_POSTPROCESS_COMMAND += '${@bb.utils.contains_any("IMAGE_FEATURES", [ 'deb
 
 # Write manifest
 IMAGE_MANIFEST = "${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.rootfs.manifest"
-ROOTFS_POSTUNINSTALL_COMMAND =+ "write_image_manifest ; "
+#ROOTFS_POSTUNINSTALL_COMMAND =+ "write_image_manifest ; "
+ROOTFS_POSTPROCESS_COMMAND += "write_image_manifest;"
+
+#Create the "version_detail" file at the same place where manifest is created
+VERSION_DETAIL = "${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.version_detail"
+ROOTFS_POSTPROCESS_COMMAND += 'write_version_detail;'
+
 # Set default postinst log file
 POSTINST_LOGFILE ?= "${localstatedir}/log/postinstall.log"
 # Set default target for systemd images
@@ -457,6 +463,39 @@ python write_image_manifest () {
     with open(d.getVar('IMAGE_MANIFEST', True), 'w+') as image_manifest:
         image_manifest.write(image_list_installed_packages(d, 'ver'))
         image_manifest.write("\n")
+}
+
+# Create the version_detail file.
+# Copy the manifest & the version_detail file to the image at "/var/lib/"
+python write_version_detail () {
+    import oe.packagedata
+    from oe.rootfs import image_list_installed_packages
+    from shutil import copyfile
+
+    vars = {
+        "SRC_URI", "SRCREV", "PV"
+    }
+
+    installed_pkg_list = image_list_installed_packages(d)
+
+    with open(d.getVar('VERSION_DETAIL', True), 'w+') as version_detail:
+        for pkg in installed_pkg_list.split('\n'):
+            version_detail.write("PKG=%s" % pkg)
+
+            sdata = oe.packagedata.read_subpkgdata(pkg, d)
+            for key in vars:
+                if key in sdata.keys():
+                    version_detail.write(" %s=%s" % (key, sdata[key]))
+                    #Mark the "SRCREV" as dirty if local changes are present
+                    if ((key == "SRCREV") and ("PV" in sdata.keys())):
+                        if ((sdata['PV']).endswith('999')):
+                            version_detail.write("~DIRTY")
+
+            version_detail.write("\n")
+
+    #copy the image manifest & version_detail files to the image at "/var/lib/"
+    copyfile((d.getVar('IMAGE_MANIFEST', True)), (d.getVar('IMAGE_ROOTFS', True) + "/var/lib/image.manifest"))
+    copyfile((d.getVar('VERSION_DETAIL', True)), (d.getVar('IMAGE_ROOTFS', True) + "/var/lib/version_detail"))
 }
 
 # Can be use to create /etc/timestamp during image construction to give a reasonably 
