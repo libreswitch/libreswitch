@@ -1,60 +1,38 @@
-From b6473774da18b5a78a2e610819d98d603c67aec8 Mon Sep 17 00:00:00 2001
-From: Sebastian Arguello <sebastian.arguello@hpe.com>
-Date: Wed, 27 Jan 2016 09:38:04 -0800
-Subject: [PATCH] new: dev: on-demand fetching of non-monitored data
-
-The IDL only support reading information from data that is part of the
-replica. For processes that rarely access the data base, or part of it,
-this could result in a waste of resources.
-
-This commit adds support for reading data that is not being monitored
-from the OVSDB server. The data can be retrived at row, column, or
-table level.
-
-There are function generated for each table.
-
-Change-Id: Ide693ef364ab5ea1dce373042331006914487470
-Signed-off-by: Sebastian Arguello <sebastian.arguello@hpe.com>
----
- lib/ovsdb-idl-provider.h |  10 ++
- lib/ovsdb-idl.c          | 449 ++++++++++++++++++++++++++++++++++++++++++++++-
- lib/ovsdb-idl.h          |  30 ++++
- ovsdb/ovsdb-idlc.in      | 100 +++++++++++
- 4 files changed, 587 insertions(+), 2 deletions(-)
-
 diff --git a/lib/ovsdb-idl-provider.h b/lib/ovsdb-idl-provider.h
-index a18ed12..28c243b 100644
+index dd35e5a..f86f947 100644
 --- a/lib/ovsdb-idl-provider.h
 +++ b/lib/ovsdb-idl-provider.h
-@@ -41,6 +41,9 @@ struct ovsdb_idl_row {
-     unsigned int insert_seqno;
-     unsigned int modify_seqno;
+@@ -43,7 +43,10 @@ struct ovsdb_idl_row {
  #endif
+ 
+     unsigned int change_seqno[OVSDB_IDL_CHANGE_MAX];
 +
+     struct ovs_list track_node;
 +    size_t outstanding_fetch_reqs; /* Number of on-demand columns in this row
 +                                       with on-going fetch operations */
  };
  
  struct ovsdb_idl_column {
-@@ -75,6 +78,13 @@ struct ovsdb_idl_table {
-     unsigned int modify_seqno;
-     unsigned int delete_seqno;
+@@ -81,6 +84,14 @@ struct ovsdb_idl_table {
  #endif
+     unsigned int change_seqno[OVSDB_IDL_CHANGE_MAX];
+     struct ovs_list track_list; /* Tracked rows (ovsdb_idl_row.track_node). */
++
 +    bool has_pending_fetch;  /* Indicates if the table has a pending fetch
 +                                operation */
 +    struct shash outstanding_col_fetch_reqs; /* Contains the name of the
-+                                                 columns with on-demand fetch
-+                                                 request pending. It does not
-+                                                 keep anything as data, just
-+                                                 the column names. */
++                                                columns with on-demand fetch
++                                                request pending. It does not
++                                                keep anything as data, just
++                                                the column names. */
  };
  
  struct ovsdb_idl_class {
 diff --git a/lib/ovsdb-idl.c b/lib/ovsdb-idl.c
-index 748510c..a5e4b3c 100644
+index ccbb449..18c000e 100644
 --- a/lib/ovsdb-idl.c
 +++ b/lib/ovsdb-idl.c
-@@ -72,6 +72,15 @@ struct ovsdb_idl_arc {
+@@ -76,6 +76,15 @@ struct ovsdb_idl_arc {
      struct ovsdb_idl_row *dst;  /* Destination row. */
  };
  
@@ -67,10 +45,10 @@ index 748510c..a5e4b3c 100644
 +                                            or table */
 +};
 +
- struct ovsdb_idl {
-     const struct ovsdb_idl_class *class;
-     struct jsonrpc_session *session;
-@@ -91,6 +100,10 @@ struct ovsdb_idl {
+ enum ovsdb_idl_state {
+     IDL_S_SCHEMA_REQUESTED,
+     IDL_S_MONITOR_REQUESTED,
+@@ -104,6 +113,10 @@ struct ovsdb_idl {
      /* Transaction support. */
      struct ovsdb_idl_txn *txn;
      struct hmap outstanding_txns;
@@ -81,7 +59,7 @@ index 748510c..a5e4b3c 100644
  };
  
  struct ovsdb_idl_txn {
-@@ -133,6 +146,13 @@ static bool ovsdb_idl_process_update(struct ovsdb_idl_table *,
+@@ -148,6 +161,13 @@ static bool ovsdb_idl_process_update(struct ovsdb_idl_table *,
                                       const struct uuid *,
                                       const struct json *old,
                                       const struct json *new);
@@ -95,24 +73,23 @@ index 748510c..a5e4b3c 100644
  static void ovsdb_idl_insert_row(struct ovsdb_idl_row *, const struct json *);
  static void ovsdb_idl_delete_row(struct ovsdb_idl_row *);
  static bool ovsdb_idl_modify_row(struct ovsdb_idl_row *, const struct json *);
-@@ -160,6 +180,8 @@ static void ovsdb_idl_parse_lock_reply(struct ovsdb_idl *,
- static void ovsdb_idl_parse_lock_notify(struct ovsdb_idl *,
-                                         const struct json *params,
-                                         bool new_has_lock);
-+static struct json *
-+where_uuid_equals(const struct uuid *uuid);
+@@ -181,6 +201,7 @@ static struct ovsdb_idl_table *
+ ovsdb_idl_table_from_class(const struct ovsdb_idl *,
+                            const struct ovsdb_idl_table_class *);
+ static bool ovsdb_idl_track_is_set(struct ovsdb_idl_table *table);
++static struct json *where_uuid_equals(const struct uuid *uuid);
  
  /* Creates and returns a connection to database 'remote', which should be in a
   * form acceptable to jsonrpc_session_open().  The connection will maintain an
-@@ -222,6 +244,7 @@ ovsdb_idl_create(const char *remote, const struct ovsdb_idl_class *class,
-     }
-     idl->last_monitor_request_seqno = UINT_MAX;
+@@ -248,6 +269,7 @@ ovsdb_idl_create(const char *remote, const struct ovsdb_idl_class *class,
+     idl->request_id = NULL;
+ 
      hmap_init(&idl->outstanding_txns);
 +    hmap_init(&idl->outstanding_fetch_reqs);
  
      return idl;
  }
-@@ -241,6 +264,7 @@ ovsdb_idl_destroy(struct ovsdb_idl *idl)
+@@ -267,6 +289,7 @@ ovsdb_idl_destroy(struct ovsdb_idl *idl)
              struct ovsdb_idl_table *table = &idl->tables[i];
              shash_destroy(&table->columns);
              hmap_destroy(&table->rows);
@@ -120,7 +97,7 @@ index 748510c..a5e4b3c 100644
              free(table->modes);
          }
          shash_destroy(&idl->table_by_name);
-@@ -249,6 +273,7 @@ ovsdb_idl_destroy(struct ovsdb_idl *idl)
+@@ -275,6 +298,7 @@ ovsdb_idl_destroy(struct ovsdb_idl *idl)
          free(idl->lock_name);
          json_destroy(idl->lock_request_id);
          hmap_destroy(&idl->outstanding_txns);
@@ -128,7 +105,7 @@ index 748510c..a5e4b3c 100644
          free(idl);
      }
  }
-@@ -296,6 +321,7 @@ void
+@@ -328,6 +352,7 @@ void
  ovsdb_idl_run(struct ovsdb_idl *idl)
  {
      int i;
@@ -136,10 +113,11 @@ index 748510c..a5e4b3c 100644
  
      ovs_assert(!idl->txn);
      jsonrpc_session_run(idl->session);
-@@ -327,6 +353,13 @@ ovsdb_idl_run(struct ovsdb_idl *idl)
+@@ -362,7 +387,14 @@ ovsdb_idl_run(struct ovsdb_idl *idl)
              /* Database contents changed. */
              ovsdb_idl_parse_update(idl, msg->params->u.array.elems[1]);
          } else if (msg->type == JSONRPC_REPLY
+-                   && idl->request_id
 +                   && msg->result->type == JSON_ARRAY
 +                   && (fetch_node = hmap_first_with_hash(
 +                                        &idl->outstanding_fetch_reqs,
@@ -147,10 +125,11 @@ index 748510c..a5e4b3c 100644
 +            /* On-demand fetch reply received. */
 +            ovsdb_idl_parse_fetch_reply(idl, fetch_node, msg->result->u.array.elems[0]);
 +        } else if (msg->type == JSONRPC_REPLY
-                    && idl->monitor_request_id
-                    && json_equal(idl->monitor_request_id, msg->id)) {
-             /* Reply to our "monitor" request. */
-@@ -485,6 +518,21 @@ add_ref_table(struct ovsdb_idl *idl, const struct ovsdb_base_type *base)
++                  && idl->request_id
+                    && json_equal(idl->request_id, msg->id)) {
+             switch (idl->state) {
+             case IDL_S_SCHEMA_REQUESTED:
+@@ -542,6 +574,26 @@ add_ref_table(struct ovsdb_idl *idl, const struct ovsdb_base_type *base)
      }
  }
  
@@ -159,20 +138,25 @@ index 748510c..a5e4b3c 100644
 + * are not synchronized automatically.
 + *
 + * In order to get its value from the database, it is necessary to explicitly
-+ * ask them from the server by calling one of this functions: ovsdb_idl_fetch_row,
-+ * ovsdb_idl_fetch_column, ovsdb_idl_fetch_table.
++ * ask them from the server by calling one of this functions:
++ * ovsdb_idl_fetch_row, ovsdb_idl_fetch_column, or ovsdb_idl_fetch_table.
++ *
++ * This function adds the table with table class 'tc' to the replica (see
++ * ovsdb_idl_add_table() for more information)
 + */
 +void
 +ovsdb_idl_add_on_demand_column(struct ovsdb_idl *idl,
-+                                  const struct ovsdb_idl_column *column)
++                               struct ovsdb_idl_table_class *tc,
++                               const struct ovsdb_idl_column *column)
 +{
++    ovsdb_idl_add_table(idl, tc);
 +    *ovsdb_idl_get_mode(idl, column) = OVSDB_IDL_ON_DEMAND;
 +}
 +
  /* Turns on OVSDB_IDL_MONITOR and OVSDB_IDL_ALERT for 'column' in 'idl'.  Also
   * ensures that any tables referenced by 'column' will be replicated, even if
   * no columns in that table are selected for replication (see
-@@ -692,6 +740,150 @@ ovsdb_idl_parse_update__(struct ovsdb_idl *idl,
+@@ -1008,6 +1060,141 @@ ovsdb_idl_parse_update__(struct ovsdb_idl *idl,
      return NULL;
  }
  
@@ -235,15 +219,6 @@ index 748510c..a5e4b3c 100644
 +    struct ovsdb_idl_table *table = fetch_node->table;
 +    unsigned int column_idx;
 +    struct ovsdb_datum *old;
-+
-+    shash_node = shash_first(&fetch_node->columns);
-+
-+    if (!shash_node) {
-+        return ovsdb_error(NULL,
-+               "Missing column information for processing reply");
-+    }
-+
-+    column = shash_node->data;
 +
 +    if (fetch_reply->type != JSON_OBJECT) {
 +        return ovsdb_syntax_error(fetch_reply, NULL,
@@ -323,11 +298,14 @@ index 748510c..a5e4b3c 100644
  static struct ovsdb_idl_row *
  ovsdb_idl_get_row(struct ovsdb_idl_table *table, const struct uuid *uuid)
  {
-@@ -1232,6 +1424,258 @@ ovsdb_idl_get(const struct ovsdb_idl_row *row,
+@@ -1591,6 +1778,271 @@ ovsdb_idl_get(const struct ovsdb_idl_row *row,
      return ovsdb_idl_read(row, column);
  }
  
 +/* Return true if any column of 'row' has a pending fetch operation.
++ *
++ * This function only considers on-demand requests done explicitly over 'row'
++ * i.e. after calling ovsdb_idl_fetch_row().
 + */
 +bool
 +ovsdb_idl_is_row_fetch_pending(const struct ovsdb_idl_row *row)
@@ -336,6 +314,11 @@ index 748510c..a5e4b3c 100644
 +}
 +
 +/* Return true if 'column' has a pending fetch operation
++ *
++ * This function only considers on-demand requests done explicitly over
++ * 'column' i.e. after calling ovsdb_idl_fetch_column().
++ *
++ * It does not take into account rows requests.
 + */
 +bool
 +ovsdb_idl_is_column_fetch_pending(struct ovsdb_idl *idl,
@@ -350,7 +333,12 @@ index 748510c..a5e4b3c 100644
 +                      column->name) != NULL;
 +}
 +
-+/* Return true if 'table' has a pending fetch operation
++/* Return true if 'table' has a pending fetch operation.
++ *
++ * This function only considers on-demand requests done explicitly over 'table'
++ * i.e. after calling ovsdb_idl_fetch_table().
++ *
++ * It does not take into account columns nor rows requests.
 + */
 +bool
 +ovsdb_idl_is_table_fetch_pending(struct ovsdb_idl *idl,
@@ -582,7 +570,7 @@ index 748510c..a5e4b3c 100644
  /* Returns true if the field represented by 'column' in 'row' may be modified,
   * false if it is immutable.
   *
-@@ -1937,8 +2381,9 @@ ovsdb_idl_txn_write__(const struct ovsdb_idl_row *row_,
+@@ -2296,8 +2748,9 @@ ovsdb_idl_txn_write__(const struct ovsdb_idl_row *row_,
  
      ovs_assert(row->new != NULL);
      ovs_assert(column_idx < class->n_columns);
@@ -595,22 +583,22 @@ index 748510c..a5e4b3c 100644
      if (row->table->idl->verify_write_only && !write_only) {
          VLOG_ERR("Bug: Attempt to write to a read/write column (%s:%s) when"
 diff --git a/lib/ovsdb-idl.h b/lib/ovsdb-idl.h
-index 54df90d..0c7c127 100644
+index 4c66ae0..7305486 100644
 --- a/lib/ovsdb-idl.h
 +++ b/lib/ovsdb-idl.h
-@@ -39,6 +39,7 @@ struct json;
- struct ovsdb_datum;
+@@ -44,6 +44,7 @@ struct ovsdb_datum;
  struct ovsdb_idl_class;
+ struct ovsdb_idl_row;
  struct ovsdb_idl_column;
 +struct ovsdb_idl_table;
  struct ovsdb_idl_table_class;
  struct uuid;
  
-@@ -92,8 +93,21 @@ int ovsdb_idl_get_last_error(const struct ovsdb_idl *);
-  */
+@@ -102,8 +103,22 @@ int ovsdb_idl_get_last_error(const struct ovsdb_idl *);
  #define OVSDB_IDL_MONITOR (1 << 0) /* Monitor this column? */
  #define OVSDB_IDL_ALERT   (1 << 1) /* Alert client when column updated? */
-+#define OVSDB_IDL_ON_DEMAND (1 << 2) /* Manually update columns */
+ #define OVSDB_IDL_TRACK   (1 << 2)
++#define OVSDB_IDL_ON_DEMAND (1 << 3) /* Manually update columns */
 +
 +/* On-demand fetch columns.
 + * Fetch request types.
@@ -624,11 +612,12 @@ index 54df90d..0c7c127 100644
  
  void ovsdb_idl_add_column(struct ovsdb_idl *, const struct ovsdb_idl_column *);
 +void ovsdb_idl_add_on_demand_column(struct ovsdb_idl *,
++                                    struct ovsdb_idl_table_class *,
 +                                    const struct ovsdb_idl_column *);
  void ovsdb_idl_add_table(struct ovsdb_idl *,
                           const struct ovsdb_idl_table_class *);
  
-@@ -115,6 +129,22 @@ const struct ovsdb_datum *ovsdb_idl_get(const struct ovsdb_idl_row *,
+@@ -150,6 +165,22 @@ const struct ovsdb_datum *ovsdb_idl_get(const struct ovsdb_idl_row *,
                                          const struct ovsdb_idl_column *,
                                          enum ovsdb_atomic_type key_type,
                                          enum ovsdb_atomic_type value_type);
@@ -652,10 +641,10 @@ index 54df90d..0c7c127 100644
                            const struct ovsdb_idl_column *);
  
 diff --git a/ovsdb/ovsdb-idlc.in b/ovsdb/ovsdb-idlc.in
-index 6aa0b2d..c412084 100755
+index 9feb691..ad76998 100755
 --- a/ovsdb/ovsdb-idlc.in
 +++ b/ovsdb/ovsdb-idlc.in
-@@ -192,6 +192,22 @@ struct %(s)s *%(s)s_insert(struct ovsdb_idl_txn *);
+@@ -255,6 +255,22 @@ struct %(s)s *%(s)s_insert(struct ovsdb_idl_txn *);
                                                 structName.upper(), func)
              print
  
@@ -678,16 +667,10 @@ index 6aa0b2d..c412084 100755
          for columnName, column in sorted(table.columns.iteritems()):
              print 'void %(s)s_verify_%(c)s(const struct %(s)s *);' % {'s': structName, 'c': columnName}
  
-@@ -507,12 +523,96 @@ struct %(s)s *
- %(s)s_insert(struct ovsdb_idl_txn *txn)
- {
-     return %(s)s_cast(ovsdb_idl_txn_insert(txn, &%(p)stable_classes[%(P)sTABLE_%(T)s], NULL));
-+}''' % {'s': structName,
-+        'p': prefix,
-+        'P': prefix.upper(),
-+        't': tableName,
-+        'T': tableName.upper()}
-+
+@@ -617,6 +633,90 @@ struct %(s)s *
+         't': tableName,
+         'T': tableName.upper()}
+ 
 +        # On-demand fetching functions.
 +        print '''
 +/* Verify if there is a pending fetch for 'rec'. */
@@ -723,13 +706,13 @@ index 6aa0b2d..c412084 100755
 +%(s)s_is_table_fetch_pending(struct ovsdb_idl *idl)
 +{
 +    return ovsdb_idl_is_table_fetch_pending(idl, &%(p)stable_classes[%(P)sTABLE_%(T)s]);
- }
- ''' % {'s': structName,
-        'p': prefix,
-        'P': prefix.upper(),
++}
++''' % {'s': structName,
++       'p': prefix,
++       'P': prefix.upper(),
 +       't': tableName,
-        'T': tableName.upper()}
- 
++       'T': tableName.upper()}
++
 +        for columnName, column in sorted(table.columns.iteritems()):
 +            print '''
 +/* Requests to fetch %(c)s for the specified 'rec'. */
@@ -775,6 +758,3 @@ index 6aa0b2d..c412084 100755
          # Verify functions.
          for columnName, column in sorted(table.columns.iteritems()):
              print '''
--- 
-1.9.1
-
