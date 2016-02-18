@@ -7,7 +7,7 @@ DEPENDS = "ops-utils ops-ovsdb"
 SRC_URI = "git://git.openswitch.net/openswitch/ops-arpmgrd;protocol=http;branch=release\
            file://ops-arpmgrd.service"
 
-SRCREV = "a358e75a97d9eb58ba89fe42473ac6ab8c481218"
+SRCREV = "6732de13103857ab3e06c0d92a45673a1365252f"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
