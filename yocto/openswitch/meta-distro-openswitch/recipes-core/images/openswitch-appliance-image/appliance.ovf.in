@@ -1,28 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Envelope vmw:buildId="build-3018522" xmlns="http://schemas.dmtf.org/ovf/envelope/1" xmlns:cim="http://schemas.dmtf.org/wbem/wscim/1/common" xmlns:ovf="http://schemas.dmtf.org/ovf/envelope/1" xmlns:rasd="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_ResourceAllocationSettingData" xmlns:vmw="http://www.vmware.com/schema/ovf" xmlns:vssd="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_VirtualSystemSettingData" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<Envelope vmw:buildId="build-3018522" xmlns="http://schemas.dmtf.org/ovf/envelope/1" xmlns:cim="http://schemas.dmtf.org/wbem/wscim/1/common" xmlns:ovf="http://schemas.dmtf.org/ovf/envelope/1" xmlns:rasd="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_ResourceAllocationSettingData" xmlns:vmw="http://www.vmware.com/schema/ovf" xmlns:vssd="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_VirtualSystemSettingData" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:vbox="http://www.virtualbox.org/ovf/machine">
   <References>
     <File ovf:href="@@DISK_BOOT_NAME@@" ovf:id="file1" ovf:size="@@DISK_BOOT_VMDK_SIZE@@"/>
   </References>
   <DiskSection>
     <Info>Virtual disk information</Info>
-    <Disk ovf:capacity="@@DISK_BOOT_CAPACITY@@" ovf:capacityAllocationUnits="byte * 2^10" ovf:diskId="vmdisk1" ovf:fileRef="file1" ovf:format="http://www.vmware.com/interfaces/specifications/vmdk.html#streamOptimized"/>
+    <Disk ovf:capacity="@@DISK_BOOT_CAPACITY@@" ovf:capacityAllocationUnits="byte" ovf:diskId="vmdisk1" ovf:fileRef="file1" ovf:format="http://www.vmware.com/interfaces/specifications/vmdk.html#streamOptimized" ovf:populatedSize="@@DISK_BOOT_VMDK_SIZE@@"/>
   </DiskSection>
   <NetworkSection>
     <Info>The list of logical networks</Info>
-    <Network ovf:name="nat">
-      <Description>The nat network</Description>
+    <Network ovf:name="Management">
+      <Description>The management network</Description>
     </Network>
-    <Network ovf:name="hostonly">
-      <Description>The hostonly network</Description>
+    <Network ovf:name="Port 1">
+      <Description>Network to connect the switch's port 1</Description>
+    </Network>
+    <Network ovf:name="Port 2">
+      <Description>Network to connect the switch's port 2</Description>
+    </Network>
+    <Network ovf:name="Port 3">
+      <Description>Network to connect the switch's port 3</Description>
     </Network>
   </NetworkSection>
   <VirtualSystem ovf:id="@@DISTRO_NAME@@ Appliance">
     <Info>A virtual machine</Info>
     <Name>@@DISTRO_NAME@@ Appliance</Name>
-    <OperatingSystemSection ovf:id="102" vmw:osType="*other3xLinux64Guest">
+    <OperatingSystemSection ovf:id="101" vmw:osType="otherLinux64Guest">
       <Info>The kind of installed guest operating system</Info>
       <Description>@@DISTRO_NAME@@ Appliance</Description>
-      <vbox:OSType ovf:required="false">Linux</vbox:OSType>
+      <vbox:OSType ovf:required="false">Linux_64</vbox:OSType>
     </OperatingSystemSection>
     <VirtualHardwareSection>
       <Info>Virtual hardware requirements</Info>
@@ -76,8 +82,8 @@
       <Item>
         <rasd:AddressOnParent>2</rasd:AddressOnParent>
         <rasd:AutomaticAllocation>true</rasd:AutomaticAllocation>
-        <rasd:Connection>nat</rasd:Connection>
-        <rasd:Description>E1000 ethernet adapter on &quot;nat&quot;</rasd:Description>
+        <rasd:Connection>Management</rasd:Connection>
+        <rasd:Description>Management Port</rasd:Description>
         <rasd:ElementName>ethernet0</rasd:ElementName>
         <rasd:InstanceID>6</rasd:InstanceID>
         <rasd:ResourceSubType>E1000</rasd:ResourceSubType>
@@ -86,9 +92,9 @@
       </Item>
       <Item>
         <rasd:AddressOnParent>3</rasd:AddressOnParent>
-        <rasd:AutomaticAllocation>false</rasd:AutomaticAllocation>
-        <rasd:Connection>hostonly</rasd:Connection>
-        <rasd:Description>E1000 ethernet adapter on &quot;hostonly&quot;</rasd:Description>
+        <rasd:AutomaticAllocation>true</rasd:AutomaticAllocation>
+        <rasd:Connection>Port 1</rasd:Connection>
+        <rasd:Description>Port 1</rasd:Description>
         <rasd:ElementName>ethernet1</rasd:ElementName>
         <rasd:InstanceID>7</rasd:InstanceID>
         <rasd:ResourceSubType>E1000</rasd:ResourceSubType>
@@ -97,9 +103,9 @@
       </Item>
       <Item>
         <rasd:AddressOnParent>4</rasd:AddressOnParent>
-        <rasd:AutomaticAllocation>false</rasd:AutomaticAllocation>
-        <rasd:Connection>hostonly</rasd:Connection>
-        <rasd:Description>E1000 ethernet adapter on &quot;hostonly&quot;</rasd:Description>
+        <rasd:AutomaticAllocation>true</rasd:AutomaticAllocation>
+        <rasd:Connection>Port 2</rasd:Connection>
+        <rasd:Description>Port 2</rasd:Description>
         <rasd:ElementName>ethernet2</rasd:ElementName>
         <rasd:InstanceID>8</rasd:InstanceID>
         <rasd:ResourceSubType>E1000</rasd:ResourceSubType>
@@ -108,9 +114,9 @@
       </Item>
       <Item>
         <rasd:AddressOnParent>5</rasd:AddressOnParent>
-        <rasd:AutomaticAllocation>false</rasd:AutomaticAllocation>
-        <rasd:Connection>hostonly</rasd:Connection>
-        <rasd:Description>E1000 ethernet adapter on &quot;hostonly&quot;</rasd:Description>
+        <rasd:AutomaticAllocation>true</rasd:AutomaticAllocation>
+        <rasd:Connection>Port 3</rasd:Connection>
+        <rasd:Description>Port 3</rasd:Description>
         <rasd:ElementName>ethernet3</rasd:ElementName>
         <rasd:InstanceID>9</rasd:InstanceID>
         <rasd:ResourceSubType>E1000</rasd:ResourceSubType>
@@ -126,13 +132,6 @@
         <vmw:Config ovf:required="false" vmw:key="use3dRenderer" vmw:value="automatic" />
         <vmw:Config ovf:required="false" vmw:key="useAutoDetect" vmw:value="false" />
         <vmw:Config ovf:required="false" vmw:key="videoRamSizeInKB" vmw:value="16384" />
-      </Item>
-      <Item ovf:required="false">
-        <rasd:AutomaticAllocation>false</rasd:AutomaticAllocation>
-        <rasd:ElementName>vmci</rasd:ElementName>
-        <rasd:InstanceID>11</rasd:InstanceID>
-        <rasd:ResourceSubType>vmware.vmci</rasd:ResourceSubType>
-        <rasd:ResourceType>1</rasd:ResourceType>
       </Item>
       <vmw:Config ovf:required="false" vmw:key="cpuHotAddEnabled" vmw:value="false"/>
       <vmw:Config ovf:required="false" vmw:key="cpuHotRemoveEnabled" vmw:value="false"/>
@@ -150,9 +149,6 @@
       <vmw:Config ovf:required="false" vmw:key="tools.syncTimeWithHost" vmw:value="false"/>
       <vmw:Config ovf:required="false" vmw:key="tools.toolsUpgradePolicy" vmw:value="manual"/>
     </VirtualHardwareSection>
-    <vmw:BootOrderSection vmw:instanceId="5" vmw:type="disk">
-      <Info>Virtual hardware device boot order</Info>
-    </vmw:BootOrderSection>
     <ProductSection ovf:class="ultra">
       <Info>Information about the installed software</Info>
       <Product>@@OVA_PRODUCT@@</Product>
