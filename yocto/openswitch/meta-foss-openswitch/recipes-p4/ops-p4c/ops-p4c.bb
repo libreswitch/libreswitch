@@ -1,18 +1,14 @@
-SUMMARY = "P4 Compilers "
+SUMMARY = "P4 Compiler for P4 simulator target"
 HOMEPAGE = "https://github.com/p4lang/p4factory"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=2f3453ba8e98aaed11a290758a999e65"
 
-# This is the actual repository, but until the infrastructure issues are
-# sorted out, we can host the code on Github
-#
-# OPS_P4C_REPO = "git.openswitch.net/openswitch/ops-p4c"
-OPS_P4C_REPO = "github.com/ops-p4/ops-p4c.git"
+OPS_P4C_REPO = "github.com/p4lang/p4c-bm.git"
 
 SRC_URI = "\
-	git://${OPS_P4C_REPO};protocol=https;branch=master \
+	git://${OPS_P4C_REPO};protocol=https;branch=ops \
 "
-SRCREV = "${AUTOREV}"
+SRCREV = "e7901218fd74eeca2af6e8fbcf4d5916c0552069"
 PV = "git${SRCPV}"
 S = "${WORKDIR}/git"
 
