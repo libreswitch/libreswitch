@@ -1,0 +1,15 @@
+--- inetutils-1.9.2.orig/src/traceroute.c    2016-02-18 21:27:08.000000000 -0800
++++ inetutils-1.9.2/src/traceroute.c    2016-02-19 02:20:03.543207421 -0800
+@@ -739,6 +739,12 @@
+
+   ttlp = &t->ttl;
+   t->ttl++;
++  /* Protect from ttl value overflow */
++  if (t->ttl > 255)
++    {
++      stop = 1;
++      return;
++    }
+   fd = (t->type == TRACE_UDP ? t->udpfd : t->icmpfd);
+   if (setsockopt (fd, IPPROTO_IP, IP_TTL, ttlp, sizeof (*ttlp)) < 0)
+     error (EXIT_FAILURE, errno, "setsockopt");
