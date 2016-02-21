@@ -12,7 +12,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-openvswitch;protocol=http \
    file://enable-jemalloc-ovsdb-server.patch \
 "
 
-SRCREV = "23bd3f5d6f85313dc7a93e8c1212a4213d76efba"
+SRCREV = "9a49144aa6ddee3b938aeeb094cc170125a3ecb7"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
