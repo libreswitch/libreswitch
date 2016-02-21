@@ -16,8 +16,4 @@ PV = "git${SRCPV}"
 
 S = "${WORKDIR}/git"
 
-EXTRA_OECONF = "--enable-user=root --enable-group=root \
- --enable-ovsdb --enable-vtysh\
-"
-
-inherit openswitch autotools pkgconfig
+inherit openswitch pkgconfig cmake
