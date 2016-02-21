@@ -57,7 +57,7 @@ FILES_${PN} = "${bindir}/ovs-appctl ${bindir}/ovs-pki ${bindir}/ovs-vsctl \
 
 USERADD_PACKAGES = "${PN}"
 
-GROUPADD_PARAM_${PN} ="-g 1020 ovsdb_users;-o -g 1020 ovsdb-client;ops_netop;ops_admin"
+GROUPADD_PARAM_${PN} ="-g 1020 ovsdb-client;-o -g 1020 ovsdb_users;ops_netop;ops_admin"
 
 do_configure_prepend() {
     export OPEN_HALON_BUILD=1
@@ -106,7 +106,7 @@ do_install_append() {
         install -m 0644 ${WORKDIR}/switchd_sim.service ${D}${systemd_unitdir}/system/switchd.service
     fi
     install -d ${D}${sysconfdir}/tmpfiles.d
-    echo "d /run/openvswitch/ 0770 - ovsdb_users -" > ${D}${sysconfdir}/tmpfiles.d/openswitch.conf
+    echo "d /run/openvswitch/ 0770 - ovsdb-client -" > ${D}${sysconfdir}/tmpfiles.d/openswitch.conf
     install -d ${D}${PYTHON_SITEPACKAGES_DIR}
     mv ${D}/${prefix}/share/openvswitch/python/ovs ${D}${PYTHON_SITEPACKAGES_DIR}
 }
