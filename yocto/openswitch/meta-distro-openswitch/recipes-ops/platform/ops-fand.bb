@@ -8,7 +8,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-fand;protocol=http \
            file://ops-fand.service \
 "
 
-SRCREV = "4df409e31b622dc70820b096b84ffce3248d39a2"
+SRCREV = "ba3097cbf2aa74545c2684d9909b900c95c22710"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
