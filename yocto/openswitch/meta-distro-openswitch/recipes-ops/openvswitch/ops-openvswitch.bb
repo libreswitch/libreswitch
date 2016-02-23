@@ -2,7 +2,7 @@ SUMMARY = "OpenVSwitch for OpenSwitch"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 
-DEPENDS = "openssl python perl systemd libtool libyaml jemalloc-dev ops"
+DEPENDS = "openssl python perl systemd libtool libyaml jemalloc ops"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-openvswitch;protocol=http \
    file://ovsdb-server.service \
@@ -30,7 +30,7 @@ RDEPENDS_${PN} = "openssl procps util-linux-uuidgen util-linux-libuuid coreutils
   python perl perl-module-strict sed gawk grep ops-ovsdb \
   ${@bb.utils.contains('MACHINE_FEATURES', 'ops-container', 'openvswitch-sim-switch', '',d)} \
 "
-RDEPENDS_ops-ovsdb = "ops jemalloc"
+RDEPENDS_ops-ovsdb = "ops"
 
 RDEPENDS_python-ops-ovsdb = "python-io python-netclient python-datetime \
   python-logging python-threading python-math python-fcntl python-resource"
