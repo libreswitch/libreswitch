@@ -3,12 +3,13 @@ LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://setup.py;beginline=1;endline=15;md5=66f387680cedd92d8e3c7a801744d54f"
 
 RDEPENDS_${PN} = "python-argparse python-json python-ops-ovsdb python-distribute"
+DEPENDS = "ops-cli"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-dhcp-tftp;protocol=http \
            file://dhcp_tftp.service \
 "
 
-SRCREV = "ac687d9596cc91f0d3e6e229b5bc4103a59303af"
+SRCREV = "2c5f4fddd748fdd9829b69b8e5b234553ccd2b0d"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
@@ -16,12 +17,27 @@ PV = "git${SRCPV}"
 
 S = "${WORKDIR}/git"
 
-do_install_prepend() {
+# Mixing of two classes, the build happens on the source directory.
+inherit openswitch cmake setuptools systemd
+
+# Doing some magic here. We are inheriting cmake and setuptools classes, so we
+# need to override the exported functions and call both by ourselves.
+do_compile() {
+     cd ${S}
+     distutils_do_compile
+     # Cmake compile changes to the B directory
+     cmake_do_compile
+}
+
+do_install() {
+     cd ${S}
+     distutils_do_install
+     # Cmake compile changes to the B directory
+     cmake_do_install
      install -d ${D}${systemd_unitdir}/system
      install -m 0644 ${WORKDIR}/dhcp_tftp.service ${D}${systemd_unitdir}/system/
 }
 
+FILES_${PN} += "/usr/lib/cli/plugins/"
 SYSTEMD_PACKAGES = "${PN}"
 SYSTEMD_SERVICE_${PN} = "dhcp_tftp.service"
-
-inherit openswitch setuptools systemd
