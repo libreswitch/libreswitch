@@ -17,7 +17,16 @@ S = "${WORKDIR}/git"
 
 do_install () {
     install -d ${D}${sysconfdir}/openswitch/platform/${PLATFORM_PATH}
-    cp -p ${S}/${PLATFORM_PATH}/*.yaml ${D}${sysconfdir}/openswitch/platform/${PLATFORM_PATH}
+    for f in ${S}/${PLATFORM_PATH}/*.yaml ; do
+        d=`dirname "$f"`
+        n=`basename "$f"`
+        # If there's a flavor override, use that
+        if test -n "${PLATFORM_FLAVOR}" -a -e "${d}/${PLATFORM_FLAVOR}/${n}" ; then
+            cp -p "${d}/${PLATFORM_FLAVOR}/${n}" "${D}${sysconfdir}/openswitch/platform/${PLATFORM_PATH}"
+        else
+            cp -p "${d}/${n}" "${D}${sysconfdir}/openswitch/platform/${PLATFORM_PATH}"
+        fi
+    done
 }
 
 FILES_${PN} = "${sysconfdir}"
