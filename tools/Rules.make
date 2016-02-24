@@ -491,8 +491,8 @@ endif
 devenv_add: dev_header
 	$(V)$(foreach P, $(PACKAGE), $(call DEVENV_ADD,$(P)))
 
-$(eval $(call PARSE_TWO_ARGUMENTS,devenv_import))
 ifeq (devenv_import,$(firstword $(MAKECMDGOALS)))
+  $(eval $(call PARSE_TWO_ARGUMENTS,devenv_import))
   PACKAGE?=$(EXTRA_ARGS_1)
   IMPORTED_SRC?=$(EXTRA_ARGS_2)
   ifeq ($(PACKAGE),)
