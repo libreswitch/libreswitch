@@ -1,0 +1,16 @@
+Patch to display all the optional parameters in the traceroute output.
+
+--- inetutils-1.9.2.orig/src/traceroute.c    2016-02-18 21:27:08.000000000 -0800
++++ inetutils-1.9.2/src/traceroute.c    2016-02-23 20:21:50.961367170 -0800
+@@ -323,8 +323,9 @@
+   getnameinfo (res->ai_addr, res->ai_addrlen, addrstr, sizeof (addrstr),
+                   NULL, 0, NI_NUMERICHOST);
+
+-  printf ("traceroute to %s (%s), %d hops max\n",
+-	  res->ai_canonname, addrstr, opt_max_hops);
++  printf ("traceroute to %s (%s), %d hops min, %d hops max, %d sec. timeout, "
++      "%d probes\n", res->ai_canonname ? res->ai_canonname : rhost, addrstr,
++      opt_ttl, opt_max_hops, opt_wait, opt_max_tries);
+
+   freeaddrinfo (res);
+
