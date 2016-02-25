@@ -18,4 +18,8 @@ RDEPENDS_${PN} = "mininet python-pytest"
 DEPENDS_class-native = "mininet-native python-pytest-native python-pytest-timeout-native \
                         python-pyyaml-native util-linux-native python-smartpm-native"
 
+do_install_append () {
+    cp ${S}/opsvsiutils/restutils/server.crt ${D}/${PYTHON_SITEPACKAGES_DIR}/opsvsiutils/restutils/
+}
+
 BBCLASSEXTEND = "native"
