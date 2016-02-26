@@ -38,7 +38,8 @@ do_install() {
 do_install_append(){
    install -d   ${D}/etc/openswitch/supportability
    install -d   ${D}/usr/bin
-   install -c -m 755 ${S}/conf/*.yaml ${D}/etc/openswitch/supportability/
+   install -c -m 0644 ${S}/conf/*.yaml ${D}/etc/openswitch/supportability/
+   install -c -m 0444 ${S}/conf/ops_showtech.yaml ${D}/etc/openswitch/supportability/ops_showtech.defaults.yaml
    install -c -m 755 ${S}/scripts/*   ${D}/usr/bin/
 }
 
