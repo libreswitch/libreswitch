@@ -64,6 +64,8 @@ GROUPADD_PARAM_${PN} ="-g 1020 ovsdb-client;ops_netop;ops_admin"
 do_configure_prepend() {
     export OPEN_HALON_BUILD=1
     export OPS_BUILD=1
+    export BUILD_OVS_VSWITCHD=1
+    export BUILD_PLUGINS_LIB=1
     # After building the code with libltdl, we get a subdirectory with autoconf that will
     # inherit the m4 macros configurations from his parent, causing to fail if not finding some
     # of their macros. This hack removes the issue
