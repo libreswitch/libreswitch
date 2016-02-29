@@ -7,7 +7,7 @@ PACKAGES += "ops-librbac ops-librbac-dev"
 FILES_ops-librbac = "/usr/lib/librbac.so.*.*.*"
 FILES_ops-librbac-dev = "/usr/lib/pkgconfig/rbac.pc /usr/lib/librbac.so*"
 
-DEPENDS = "ops-ovsdb"
+DEPENDS = "ops-ovsdb ops-cli"
 
 RDEPENDS_${PN} = "python-argparse python-json python-ops-ovsdb python-distribute python-pam pam-plugin-radius-auth"
 
@@ -50,6 +50,7 @@ do_install() {
      install -m 0644 ${WORKDIR}/useradd ${D}${sysconfdir}/sudoers.d/useradd
 }
 
+FILES_${PN} += "/usr/lib/cli/plugins/"
 FILES_${PN}   += "${sysconfdir}/raddb/ ${sysconfdir}/sudoers.d/"
 SYSTEMD_PACKAGES = "${PN}"
 SYSTEMD_SERVICE_${PN} = "aaautils.service"
