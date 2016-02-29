@@ -86,7 +86,7 @@
         <rasd:Description>Management Port</rasd:Description>
         <rasd:ElementName>ethernet0</rasd:ElementName>
         <rasd:InstanceID>6</rasd:InstanceID>
-        <rasd:ResourceSubType>E1000</rasd:ResourceSubType>
+        <rasd:ResourceSubType>PCNet32</rasd:ResourceSubType>
         <rasd:ResourceType>10</rasd:ResourceType>
         <vmw:Config ovf:required="false" vmw:key="wakeOnLanEnabled" vmw:value="false"/>
       </Item>
@@ -97,7 +97,7 @@
         <rasd:Description>Port 1</rasd:Description>
         <rasd:ElementName>ethernet1</rasd:ElementName>
         <rasd:InstanceID>7</rasd:InstanceID>
-        <rasd:ResourceSubType>E1000</rasd:ResourceSubType>
+        <rasd:ResourceSubType>PCNet32</rasd:ResourceSubType>
         <rasd:ResourceType>10</rasd:ResourceType>
         <vmw:Config ovf:required="false" vmw:key="wakeOnLanEnabled" vmw:value="false"/>
       </Item>
@@ -108,7 +108,7 @@
         <rasd:Description>Port 2</rasd:Description>
         <rasd:ElementName>ethernet2</rasd:ElementName>
         <rasd:InstanceID>8</rasd:InstanceID>
-        <rasd:ResourceSubType>E1000</rasd:ResourceSubType>
+        <rasd:ResourceSubType>PCNet32</rasd:ResourceSubType>
         <rasd:ResourceType>10</rasd:ResourceType>
         <vmw:Config ovf:required="false" vmw:key="wakeOnLanEnabled" vmw:value="false"/>
       </Item>
@@ -119,7 +119,7 @@
         <rasd:Description>Port 3</rasd:Description>
         <rasd:ElementName>ethernet3</rasd:ElementName>
         <rasd:InstanceID>9</rasd:InstanceID>
-        <rasd:ResourceSubType>E1000</rasd:ResourceSubType>
+        <rasd:ResourceSubType>PCNet32</rasd:ResourceSubType>
         <rasd:ResourceType>10</rasd:ResourceType>
         <vmw:Config ovf:required="false" vmw:key="wakeOnLanEnabled" vmw:value="false"/>
       </Item>
