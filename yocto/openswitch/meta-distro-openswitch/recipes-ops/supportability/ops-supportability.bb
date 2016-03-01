@@ -8,7 +8,7 @@ RDEPENDS_${PN} = "python-argparse python-json python-ops-ovsdb python-distribute
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-supportability;protocol=https"
 
-SRCREV = "cddb9a7a098c150c3fd188ff15f385b323ed8b35"
+SRCREV = "b84cbf96d6bee6b9efdb7cfdd6b3fd74bbcf8c23"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
