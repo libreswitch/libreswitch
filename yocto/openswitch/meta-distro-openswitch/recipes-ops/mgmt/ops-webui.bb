@@ -18,8 +18,8 @@ B = "${S}"
 
 inherit npm
 
-# Put it after the inherit NPM to override the dependency on node
-RDEPENDS_${PN} = "ops-restd"
+# Override the NPM dependency on node, it is only used compile the resources
+RDEPENDS_${PN} = ""
 
 do_extract_vendored_dependencies() {
     ./tools/scripts/extract-node-tars

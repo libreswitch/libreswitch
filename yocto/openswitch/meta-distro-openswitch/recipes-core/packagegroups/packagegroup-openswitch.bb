@@ -80,6 +80,7 @@ RDEPENDS_packagegroup-ops-base = "\
     ops-snmpd \
     ops-l2macd \
     ops-rbac \
+    nginx \
 "
 
 RDEPENDS_packagegroup-ops-base_append_arm = "\

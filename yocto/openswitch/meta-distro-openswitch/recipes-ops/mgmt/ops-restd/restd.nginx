@@ -1,0 +1,9 @@
+location /rest/ {
+  proxy_pass http://localhost:8091;
+}
+location /login {
+  proxy_pass http://localhost:8091;
+}
+location /account {
+  proxy_pass http://localhost:8091;
+}

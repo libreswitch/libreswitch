@@ -10,6 +10,7 @@ BRANCH ?= "${OPS_REPO_BRANCH}"
 
 SRC_URI = "${OPS_REPO_BASE_URL}/ops-restd;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
            file://restd.service \
+           file://restd.nginx \
 "
 
 SRCREV = "2f2658347a2c27b17c6869ec4e8a9a3de9a529fb"
@@ -23,6 +24,8 @@ S = "${WORKDIR}/git"
 do_install_prepend() {
      install -d ${D}${systemd_unitdir}/system
      install -m 0644 ${WORKDIR}/restd.service ${D}${systemd_unitdir}/system/
+     install -d ${D}/etc/nginx/conf.d
+     install -m 0644 ${WORKDIR}/restd.nginx ${D}/etc/nginx/conf.d/backend-restd.conf
 }
 
 do_install_append () {
@@ -48,4 +51,5 @@ inherit openswitch setuptools systemd pythonnative
 FILES_${PN} += "/srv/www/api/ops-restapi.json \
                 /etc/ssl/certs \
                 /usr/share/opsplugins \
+                /etc/nginx/conf.d \
 "
