@@ -68,6 +68,7 @@ RDEPENDS_packagegroup-ops-base = "\
     ops-supportability \
     strongswan \
     firejail \
+    ops-ipapps \
 "
 
 RDEPENDS_packagegroup-ops-base_append_arm = "\
