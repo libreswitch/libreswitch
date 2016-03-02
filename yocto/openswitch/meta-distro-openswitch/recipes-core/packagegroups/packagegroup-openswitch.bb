@@ -69,6 +69,8 @@ RDEPENDS_packagegroup-ops-base = "\
     firejail \
     ops-ipapps \
     ops-stpd \
+    nicstat \
+    sysstat \
 "
 
 RDEPENDS_packagegroup-ops-base_append_arm = "\
