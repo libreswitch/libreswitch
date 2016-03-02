@@ -122,7 +122,7 @@ LD_LIBRARY_PATH=$(STAGING_DIR_TARGET)/usr/lib $(HOST_INTERPRETER) $(1) $(UT_PARA
 endef
 
 VALGRIND ?= valgrind
-VALGRIND_OPTIONS = --leak-check=full --show-reachable=yes --track-origins=yes
+VALGRIND_OPTIONS ?= --leak-check=full --track-origins=yes
 define EXECUTE_UT_TEST_HARNESS_ON_VALGRIND
 LD_LIBRARY_PATH=$(STAGING_DIR_TARGET)/usr/lib $(VALGRIND) $(VALGRIND_OPTIONS) $(HOST_INTERPRETER) $(1) $(UT_PARAMS)
 endef
