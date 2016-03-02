@@ -10,8 +10,8 @@ LICENSE = "Apache-2.0"
 # Technical details: VirtualBox requires that the grains of a streamOptimized
 # VMDK are all filled. qemu-img sets 128 sectors per grain, so that means
 # that we need to align on a 64KiB boundry.
-IMAGE_ROOTFS_SIZE = "491520"
-FINAL_ROOTFS_SIZE = "524288"
+IMAGE_ROOTFS_SIZE = "1015808"
+FINAL_ROOTFS_SIZE = "1048576"
 
 # Do a quiet boot with limited console messages
 APPEND += "quiet"

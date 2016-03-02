@@ -362,6 +362,7 @@ def copydebugsources(debugsrcdir, d):
         objcopy = d.getVar("OBJCOPY", True)
         debugedit = d.expand("${STAGING_LIBDIR_NATIVE}/rpm/bin/debugedit")
         workdir = d.getVar("WORKDIR", True)
+        externalsrc = d.getVar('EXTERNALSRC', True)
         workparentdir = os.path.dirname(os.path.dirname(workdir))
         workbasedir = os.path.basename(os.path.dirname(workdir)) + "/" + os.path.basename(workdir)
 
@@ -378,9 +379,16 @@ def copydebugsources(debugsrcdir, d):
         # We need to ignore files that are not actually ours
         # we do this by only paying attention to items from this package
         processdebugsrc += "fgrep -zw '%s' | "
-        processdebugsrc += "(cd '%s' ; cpio -pd0mlL --no-preserve-owner '%s%s' 2>/dev/null)"
+        # When using external source, we need to adjust
+        if externalsrc:
+            processdebugsrc += "sed 's?%s/??g' | "
+            processdebugsrc += "(cd '%s' ; cpio -pd0mlL --no-preserve-owner '%s%s/%s' 2>/dev/null)"
+            svar = d.getVar('S', True)
+            cmd = processdebugsrc % (sourcefile, workbasedir, workbasedir, svar, dvar, debugsrcdir, workbasedir)
+        else:
+            processdebugsrc += "(cd '%s' ; cpio -pd0mlL --no-preserve-owner '%s%s' 2>/dev/null)"
+            cmd = processdebugsrc % (sourcefile, workbasedir, workparentdir, dvar, debugsrcdir)
 
-        cmd = processdebugsrc % (sourcefile, workbasedir, workparentdir, dvar, debugsrcdir)
         (retval, output) = oe.utils.getstatusoutput(cmd)
         # Can "fail" if internal headers/transient sources are attempted
         #if retval:

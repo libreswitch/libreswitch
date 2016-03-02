@@ -1,0 +1,28 @@
+From 32593b38082ea65f4c82159254adf1e0dc2423be Mon Sep 17 00:00:00 2001
+From: bernds <bernds@138bc75d-0d04-0410-961f-82ee72b054a4>
+Date: Tue, 16 Feb 2016 03:15:15 -0500
+Subject: [PATCH] Ignore -fdebug-prefix-map in producer string (by Daniel Kahn
+ Gillmor)
+
+* dwarf2out.c (gen_producer_string): Ignore -fdebug-prefix-map.
+
+git-svn-id: svn+ssh://gcc.gnu.org/svn/gcc/trunk@231835 138bc75d-0d04-0410-961f-82ee72b054a4
+
+Upstream-Status: Backport
+Signed-off-by: Hongxu Jia <hongxu.jia@windriver.com>
+---
+ gcc/dwarf2out.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+Index: gcc-4.9.2/gcc/dwarf2out.c
+===================================================================
+--- gcc-4.9.2.orig/gcc/dwarf2out.c	2016-02-29 17:51:05.739633430 -0600
++++ gcc-4.9.2/gcc/dwarf2out.c	2016-02-29 17:52:19.298708667 -0600
+@@ -19195,6 +19195,7 @@
+       case OPT__sysroot_:
+       case OPT_nostdinc:
+       case OPT_nostdinc__:
++      case OPT_fdebug_prefix_map_:
+ 	/* Ignore these.  */
+ 	continue;
+       default:
