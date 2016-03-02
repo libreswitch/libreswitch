@@ -77,9 +77,9 @@ do_install_append() {
 }
 # END of qemu-mips workaround
 
-PACKAGECONFIG ??= "fdt sdl alsa"
-PACKAGECONFIG_class-native ??= "fdt alsa"
-PACKAGECONFIG_class-nativesdk ??= "fdt sdl"
+PACKAGECONFIG ??= "fdt"
+PACKAGECONFIG_class-native ??= "fdt"
+PACKAGECONFIG_class-nativesdk ??= "fdt"
 NATIVEDEPS = ""
 NATIVEDEPS_class-native = "${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'libxext-native', '',d)}"
 PACKAGECONFIG[sdl] = "--enable-sdl,--disable-sdl,libsdl ${NATIVEDEPS},"
@@ -101,6 +101,10 @@ PACKAGECONFIG[fdt] = "--enable-fdt,--disable-fdt,dtc"
 PACKAGECONFIG[alsa] = ",,alsa-lib"
 PACKAGECONFIG[lzo] = "--enable-lzo,--disable-lzo,lzo"
 PACKAGECONFIG[numa] = "--enable-numa,--disable-numa,numactl"
+PACKAGECONFIG[opengl] = "--enable-opengl,--disable-opengl,libegl"
+PACKAGECONFIG[gnutls] = "--enable-gnutls,--disable-gnutls,gnutls"
+PACKAGECONFIG[nettle] = "--enable-nettle,--disable-nettle,nettle"
+PACKAGECONFIG[gcrypt] = "--enable-gcrypt,--disable-gcrypt,gcrypt"
 
 EXTRA_OECONF += "${@bb.utils.contains('PACKAGECONFIG', 'alsa', '--audio-drv-list=oss,alsa', '', d)}"
 
