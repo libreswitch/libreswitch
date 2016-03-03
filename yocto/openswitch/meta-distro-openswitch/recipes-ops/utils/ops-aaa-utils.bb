@@ -17,7 +17,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-aaa-utils;protocol=http \
            file://useradd \
          "
 
-SRCREV = "eee2fa1545c02d3c9a5af748ecc66488a9d2161b"
+SRCREV = "5593927aedff37f0c7f2e822de0829555f3d3460"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
