@@ -19,4 +19,8 @@ PACKAGES =+ "${PN}-bash-completion"
 
 FILES_${PN}-bash-completion = "${datadir}/bash-completion"
 
+do_install_append() {
+  rm -rf ${D}/etc/firejail/*
+}
+
 inherit autotools-brokensep pkgconfig gettext
