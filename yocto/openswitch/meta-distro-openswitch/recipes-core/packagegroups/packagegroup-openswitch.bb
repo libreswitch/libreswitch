@@ -44,7 +44,6 @@ RDEPENDS_packagegroup-ops-base = "\
     inetutils-tftp inetutils-traceroute inetutils-ftp inetutils-telnet \
     iputils-traceroute6 iputils-ping iputils-ping6 \
     wget curl \
-    xinetd \
     libcap-bin \
     ops-init \
     virtual/switchd \

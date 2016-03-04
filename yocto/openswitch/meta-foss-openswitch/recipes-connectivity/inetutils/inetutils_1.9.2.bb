@@ -12,11 +12,6 @@ SRC_URI = "${GNU_MIRROR}/inetutils/inetutils-${PV}.tar.gz \
            file://version.patch \
            file://inetutils-1.8-0001-printf-parse-pull-in-features.h-for-__GLIBC__.patch \
            file://inetutils-1.8-0003-wchar.patch \
-           file://rexec.xinetd.inetutils  \
-           file://rlogin.xinetd.inetutils \
-           file://rsh.xinetd.inetutils \
-           file://telnet.xinetd.inetutils \
-           file://tftpd.xinetd.inetutils \
            file://inetutils-1.9-PATH_PROCNET_DEV.patch \
            file://inetutils-1.9.2-traceroute.patch \
            file://inetutils-1.9.2-0001-traceroute.patch \
@@ -51,7 +46,6 @@ do_install_append () {
     install -m 0755 -d ${D}${base_bindir}
     install -m 0755 -d ${D}${base_sbindir}
     install -m 0755 -d ${D}${sbindir}
-    install -m 0755 -d ${D}${sysconfdir}/xinetd.d
     mv ${D}${bindir}/ping ${D}${base_bindir}/
     mv ${D}${bindir}/ping6 ${D}${base_bindir}/
     mv ${D}${bindir}/ifconfig ${D}${base_sbindir}/
@@ -65,11 +59,6 @@ do_install_append () {
     mv ${D}${libexecdir}/talkd ${D}${sbindir}/in.talkd
     mv ${D}${libexecdir}/uucpd ${D}${sbindir}/in.uucpd
     mv ${D}${libexecdir}/* ${D}${bindir}/
-    cp ${WORKDIR}/rexec.xinetd.inetutils  ${D}/${sysconfdir}/xinetd.d/rexec
-    cp ${WORKDIR}/rlogin.xinetd.inetutils  ${D}/${sysconfdir}/xinetd.d/rlogin
-    cp ${WORKDIR}/rsh.xinetd.inetutils  ${D}/${sysconfdir}/xinetd.d/rsh
-    cp ${WORKDIR}/telnet.xinetd.inetutils  ${D}/${sysconfdir}/xinetd.d/telnet
-    cp ${WORKDIR}/tftpd.xinetd.inetutils  ${D}/${sysconfdir}/xinetd.d/tftpd
     rm -rf ${D}${libexecdir}/
     # remove usr/lib if empty
     rmdir ${D}${libdir}
@@ -145,28 +134,21 @@ FILES_${PN}-tftp = "${bindir}/tftp.${BPN}"
 FILES_${PN}-telnet = "${bindir}/telnet.${BPN}"
 FILES_${PN}-rsh = "${bindir}/rsh.${BPN} ${bindir}/rlogin.${BPN} ${bindir}/rexec.${BPN} ${bindir}/rcp.${BPN}"
 
-FILES_${PN}-rshd = "${sbindir}/in.rshd ${sbindir}/in.rlogind ${sbindir}/in.rexecd \
-                    ${sysconfdir}/xinetd.d/rsh ${sysconfdir}/xinetd.d/rlogin ${sysconfdir}/xinetd.d/rexec"
+FILES_${PN}-rshd = "${sbindir}/in.rshd ${sbindir}/in.rlogind ${sbindir}/in.rexecd "
 FILES_${PN}-rshd-dbg = "${sbindir}/.debug/in.rshd ${sbindir}/.debug/in.rlogind ${sbindir}/.debug/in.rexecd"
-RDEPENDS_${PN}-rshd += "xinetd tcp-wrappers"
+RDEPENDS_${PN}-rshd += "tcp-wrappers"
 RCONFLICTS_${PN}-rshd += "netkit-rshd"
 RPROVIDES_${PN}-rshd = "rshd"
 
 FILES_${PN}-ftpd = "${bindir}/ftpd.${BPN}"
 FILES_${PN}-ftpd-dbg = "${bindir}/.debug/ftpd.${BPN}"
-RDEPENDS_${PN}-ftpd += "xinetd"
 
-FILES_${PN}-tftpd = "${sbindir}/in.tftpd ${sysconfdir}/xinetd.d/tftpd"
 FILES_${PN}-tftpd-dbg = "${sbindir}/.debug/in.tftpd"
 RCONFLICTS_${PN}-tftpd += "netkit-tftpd"
-RDEPENDS_${PN}-tftpd += "xinetd"
 
-FILES_${PN}-telnetd = "${sbindir}/in.telnetd ${sysconfdir}/xinetd.d/telnet"
 FILES_${PN}-telnetd-dbg = "${sbindir}/.debug/in.telnetd"
 RCONFLICTS_${PN}-telnetd += "netkit-telnetd"
 RPROVIDES_${PN}-telnetd = "telnetd"
-RDEPENDS_${PN}-telnetd += "xinetd"
 
 FILES_${PN}-inetd = "${bindir}/inetd.${BPN}"
 
-RDEPENDS_${PN} = "xinetd"
