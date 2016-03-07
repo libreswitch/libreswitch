@@ -109,14 +109,15 @@ do_gtest_harness() {
     if [ -f $1 ]; then
         do_coverage_setup
         #TODO: how to show this output to the developers? or at least hint them where the log is
-        LD_LIBRARY_PATH=${STAGING_DIR_TARGET}/usr/lib ${HOST_INTERPRETER} $1 ${GTEST_PARAMS}
+        ${TARGET_INTERPRETER} --library-path ${TARGET_LIB_PATH} $1 ${GTEST_PARAMS}
         do_coverage_report
     fi
 }
 
 do_unit_test_base() {
     export COVERAGE_ENABLED_FILE=${TOPDIR}/devenv-coverage-enabled
-    export HOST_INTERPRETER=$(readelf -a /bin/sh | grep interpreter | awk '{ print substr($4, 0, length($4)-1)}')
+    export TARGET_INTERPRETER=${STAGING_DIR_TARGET}/lib/ld-linux-x86-64.so.2
+    export TARGET_LIB_PATH=${STAGING_DIR_TARGET}/lib:${STAGING_DIR_TARGET}/usr/lib
     export GTEST_PARAMS="--gtest_shuffle"
 
     do_coverage_vars_setup
