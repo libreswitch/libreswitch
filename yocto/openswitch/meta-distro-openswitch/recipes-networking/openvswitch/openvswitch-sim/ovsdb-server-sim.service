@@ -6,7 +6,8 @@ Description=Open vSwitch OVSDB Server Daemon for the Simulator
 [Service]
 Type=forking
 ExecStartPre=/bin/sh -c '/usr/bin/test -f /var/run/openvswitch-sim/ovsdb.db || /opt/openvswitch/bin/ovsdb-tool create /var/run/openvswitch-sim/ovsdb.db /opt/openvswitch/share/openvswitch/vswitch.ovsschema'
-ExecStart=/opt/openvswitch/sbin/ovsdb-server --remote=punix:/var/run/openvswitch-sim/db.sock --detach --no-chdir --pidfile -vSYSLOG:INFO /var/run/openvswitch-sim/ovsdb.db
+ExecStartPre=/bin/sh -c '/usr/bin/test -f /var/run/openvswitch-sim/vtep.db || /opt/openvswitch/bin/ovsdb-tool create /var/run/openvswitch-sim/vtep.db /opt/openvswitch/share/openvswitch/vtep.ovsschema'
+ExecStart=/opt/openvswitch/sbin/ovsdb-server --remote=punix:/var/run/openvswitch-sim/db.sock --detach --no-chdir --pidfile -vSYSLOG:INFO /var/run/openvswitch-sim/ovsdb.db /var/run/openvswitch-sim/vtep.db
 WorkingDirectory=/var/run/openvswitch-sim
 PIDFile=/var/run/openvswitch-sim/ovsdb-server.pid
 Restart=on-abort

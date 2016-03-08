@@ -31,4 +31,6 @@ do_install() {
 	install -m 0644 ${OPS_SCHEMA_PATH}/dhcp_leases.ovsschema ${D}/${prefix}/share/openvswitch/dhcp_leases.ovsschema
 	install -m 0644 ${OPS_SCHEMA_PATH}/dhcp_leases.xml ${D}/${prefix}/share/openvswitch/dhcp_leases.xml
 	install -m 0644 ${OPS_SCHEMA_PATH}/configdb.ovsschema ${D}/${prefix}/share/openvswitch/configdb.ovsschema
+	install -m 0644 ${OPS_SCHEMA_PATH}/vtep.ovsschema ${D}/${prefix}/share/openvswitch/vtep.ovsschema
+	install -m 0644 ${OPS_SCHEMA_PATH}/vtep.xml ${D}/${prefix}/share/openvswitch/vtep.xml
 }
