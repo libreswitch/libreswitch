@@ -1,0 +1,1702 @@
+diff --git a/Makefile.am b/Makefile.am
+index 02cc7b6..7531df0 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -95,6 +95,7 @@ docs = \
+ 	OPENFLOW-1.1+.md \
+ 	PORTING.md \
+ 	README.md \
++	README-compound-indexes.md \
+ 	README-lisp.md \
+ 	README-native-tunneling.md \
+ 	REPORTING-BUGS.md \
+diff --git a/README-compound-indexes.md b/README-compound-indexes.md
+new file mode 100644
+index 0000000..054d965
+--- /dev/null
++++ b/README-compound-indexes.md
+@@ -0,0 +1,321 @@
++# Using indexes for special operations
++
++----------
++
++## Introduction
++
++The OVSDB database was designed for powering a virtual switch, therefore not all
++common DB functionality was needed at the time it was implemented. However, as
++part of the OpenSwitch project, developers found scenarios where this common
++functionality would be useful. One of this functionality is using indexes for
++operations such as sorting or fast lookup.
++
++This design document describes a proposed solution for implementing this extra
++functionality based on the concept of indexes.
++
++Please note that in this document, the term "index" refers to the common
++database term defined as "a data structure that improves data retrieval". Unless
++stated otherwise, the definition for index from the OVSDB RFC (RFC 7047) is not
++used.
++
++## Problem statement
++
++Some of the teams working on OpenSwitch would like to have available tools for
++special operations. This tools are not currently available on the OVSDB engine.
++
++The most common tools requested are for doing fast lookups of big tables and for
++a mechanism to retrieve data in lexicographic order.
++
++## Use cases
++
++### Fast lookups
++
++Depending on the topology, the route table of a network device could manage
++thousands of routes. Commands such as "show ip route <*specific route*>" would
++need to do a sequential lookup of the routing table to find the specific route.
++With an index created, the lookup time could be faster.
++
++This same scenario could be applied to other features such as Access List rules
++and even interfaces lists.
++
++### Lexicographic order
++
++There are several cases where retrieving data in lexicographic order is needed.
++For example, SNMP. When an administrator or even a NMS would like to retrieve
++data from a specific device, it's possible that they will request data from full
++tables instead of just specific values. Also, they would like to have this
++information displayed in lexicographic order. This operation could be done by
++the SNMP daemon or by the CLI, but it would be better if the database could
++provide the data ready for consumption. Also, duplicate efforts by different
++processes will be avoided. Another use case for requesting data in lexicographic
++order is for user interfaces (web or CLI) where it would be better and quicker
++if the DB sends the data sorted instead of letting each process to sort the data
++by itself.
++
++## Implementation
++
++The proposal is to create a data structure in memory that contains pointers to
++the rows where the desired information is stored. This data structure can be
++traversed in the order specified when creating the index.
++
++An index can be defined over any number of columns, and support the following
++options:
++
++-   Add a column with type string, int or real (using default comparators).
++-   Select ordering direction of a column (must be selected when creating the
++    index).
++-   Use a custom iterator (eg: treat a string column like a IP, or sort by the
++    value of "config" key in a map).
++
++For querying the index the user must create a cursor. That cursor points to a
++position in the sorted data structure. With that, the user can perform lookups
++(by key) and/or get the following rows. The user can also compare the current
++value of the cursor to a record.
++
++For faster lookups, user would need to provide a key which will be used for finding
++the specific rows that meet this criteria. This key could be an IP address, a
++MAC address, an ACL rule, etc. When the information is found in the data
++structure the user's cursor is updated to point to the row. If several rows
++match the query then the user can get easily the next row updating the cursor.
++
++For accessing data in lexicographic order, the user can use the ranged iterators.
++Those iterators needs a cursor, and a "from" and "to" value.
++
++One of the potential issues of this solution is the memory consumption of the
++new data structures. However, since it will only contain pointers, it's not
++expected that it consumes too much memory.
++
++Another potential issue is the time needed to create the data structure and the
++time needed to add/remove elements. The indexes are always synchronized with the
++replica. For this reason it must be important that the comparison functions
++(built-in and user provided) are FAST. However, these operations are not as
++common as looking up for data, so it's not expected these operations affects the
++system significatively.
++
++At this point, a skiplist is the data structure selected as the best fit.
++
++It's important to mention that all changes will be done in the IDL. There are no
++changes to the OVSDB server or the OVSDB engine.
++
++                     +---------------------------------------------------------+
++                     |                                                         |
++      +-----------------+Client changes to data                            IDL |
++      |              |                                                         |
++  +---v---+          |                                                         |
++  | OVSDB +------------->OVSDB Notification                                    |
++  +-------+          |   +                                                     |
++                     |   |   +------------+                                    |
++                     |   |   |            |                                    |
++                     |   |   | Insert Row +----> Insert row to indexes         |
++                     |   |   |            |                   ^                |
++                     |   +-> | Modify Row +-------------------+                |
++                     |       |            |                   v                |
++                     |       | Delete Row +----> Delete row from indexes       |
++                     |       |            |                                    |
++                     |       +----+-------+                                    |
++                     |            |                                            |
++                     |            +-> IDL Replica                              |
++                     |                                                         |
++                     +---------------------------------------------------------+
++
++## C IDL API
++
++This functionality is going to be implemented using the skiplist. A skiplist is
++a datastructure that offers log( n ) retrieval/insertions/deletions, and O(1)
++"find next" operations.
++
++To implement the indexes in the C IDL the following changes in the IDL are going
++to be made:
++
++-   Create a special function `int comparator(void*, void*)` per column, that
++    allows to compare two ovsrec structs (by that column).This function is
++    created only for the columns with type string, int or real. Each column has
++    a pointer to this function (or NULL).
++-   Each table, has a hash table with the indexes (keyed by index name).
++
++### Indexes
++
++The indexes are inserted in a hash table in each table in the IDL. This allow to
++specify any number of indexes per table, with a custom collection of columns.
++
++    /* Definition of the index's struct. It's a opaque type. */
++    struct ovsdb_idl_index {
++        struct skiplist *skiplist;
++        const struct ovsdb_idl_column **columns;
++        column_comparator *comparers;
++        int *sorting_order;
++        size_t n_columns;
++        bool row_sync;
++    };
++
++### Cursors
++
++The queries are going to be made with a cursor. A cursor is a struct that
++contains the current ovsrec, current node (on the skiplist) and memory allocated
++to save temporal records (needed by the comparator).
++
++    /* Definition of the cursor structure. */
++    struct ovsdb_idl_index_cursor {
++        struct ovsdb_idl_index *index;
++        struct skiplist_node *position;
++    };
++
++## API
++
++### Index Creation
++
++    struct ovsdb_idl_index *ovsdb_idl_create_index(
++        struct ovsdb_idl *idl,
++        const struct ovsdb_idl_table_class *tc,
++        const char *index_name
++    );
++
++Creates an index in a table. The columns must be configured afterwards. The
++returned pointer doesn't need to be saved anywhere, except until all the index's
++columns had been inserted.
++
++    void ovsdb_idl_index_add_column(struct ovsdb_idl_index *,
++                               const struct ovsdb_idl_column *,
++                               int order,
++                               column_comparator custom_comparer
++                               );
++
++Allows to add a column to an existing index. If the column has a default
++comparator then the custom comparator can be NULL, otherwise a custom comparator
++must be passed.
++
++#### Index Creation Example
++
++    /* Custom comparator for the column stringField at table Test */
++    int stringField_comparator(const void *a, const void *b) {
++        struct ovsrec_test *AAA, *BBB;
++        AAA = (struct ovsrec_test *)a;
++        BBB = (struct ovsrec_test *)b;
++        return strcmp(AAA->stringField, BBB->stringField);
++    }
++
++    void init_idl(struct ovsdb_idl **, char *remote) {
++        /* Add the columns to the IDL */
++        *idl = ovsdb_idl_create(remote, &ovsrec_idl_class, false, true);
++        ovsdb_idl_add_table(*idl, &ovsrec_table_test);
++        ovsdb_idl_add_column(*idl, &ovsrec_test_col_stringField);
++        ovsdb_idl_add_column(*idl, &ovsrec_test_col_numericField);
++        ovsdb_idl_add_column(*idl, &ovsrec_test_col_enumField);
++        ovsdb_idl_add_column(*idl, &ovsrec_test_col_boolField);
++
++        /* Create a index
++         * This index is created using (stringField, numericField) as key. Also shows the usage
++         * of some arguments of add column, althought for a string column is unnecesary to pass
++         * a custom comparator.
++         */
++        struct ovsdb_idl_index *index;
++        index = ovsdb_idl_create_index(*idl, &ovsrec_table_test, "by_stringField");
++        ovsdb_idl_index_add_column(index, &ovsrec_test_col_stringField, OVSDB_INDEX_ASC, stringField_comparator);
++        ovsdb_idl_index_add_column(index, &ovsrec_test_col_numericField, OVSDB_INDEX_DESC, NULL);
++        /* Done. */
++    }
++
++## Indexes Querying
++
++### Iterators
++
++The recommended way to do queries is using a "ranged foreach", an "equal
++foreach" or a "full foreach" over an index. The mechanism works as follow:
++
++1) Create a cursor 2) Pass the cursor, a row (ovsrec_...) and the values to the
++iterator 3) Use the values
++
++To create the cursor use the following code:
++
++    ovsdb_idl_index_cursor my_cursor;
++    ovsdb_idl_initialize_cursor(idl, &ovsrec_table_test, "by_stringField", &my_cursor);
++
++Then that cursor can be used to do additional queries. The library implements
++three different iterators: a range iterator, an equal iterator and iterator
++over all the index. The range iterator receives two values and iterates over
++all the records that are within that range (including both). The equal iterator
++only iterates over the records that exactly match the value passed. The full
++iterator iterates over all the rows in the index, in order.
++
++Note that the index are *sorted by the "concatenation" of the values in each
++indexed column*, so the ranged iterators returns all the values between
++"from.col1 from.col2 ... from.coln" and "to.col1 to.col2 ... to.coln", *NOT
++the rows with a value in column 1 between from.col1 and to.col1, and so on*.
++
++The iterators are macros especific to each table. To use those iterators
++consider the following code:
++
++    /* Equal Iterator
++     * Iterates over all the records equal to value (by the indexed value)
++     */
++    ovsrec_test *record;
++    ovsrec_test value;
++    value.stringField = "hello world";
++    OVSREC_TEST_FOR_EACH_EQUAL(record, &my_cursor, &value) {
++        /* Can return zero, one or more records */
++        assert(strcmp(record->stringField, "hello world") == 0);
++        printf("Found one record with %s", record->stringField);
++    }
++
++    /*
++     * Ranged iterator
++     * Iterates over all the records between two values (including both)
++     */
++    ovsrec_test value_from, value_to;
++    value_from.stringField = "aaa";
++    value_from.stringField = "mmm";
++    OVSREC_TEST_FOR_EACH_RANGE(record, &my_cursor, &value_from, &value_to) {
++        /* Can return zero, one or more records */
++        assert(strcmp("aaa", record->stringField) <= 0);
++        assert(strcmp(record->stringField, "mmm") <= 0);
++        printf("Found one record with %s", record->stringField);
++    }
++
++    /*
++     * Iterator over all the index
++     * Iterates over all the records in the index
++     */
++    OVSREC_TEST_FOR_EACH_BYINDEX(record, &my_cursor) {
++        /* Can return zero, one or more records */
++        printf("Found one record with %s", record->stringField);
++    }
++
++### General Index Access
++
++Although the iterators allow many use cases eventually thay may not fit some. In
++that case the indexes can be queried by a more general API. In fact, the
++iterators were built over that functions.
++
++    int ovsrec_<table>_index_compare(struct ovsdb_idl_index_cursor *, const struct ovsrec_<table> *, const struct ovsrec_<table> *)
++
++`ovsrec_<table>_index_compare` compares two rows using the same comparator used
++in the cursor's index. The returned value is the same as strcmp, but defines a
++specific behaviour when comparing pointers to NULL (NULL is always greater than
++any other value, but when comparing NULL against NULL by definition return 1).
++
++    const struct ovsrec_<table> *ovsrec_<table>_index_first(struct ovsdb_idl_index_cursor *)
++
++`ovsrec_<table>_index_next` moves the cursor to the first record in the index,
++and return the replica's pointer to that row.
++
++    const struct ovsrec_<table> *ovsrec_<table>_index_next(struct ovsdb_idl_index_cursor *)
++
++`ovsrec_<table>_index_next` moves the cursor to the next record in the index,
++and return the replica's pointer to that row. If the cursor was in the last row
++(or was already NULL) then returns NULL.
++
++    const struct ovsrec_<table> *ovsrec_<table>_index_find(struct ovsdb_idl_index_cursor *, const struct ovsrec_<table> *)
++
++`ovsrec_<table>_index_find` moves the cursor to the first record in the index
++that matches (by the index comparator) the given value, or NULL if none found.
++
++    const struct ovsrec_<table> *ovsrec_<table>_index_forward_to(struct ovsdb_idl_index_cursor *, const struct ovsrec_<table> *)
++
++`ovsrec_<table>_index_forward_to` moves the cursor to the first record in the
++index equal or greater than (by the index comparator) the given value, or NULL
++if none found.
++
++    const struct ovsrec_<table> *ovsrec_<table>_index_get_data(const struct ovsdb_idl_index_cursor *)
++
++`ovsrec_<table>_index_get_data` returns a pointer to the replica's row that is
++pointed by the cursor, or NULL.
+diff --git a/lib/automake.mk b/lib/automake.mk
+index 2d2ee5f..924e62d 100644
+--- a/lib/automake.mk
++++ b/lib/automake.mk
+@@ -138,6 +138,8 @@ ovslibinclude_HEADERS = \
+ 	lib/shash.h \
+ 	lib/signals.h \
+ 	lib/simap.h \
++	lib/skiplist.c \
++	lib/skiplist.h \
+ 	lib/smap.h \
+ 	lib/socket-util.h \
+ 	lib/sort.h \
+@@ -286,6 +288,8 @@ lib_libovscommon_la_SOURCES = \
+         lib/shash.h \
+         lib/simap.c \
+         lib/simap.h \
++	lib/skiplist.c \
++	lib/skiplist.h \
+         lib/smap.c \
+         lib/smap.h \
+         lib/socket-util.c \
+diff --git a/lib/ovsdb-idl-provider.h b/lib/ovsdb-idl-provider.h
+index 399343e..c04632c 100644
+--- a/lib/ovsdb-idl-provider.h
++++ b/lib/ovsdb-idl-provider.h
+@@ -56,6 +56,7 @@ struct ovsdb_idl_column {
+     bool mutable;
+     void (*parse)(struct ovsdb_idl_row *, const struct ovsdb_datum *);
+     void (*unparse)(struct ovsdb_idl_row *);
++    int (*compare)(const void *, const void *); /* Perform a comparison over ovsrec_* */
+ #ifdef OPS
+     unsigned int modify_seqno;
+ #endif
+@@ -84,6 +85,7 @@ struct ovsdb_idl_table {
+     unsigned int delete_seqno;
+ #endif
+     unsigned int change_seqno[OVSDB_IDL_CHANGE_MAX];
++    struct shash indexes;    /* Contains "struct ovsdb_idl_index"s */
+     struct ovs_list track_list; /* Tracked rows (ovsdb_idl_row.track_node). */
+ };
+ 
+diff --git a/lib/ovsdb-idl.c b/lib/ovsdb-idl.c
+index c1f98f3..9f01b03 100644
+--- a/lib/ovsdb-idl.c
++++ b/lib/ovsdb-idl.c
+@@ -37,8 +37,10 @@
+ #include "ovsdb-parser.h"
+ #include "poll-loop.h"
+ #include "shash.h"
++#include "skiplist.h"
+ #include "sset.h"
+ #include "util.h"
++#include "uuid.h"
+ #include "openvswitch/vlog.h"
+ 
+ VLOG_DEFINE_THIS_MODULE(ovsdb_idl);
+@@ -189,6 +191,15 @@ ovsdb_idl_table_from_class(const struct ovsdb_idl *,
+                            const struct ovsdb_idl_table_class *);
+ static bool ovsdb_idl_track_is_set(struct ovsdb_idl_table *table);
+ 
++static int
++ovsdb_idl_index_generic_comparer(const void *, const void *, const void *);
++static struct ovsdb_idl_index *
++ovsdb_idl_create_index_(const struct ovsdb_idl_table *table);
++static void
++ovsdb_idl_destroy_indexes(struct ovsdb_idl_table *table);
++static void ovsdb_idl_add_to_indexes(const struct ovsdb_idl_row *);
++static void ovsdb_idl_remove_from_indexes(const struct ovsdb_idl_row *);
++
+ /* Creates and returns a connection to database 'remote', which should be in a
+  * form acceptable to jsonrpc_session_open().  The connection will maintain an
+  * in-memory replica of the remote database whose schema is described by
+@@ -235,6 +246,7 @@ ovsdb_idl_create(const char *remote, const struct ovsdb_idl_class *class,
+         memset(table->modes, default_mode, tc->n_columns);
+         table->need_table = false;
+         shash_init(&table->columns);
++        shash_init(&table->indexes);
+         for (j = 0; j < tc->n_columns; j++) {
+             const struct ovsdb_idl_column *column = &tc->columns[j];
+ 
+@@ -272,6 +284,7 @@ ovsdb_idl_destroy(struct ovsdb_idl *idl)
+ 
+         for (i = 0; i < idl->class->n_tables; i++) {
+             struct ovsdb_idl_table *table = &idl->tables[i];
++            ovsdb_idl_destroy_indexes(table);
+             shash_destroy(&table->columns);
+             hmap_destroy(&table->rows);
+             free(table->modes);
+@@ -305,6 +318,7 @@ ovsdb_idl_clear(struct ovsdb_idl *idl)
+             struct ovsdb_idl_arc *arc, *next_arc;
+ 
+             if (!ovsdb_idl_row_is_orphan(row)) {
++                ovsdb_idl_remove_from_indexes(row);
+                 ovsdb_idl_row_unparse(row);
+             }
+             LIST_FOR_EACH_SAFE (arc, next_arc, src_node, &row->src_arcs) {
+@@ -1210,6 +1224,364 @@ ovsdb_idl_row_unparse(struct ovsdb_idl_row *row)
+     }
+ }
+ 
++/*
++ * Creates a new index, that is attached to the given idl and table.
++ * The index has the given name.
++ * All the indexes must be created before the first ovsdb_idl_run is
++ * executed.
++ */
++struct ovsdb_idl_index *
++ovsdb_idl_create_index(struct ovsdb_idl *idl,
++                       const struct ovsdb_idl_table_class *tc,
++                       const char *index_name)
++{
++    size_t i;
++    struct ovsdb_idl_index *index;
++    for(i = 0; i < idl->class->n_tables; i++){
++        struct ovsdb_idl_table *table = &idl->tables[i];
++
++        if (table->class == tc) {
++            index = ovsdb_idl_create_index_(table);
++            if(!shash_add_once(&table->indexes,
++                      index_name,
++                      index)){
++                VLOG_ERR("Can't repeat index name '%s' at table %s",
++                           index_name, table->class->name);
++                return NULL;
++            }
++            index->index_name = index_name;
++            return index;
++        }
++    }
++    OVS_NOT_REACHED();
++    return NULL;
++}
++
++static struct ovsdb_idl_index *
++ovsdb_idl_create_index_(const struct ovsdb_idl_table *table)
++{
++    struct ovsdb_idl_index *index;
++    size_t max_columns = table->class->n_columns;
++    index = malloc(sizeof(struct ovsdb_idl_index));
++    index->n_columns = 0;
++    index->alloc_columns = max_columns;
++    index->skiplist = skiplist_create(64, ovsdb_idl_index_generic_comparer,
++                                      index);
++    index->columns = malloc(max_columns * sizeof(struct ovsdb_idl_column *));
++    index->comparers = malloc(max_columns * sizeof(skiplist_comparator));
++    index->sorting_order = malloc(max_columns * sizeof(int));
++    index->row_sync = false;
++    index->table = table;
++    return index;
++}
++
++static void
++ovsdb_idl_destroy_indexes(struct ovsdb_idl_table *table)
++{
++    struct shash_node *node;
++    struct ovsdb_idl_index *index;
++    SHASH_FOR_EACH(node, &(table->indexes)){
++        index = (struct ovsdb_idl_index *)node->data;
++        skiplist_destroy(index->skiplist);
++        free(index->columns);
++        free(index->comparers);
++        free(index->sorting_order);
++    }
++}
++
++static void
++ovsdb_idl_add_to_indexes(const struct ovsdb_idl_row *row)
++{
++    struct ovsdb_idl_table *table = row->table;
++    struct ovsdb_idl_index *index;
++    struct shash_node *node;
++    SHASH_FOR_EACH(node, &(table->indexes)) {
++        index = (struct ovsdb_idl_index*) node->data;
++        index->row_sync = true;
++        skiplist_insert(index->skiplist, row);
++        index->row_sync = false;
++    }
++}
++
++static void
++ovsdb_idl_remove_from_indexes(const struct ovsdb_idl_row *row)
++{
++    struct ovsdb_idl_table *table = row->table;
++    struct ovsdb_idl_index *index;
++    struct shash_node *node;
++    SHASH_FOR_EACH(node, &(table->indexes)) {
++        index = (struct ovsdb_idl_index*) node->data;
++        index->row_sync = true;
++        skiplist_delete(index->skiplist, row);
++        index->row_sync = false;
++    }
++}
++
++/*
++ * Generic string comparer
++ */
++int
++ovsdb_idl_index_strcmp(char *data1, char *data2) {
++    return strcmp(data1, data2);
++}
++
++/*
++ * Generic int64_t comparer
++ */
++int
++ovsdb_idl_index_intcmp(int64_t a, int64_t b) {
++    return (a > b) - (a < b);
++}
++
++/*
++ * Generic float comparer
++ */
++int
++ovsdb_idl_index_doublecmp(double a, double b) {
++    return (a > b) - (a < b);
++}
++/*
++ * Adds a column to an existing index (all columns must be inserted before
++ * the first ovsdb_idl_run is executed).
++ * In "order", accepts the values OVSDB_INDEX_ASC or OVSDB_INDEX_DESC
++ * (OVSDB_INDEX_ASC by default).
++ * In "custom_comparer" it accepts a custom comparison function. If given NULL
++ * it will use the default comparator for the column (only available for
++ * string, numeric or real columns).
++ */
++void
++ovsdb_idl_index_add_column(struct ovsdb_idl_index *index,
++                           const struct ovsdb_idl_column *column,
++                           int order,
++                           column_comparator custom_comparer
++                           )
++{
++    /* Check that the column or table is tracked */
++    if(!index->table->need_table &&
++       !((OVSDB_IDL_MONITOR | OVSDB_IDL_ALERT) &
++         *ovsdb_idl_get_mode(index->table->idl, column))){
++        VLOG_ERR("Can't add column '%s' at index '%s' in "
++                   "table '%s'. Column isn't monitored.",
++                   column->name,
++                   index->index_name,
++                   index->table->class->name);
++    }
++
++    /* Allocate more memory for column configuration */
++    if(index->n_columns == index->alloc_columns){
++        index->alloc_columns++;
++        const struct ovsdb_idl_column **tmp_cols = malloc(index->alloc_columns);
++        column_comparator *tmp_cmps = malloc(index->alloc_columns);
++        int *tmp_order = malloc(index->alloc_columns);
++
++        memcpy(tmp_cols, index->columns,
++               index->n_columns * sizeof(struct ovsdb_idl_column *));
++        memcpy(tmp_cmps, index->comparers,
++                       index->n_columns * sizeof(column_comparator));
++        memcpy(tmp_order, index->sorting_order,
++                       index->n_columns * sizeof(int));
++
++        free(index->columns);
++        free(index->comparers);
++        free(index->sorting_order);
++
++        index->columns = tmp_cols;
++        index->comparers = tmp_cmps;
++        index->sorting_order = tmp_order;
++    }
++
++    /* Append column to index */
++    int i = index->n_columns;
++    index->columns[i] = column;
++    if(custom_comparer || column->compare) {
++        index->comparers[i] = custom_comparer ? custom_comparer :
++                          (column_comparator) column->compare;
++    } else {
++        VLOG_ERR("Column %s doesn't have default comparator, and"
++                   "no custom comparator was given.", column->name);
++    }
++    if(order == OVSDB_INDEX_ASC) {
++        index->sorting_order[i] = OVSDB_INDEX_ASC;
++    } else {
++        index->sorting_order[i] = OVSDB_INDEX_DESC;
++    }
++    index->n_columns++;
++}
++
++/*
++ * Initializes a index cursor
++ */
++bool
++ovsdb_idl_initialize_cursor(struct ovsdb_idl *idl,
++                            const struct ovsdb_idl_table_class *tc,
++                            const char *index_name,
++                            struct ovsdb_idl_index_cursor *cursor)
++{
++    size_t i;
++    for(i = 0; i < idl->class->n_tables; i++){
++        struct ovsdb_idl_table *table = &idl->tables[i];
++
++        if (table->class == tc) {
++            cursor->index = (struct ovsdb_idl_index *) shash_find(
++                                    &table->indexes,
++                                    index_name)->data;
++            if(!cursor->index) {
++                VLOG_ERR("Cursor initialization fails. "
++                        "Index %s at table %s doesn't exist.",
++                        index_name,
++                        tc->name);
++                cursor->index = NULL;
++                cursor->position = NULL;
++                return false;
++            }
++            cursor->position = skiplist_first(cursor->index->skiplist);
++            return true;
++        }
++    }
++    VLOG_ERR("Cursor initialization fails. "
++                "Index %s at table %s doesn't exist.",
++                index_name,
++                tc->name);
++    return false;
++}
++
++/*
++ * Generic comparator that can compare each index, using the custom
++ * configuration (an struct ovsdb_idl_index) passed to it.
++ * Not intended for direct usage.
++ */
++static int
++ovsdb_idl_index_generic_comparer(const void *a,
++                                 const void *b,
++                                 const void *conf)
++{
++    size_t i;
++    const struct ovsdb_idl_index *index = (const struct ovsdb_idl_index *)conf;
++
++    for(i = 0; i < index->n_columns; i++){
++        int val = index->comparers[i](a, b);
++        if(val){
++            return val * index->sorting_order[i];
++        }
++    }
++
++    /*
++     * If row_sync is true then the IDL is synchronization the replica's
++     * rows with the ones stored in the index. In this case is necessary
++     * to compare also by pointer value (eg: so the correct row is removed).
++     * In any other case (the user is doing a search) the values are
++     * already equal, so return 0.
++     * Also, the pointers obviously are random, so in different IDLs of the
++     * same OVSDB instance the index could have different ordering.
++     * Comparing first by UUID can guarantee the same order at any IDL.
++     */
++    if(index->row_sync){
++        const struct ovsdb_idl_row *row_a, *row_b;
++        row_a = (const struct ovsdb_idl_row *)a;
++        row_b = (const struct ovsdb_idl_row *)b;
++        int value = uuid_compare_3way(&row_a->uuid, &row_b->uuid);
++        return value ? value : (a < b) - (a > b);
++    } else {
++        return 0;
++    }
++}
++
++/*
++ * Moves the cursor to the first entry in the index.
++ * Returns a pointer to the corresponding ovsdb_idl_row, or NULL.
++ */
++struct ovsdb_idl_row *
++ovsdb_idl_index_first(struct ovsdb_idl_index_cursor *cursor)
++{
++    cursor->position = skiplist_first(cursor->index->skiplist);
++    return ovsdb_idl_index_data(cursor);
++}
++
++/*
++ * Moves the cursor to the following record in the index.
++ */
++struct ovsdb_idl_row *
++ovsdb_idl_index_next(struct ovsdb_idl_index_cursor *cursor)
++{
++    if(!cursor->position){
++        return NULL;
++    }
++    cursor->position = skiplist_next(cursor->position);
++    return ovsdb_idl_index_data(cursor);
++}
++
++/*
++ * Returns the ovsdb_idl_row pointer corresponding to the current record
++ */
++struct ovsdb_idl_row *
++ovsdb_idl_index_data(struct ovsdb_idl_index_cursor *cursor)
++{
++    return (struct ovsdb_idl_row *)skiplist_get_data(cursor->position);
++}
++
++/*
++ * Moves the cursor to the first entry with a value equal to the given value.
++ * If the value given is NULL then the function will behave like
++ * ovsdb_idl_index_first.
++ * Returns a pointer to the corresponding ovsdb_idl_row (that can be casted
++ * to a ovsrec) or NULL.
++ */
++struct ovsdb_idl_row *
++ovsdb_idl_index_find(struct ovsdb_idl_index_cursor *cursor,
++                     struct ovsdb_idl_row *value)
++{
++    if(value) {
++        cursor->position = skiplist_find(cursor->index->skiplist, value);
++    } else {
++        cursor->position = skiplist_first(cursor->index->skiplist);
++    }
++    return ovsdb_idl_index_data(cursor);
++}
++
++/*
++ * Moves the cursor to the first entry with a value greater or equal
++ * to the given value.
++ * If the value given is NULL then the function will behave like
++ * ovsdb_idl_index_first.
++ * Returns a pointer to the corresponding ovsdb_idl_row (that can be casted
++ * to a ovsrec) or NULL.
++ */
++struct ovsdb_idl_row *
++ovsdb_idl_index_forward_to(struct ovsdb_idl_index_cursor *cursor,
++                     struct ovsdb_idl_row *value)
++{
++    if(value) {
++        cursor->position = skiplist_forward_to(cursor->index->skiplist, value);
++    } else {
++        cursor->position = skiplist_first(cursor->index->skiplist);
++    }
++    return ovsdb_idl_index_data(cursor);
++}
++
++/*
++ * Returns the result of comparing two ovsrecs (casted to ovsdb_idl_row),
++ * using the comparer defined in the index.
++ * Returns:
++ * < 0 if a < b
++ * 0 if a == b
++ * > 0 if a > b
++ * When some input is NULL this function considers NULL to be greater than
++ * any other value. NULL compared to NULL returns 1.
++ */
++int
++ovsdb_idl_index_compare(struct ovsdb_idl_index_cursor *cursor,
++                        struct ovsdb_idl_row *a, struct ovsdb_idl_row *b)
++{
++    if(a && b) {
++        return ovsdb_idl_index_generic_comparer(a, b, cursor->index);
++    } else if(a) {
++        return -1;
++    } else {
++        /* If cmp(NULL, b) or cmp(NULL, NULL) */
++        return 1;
++    }
++}
++
+ static void
+ ovsdb_idl_row_clear_old(struct ovsdb_idl_row *row)
+ {
+@@ -1398,11 +1770,14 @@ ovsdb_idl_insert_row(struct ovsdb_idl_row *row, const struct json *row_json)
+                       = row->table->modify_seqno
+                       = (row->table->idl->change_seqno + 1);
+ #endif
++
++    ovsdb_idl_add_to_indexes(row);
+ }
+ 
+ static void
+ ovsdb_idl_delete_row(struct ovsdb_idl_row *row)
+ {
++    ovsdb_idl_remove_from_indexes(row);
+     ovsdb_idl_row_unparse(row);
+     ovsdb_idl_row_clear_arcs(row, true);
+     ovsdb_idl_row_clear_old(row);
+@@ -1423,10 +1798,12 @@ ovsdb_idl_modify_row(struct ovsdb_idl_row *row, const struct json *row_json)
+ {
+     bool changed;
+ 
++    ovsdb_idl_remove_from_indexes(row);
+     ovsdb_idl_row_unparse(row);
+     ovsdb_idl_row_clear_arcs(row, true);
+     changed = ovsdb_idl_row_update(row, row_json, OVSDB_IDL_CHANGE_MODIFY);
+     ovsdb_idl_row_parse(row);
++    ovsdb_idl_add_to_indexes(row);
+ 
+ #ifdef OPS
+     if( changed )
+diff --git a/lib/ovsdb-idl.h b/lib/ovsdb-idl.h
+index 80f499a..7070e19 100644
+--- a/lib/ovsdb-idl.h
++++ b/lib/ovsdb-idl.h
+@@ -1,4 +1,5 @@
+ /* Copyright (c) 2009, 2010, 2011, 2012, 2013, 2014, 2015 Nicira, Inc.
++ * Copyright (C) 2016 Hewlett Packard Enterprise Development LP
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+@@ -38,6 +39,7 @@
+ #include <stdint.h>
+ #include "compiler.h"
+ #include "ovsdb-types.h"
++#include "skiplist.h"
+ 
+ struct json;
+ struct ovsdb_datum;
+@@ -280,4 +282,65 @@ void ovsdb_idl_loop_destroy(struct ovsdb_idl_loop *);
+ struct ovsdb_idl_txn *ovsdb_idl_loop_run(struct ovsdb_idl_loop *);
+ void ovsdb_idl_loop_commit_and_wait(struct ovsdb_idl_loop *);
+ 
++struct ovsdb_idl_index *
++ovsdb_idl_create_index(struct ovsdb_idl *idl,
++                       const struct ovsdb_idl_table_class *tc,
++                       const char *index_name);
++
++#define OVSDB_INDEX_DESC -1
++#define OVSDB_INDEX_ASC 1
++
++/*
++ * Skiplist comparison function. Allows to store sorted data.
++ */
++typedef int
++(*column_comparator)(const void *a, const void *b);
++
++/*
++ * Defines a IDL compound index
++ */
++struct ovsdb_idl_index {
++    struct skiplist *skiplist;                  /* Skiplist with pointer to
++                                                 * rows*/
++    const struct ovsdb_idl_column **columns;    /* Columns indexed */
++    column_comparator *comparers;               /* Compare functions used */
++    int *sorting_order;                         /* Order per column */
++    size_t n_columns;                           /* Number of columns in index */
++    size_t alloc_columns;                       /* Size allocated memory for
++                                                 * columns, comparers and
++                                                 * sorting order */
++    bool row_sync;                              /* Determines if the replica
++                                                 * is modifying its content or
++                                                 * not */
++    const struct ovsdb_idl_table *table;        /* Table that owns this index */
++    const char* index_name;                     /* The name of this index */
++};
++
++struct ovsdb_idl_index_cursor {
++    struct ovsdb_idl_index *index;    /* Index used by this cursor */
++    struct skiplist_node *position;   /* Current position in the index */
++};
++
++int ovsdb_idl_index_strcmp(char *, char *);
++int ovsdb_idl_index_intcmp(int64_t, int64_t);
++int ovsdb_idl_index_doublecmp(double, double);
++void ovsdb_idl_index_add_column(struct ovsdb_idl_index *,
++                           const struct ovsdb_idl_column *,
++                           int order,
++                           column_comparator custom_comparer
++                           );
++bool ovsdb_idl_initialize_cursor(struct ovsdb_idl *,
++                            const struct ovsdb_idl_table_class *tc,
++                            const char *index_name,
++                            struct ovsdb_idl_index_cursor *cursor);
++struct ovsdb_idl_row *ovsdb_idl_index_first(struct ovsdb_idl_index_cursor *);
++struct ovsdb_idl_row *ovsdb_idl_index_next(struct ovsdb_idl_index_cursor *);
++struct ovsdb_idl_row *ovsdb_idl_index_data(struct ovsdb_idl_index_cursor *);
++struct ovsdb_idl_row *ovsdb_idl_index_find(struct ovsdb_idl_index_cursor *,
++                                           struct ovsdb_idl_row *);
++struct ovsdb_idl_row *ovsdb_idl_index_forward_to(struct ovsdb_idl_index_cursor *,
++                                           struct ovsdb_idl_row *);
++int ovsdb_idl_index_compare(struct ovsdb_idl_index_cursor *,
++                            struct ovsdb_idl_row *a, struct ovsdb_idl_row *b);
++
+ #endif /* ovsdb-idl.h */
+diff --git a/lib/skiplist.c b/lib/skiplist.c
+new file mode 100644
+index 0000000..01e296c
+--- /dev/null
++++ b/lib/skiplist.c
+@@ -0,0 +1,292 @@
++/* Copyright (C) 2016 Hewlett Packard Enterprise Development LP
++ * All Rights Reserved.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License"); you may
++ * not use this file except in compliance with the License. You may obtain
++ * a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++ * License for the specific language governing permissions and limitations
++ * under the License.
++ */
++
++/*
++ * Skiplist implementationn based on:
++ * "Skip List: A Probabilistic Alternative to Balanced Trees",
++ * by William Pugh.
++ */
++
++#include <config.h>
++#include <stdio.h>
++#include <stdbool.h>
++#include <stdint.h>
++#include <stdlib.h>
++#include <string.h>
++
++#include "skiplist.h"
++#include "random.h"
++
++#define SKIPLIST_MAX_LEVELS 64
++
++/*
++ * Skiplist node container
++ */
++struct skiplist_node
++{
++    const void* data;                       /* Pointer to saved data */
++    uint64_t height;                        /* Height of this node */
++    struct skiplist_node *forward[];        /* Links to the next nodes */
++};
++
++/*
++ * Skiplist container
++ */
++
++struct skiplist
++{
++    struct skiplist_node *header;   /* Pointer to head node
++                                       (not first data node)*/
++    skiplist_comparator cmp;        /* Pointer to the skiplist's comparison
++                                       function*/
++    void *cfg;                      /* Pointer to optional comparison
++                                       configuration, used by the comparator */
++    int max_levels;                 /* Max levels of the skiplist. */
++    uint64_t probability;           /* Probability that the node would take an
++                                       additional skiplist level. */
++    int64_t size;                   /* Current size of the skiplist. */
++    int64_t level;                  /* Max number of levels used in this
++                                       skiplist*/
++    void (*free_func)(void *);      /* Function that free the value's memory */
++};
++
++static int skiplist_determine_level(struct skiplist* sl);
++
++static struct skiplist_node* skiplist_create_node(int, const void *);
++
++static struct skiplist_node*
++skiplist_forward_to_(struct skiplist* sl, const void *value,
++                     struct skiplist_node **update);
++
++/*
++ * skiplist_create returns a new skiplist, configured with given max_levels,
++ * data comparer and configuration.
++ * Sets a probability of 0.5 (RAND_MAX / 2).
++ */
++struct skiplist*
++skiplist_create(int max_levels, skiplist_comparator object_comparator,
++                void *configuration)
++{
++    random_init();
++    struct skiplist *sl;
++    sl = malloc(sizeof(struct skiplist));
++    sl->cfg = configuration;
++    sl->max_levels = max_levels < SKIPLIST_MAX_LEVELS ?
++            max_levels : SKIPLIST_MAX_LEVELS;
++    sl->size = 0;
++    sl->level = 0;
++    sl->cmp = object_comparator;
++    sl->probability = UINT32_MAX / 2;
++    sl->header = skiplist_create_node(sl->max_levels, NULL);
++    sl->free_func = NULL;
++
++    return sl;
++}
++
++/*
++ * Set a custom function that free the value's memory when
++ * destroying the skiplist.
++ */
++void
++skiplist_set_free_func(struct skiplist* sl, void (*func)(void *))
++{
++    sl->free_func = func;
++}
++
++/*
++ * Determines the correspondent level for a skiplist node.
++ */
++static int
++skiplist_determine_level(struct skiplist* sl)
++{
++    int lvl = 0;
++    while(random_uint32() <= sl->probability && lvl < sl->max_levels){
++        lvl++;
++    }
++    return lvl;
++}
++
++/*
++ * Creates a new skiplist_node with given levels and data.
++ */
++static struct skiplist_node*
++skiplist_create_node(int levels, const void *object)
++{
++    struct skiplist_node *new_node = malloc(sizeof(struct skiplist_node) +
++                                  (levels+1) * sizeof(struct skiplist_node *));
++    new_node->data = object;
++    new_node->height = levels;
++    memset(new_node->forward, 0, (levels+1) * sizeof(struct skiplist_node *));
++    return new_node;
++}
++
++/*
++ * Find the first exact match of value in the skiplist
++ */
++struct skiplist_node*
++skiplist_find(struct skiplist* sl, const void *value)
++{
++    struct skiplist_node *x = skiplist_forward_to(sl, value);
++    return x && sl->cmp(x->data, value, sl->cfg) == 0 ? x : NULL;
++}
++
++/*
++ * Moves the cursor forward, to the first data equal or greater than value.
++ */
++struct skiplist_node*
++skiplist_forward_to(struct skiplist* sl, const void *value)
++{
++    return skiplist_forward_to_(sl, value, NULL);
++}
++
++static struct skiplist_node*
++skiplist_forward_to_(struct skiplist* sl, const void *value,
++                     struct skiplist_node **update)
++{
++    struct skiplist_node *x = sl->header;
++    int i;
++
++    /* Loop invariant: x < value */
++    for(i = sl->level; i >= 0; i--){
++        while(x->forward[i] &&
++                sl->cmp(x->forward[i]->data, value, sl->cfg) < 0){
++            x = x->forward[i];
++        }
++        /* x < value <= x->forward[1]*/
++        if(update){
++            update[i] = x;
++        }
++    }
++    /* x < value <= x->forward[1]*/
++    x = x->forward[0];
++    return x;
++}
++
++/*
++ * Inserts data into skiplist.
++ */
++void
++skiplist_insert(struct skiplist* list, const void *value)
++{
++    struct skiplist_node *update[SKIPLIST_MAX_LEVELS+1] = {NULL};
++    int i, lvl;
++    struct skiplist_node *x = skiplist_forward_to_(list, value, update);
++
++    if(x && list->cmp(x->data, value, list->cfg) == 0) {
++        x->data = value;
++    } else {
++        lvl = skiplist_determine_level(list);
++        if(lvl > list->level){
++            for(i = list->level + 1; i <= lvl; i++){
++                update[i] = list->header;
++            }
++            list->level = lvl;
++        }
++        x = skiplist_create_node(lvl, value);
++        for(i = 0; i <= lvl; i++){
++            x->forward[i] = update[i]->forward[i];
++            update[i]->forward[i] = x;
++        }
++        list->size++;
++    }
++}
++
++/*
++ * Removes first ocurrence of data from skiplist.
++ */
++void *
++skiplist_delete(struct skiplist* list, const void *value)
++{
++    struct skiplist_node *update[SKIPLIST_MAX_LEVELS+1] = {NULL};
++    void *data = NULL;
++    int i;
++    struct skiplist_node *x = list->header;
++    x = skiplist_forward_to_(list, value, update);
++
++    if(x && list->cmp(x->data, value, list->cfg) == 0) {
++        for(i = 0; i <= list->level; i++){
++            if(!update[i]->forward[i] ||
++                    list->cmp(update[i]->forward[i]->data, value, list->cfg) != 0){
++                break;
++            }
++            update[i]->forward[i] = x->forward[i];
++        }
++        data = (void *) x->data;
++        free(x);
++
++        while(list->level > 0 && !list->header->forward[list->level]){
++            list->level--;
++        }
++        list->size--;
++    }
++    return data;
++}
++
++/*
++ * Returns the value stored in the skiplist node
++ */
++void *
++skiplist_get_data(struct skiplist_node *node)
++{
++    return node ? (void *) node->data : NULL;
++}
++
++/*
++ * Returns the count of items in the skiplist
++ */
++int64_t
++skiplist_get_size(struct skiplist* sl)
++{
++    return sl->size;
++}
++
++/*
++ * Returns the first element in the skiplist
++ */
++struct skiplist_node *
++skiplist_first(struct skiplist* sl)
++{
++    return sl->header->forward[0];
++}
++
++/*
++ * Given a skiplist node, returns a pointer to the next skiplist node.
++ */
++struct skiplist_node *
++skiplist_next(struct skiplist_node* node)
++{
++    return node ? node->forward[0] : NULL;
++}
++
++/*
++ * Destroys the skiplist, and frees all the skiplist nodes, but NOT the data
++ * stored.
++ */
++void
++skiplist_destroy(struct skiplist* sl)
++{
++    struct skiplist_node *node, *next;
++    next = node = sl->header;
++    while(next != NULL){
++        next = node->forward[0];
++        if(sl->free_func) {
++            sl->free_func((void *)node->data);
++        }
++        free(node);
++        node = next;
++    }
++    free(sl);
++}
+diff --git a/lib/skiplist.h b/lib/skiplist.h
+new file mode 100644
+index 0000000..23e7e93
+--- /dev/null
++++ b/lib/skiplist.h
+@@ -0,0 +1,53 @@
++/* Copyright (C) 2016 Hewlett Packard Enterprise Development LP
++ * All Rights Reserved.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License"); you may
++ * not use this file except in compliance with the License. You may obtain
++ * a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++ * License for the specific language governing permissions and limitations
++ * under the License.
++ */
++
++#ifndef LIB_SKIPLIST_H_
++#define LIB_SKIPLIST_H_
++
++#include<stdbool.h>
++#include<stdint.h>
++#include<stdlib.h>
++
++/*
++ * Skiplist comparison function. Allows to store sorted data.
++ */
++typedef int
++(*skiplist_comparator)(const void *a, const void *b, const void* conf);
++
++struct skiplist_node;
++
++struct skiplist;
++
++#define SKIPLIST_FOR_EACH(SKIPLIST_NODE, SKIPLIST) \
++    for(SKIPLIST_NODE = skiplist_first(SKIPLIST); \
++        SKIPLIST_NODE; \
++        SKIPLIST_NODE = skiplist_next(SKIPLIST_NODE))
++
++struct skiplist* skiplist_create(int max_levels,
++                                 skiplist_comparator object_comparator,
++                                 void * configuration);
++void skiplist_set_free_func(struct skiplist* sl, void (*func)(void *));
++void skiplist_insert(struct skiplist* sl, const void *object);
++void *skiplist_delete(struct skiplist* sl, const void *object);
++struct skiplist_node* skiplist_find(struct skiplist* sl, const void *value);
++void * skiplist_get_data(struct skiplist_node *node);
++int64_t skiplist_get_size(struct skiplist* sl);
++struct skiplist_node* skiplist_forward_to(struct skiplist* sl, const void *value);
++struct skiplist_node * skiplist_first(struct skiplist* sl);
++struct skiplist_node * skiplist_next(struct skiplist_node* node);
++void skiplist_destroy(struct skiplist* sl);
++
++#endif /* LIB_SKIPLIST_H_ */
+diff --git a/ovsdb/ovsdb-idlc.in b/ovsdb/ovsdb-idlc.in
+index 88b1ec3..f99496f 100755
+--- a/ovsdb/ovsdb-idlc.in
++++ b/ovsdb/ovsdb-idlc.in
+@@ -8,9 +8,15 @@ import sys
+ import ovs.json
+ import ovs.db.error
+ import ovs.db.schema
++from ovs.db.types import StringType, IntegerType, RealType
+ 
+ argv0 = sys.argv[0]
+ 
++def isColumnIndexable(column):
++    return not column.type.is_map()  and column.type.key.is_valid() \
++               and (column.type.is_scalar())  and \
++                column.type.key.toAtomicType() in ['OVSDB_TYPE_STRING', 'OVSDB_TYPE_REAL', 'OVSDB_TYPE_INTEGER']
++
+ def parseSchema(filename):
+     return ovs.db.schema.IdlSchema.from_json(ovs.json.from_file(filename))
+ 
+@@ -240,6 +246,25 @@ const struct %(s)s *%(s)s_track_get_next(const struct %(s)s *);
+              (ROW); \\
+              (ROW) = %(s)s_track_get_next(ROW))
+ 
++int %(s)s_index_compare(struct ovsdb_idl_index_cursor *, const struct %(s)s *, const struct %(s)s *);
++const struct %(s)s *%(s)s_index_first(struct ovsdb_idl_index_cursor *);
++const struct %(s)s *%(s)s_index_next(struct ovsdb_idl_index_cursor *);
++const struct %(s)s *%(s)s_index_find(struct ovsdb_idl_index_cursor *, const struct %(s)s *);
++const struct %(s)s *%(s)s_index_forward_to(struct ovsdb_idl_index_cursor *, const struct %(s)s *);
++const struct %(s)s *%(s)s_index_get_data(const struct ovsdb_idl_index_cursor *);
++#define %(S)s_FOR_EACH_RANGE(ROW, CURSOR, FROM, TO) \\
++        for ((ROW) = %(s)s_index_forward_to(CURSOR, FROM); \\
++             ((ROW) && %(s)s_index_compare(CURSOR, ROW, TO) <= 0); \\
++             (ROW) = %(s)s_index_next(CURSOR))
++#define %(S)s_FOR_EACH_EQUAL(ROW, CURSOR, KEY) \\
++        for ((ROW) = %(s)s_index_find(CURSOR, KEY); \\
++             ((ROW) && %(s)s_index_compare(CURSOR, ROW, KEY) == 0); \\
++             (ROW) = %(s)s_index_next(CURSOR))
++#define %(S)s_FOR_EACH_BYINDEX(ROW, CURSOR) \\
++        for ((ROW) = %(s)s_index_first(CURSOR); \\
++             (ROW); \\
++             (ROW) = %(s)s_index_next(CURSOR))
++
+ void %(s)s_init(struct %(s)s *);
+ void %(s)s_delete(const struct %(s)s *);
+ struct %(s)s *%(s)s_insert(struct ovsdb_idl_txn *);
+@@ -305,6 +330,11 @@ struct %(s)s *%(s)s_insert(struct ovsdb_idl_txn *);
+                 print '%(coltype)s);' % {'coltype':column.type.key.toCType(prefix)}
+         print
+ 
++        for columnName, column in sorted(table.columns.iteritems()):
++            if isColumnIndexable(column):
++                print 'int %(s)s_index_%(c)s_cmp(const void *, const void *);' % {'s': structName, 'c': columnName}
++        print
++
+     # Table indexes.
+     printEnum("%stable_id" % prefix.lower(), ["%sTABLE_%s" % (prefix.upper(), tableName.upper()) for tableName in sorted(schema.tables)] + ["%sN_TABLES" % prefix.upper()])
+     print
+@@ -898,6 +928,90 @@ void
+         'C': columnName.upper()}
+         # End Update/Delete of partial maps
+ 
++        # Column Index compare functions
++        for columnName, column in sorted(table.columns.iteritems()):
++            type = column.type
++            funcDict = {'OVSDB_TYPE_STRING': 'str', 'OVSDB_TYPE_REAL': 'double', 'OVSDB_TYPE_INTEGER': 'int'}
++            if isColumnIndexable(column):
++                print '''
++/*  Call an internal function defined to compare  "%(f)s" type columns for "%(c)s" columns
++    in "%(s)s" tables.
++    Parameters: void *row1, void * row2. Data to be compared. Must be of type corresponding the record of
++    the table.
++    Return value: 0 if both data values are equal, -1 if first parameter is less than second and 1 otherwise.
++    For internal use only. Not recomended to be called directly. */ ''' % {'s' : structName, 'c' : columnName, 'f': type.key.toAtomicType()}
++                print 'int'
++                print '%(s)s_index_%(c)s_cmp(const void *row1, const void *row2)' % \
++                    {'s': structName, 'c': columnName}
++                print '{'
++                print '    struct %(s)s *data1 = (struct %(s)s *)row1;' % { 's' : structName }
++                print '    struct %(s)s *data2 = (struct %(s)s *)row2;' % { 's' : structName }
++                print '    return ovsdb_idl_index_%(f)scmp(data1->%(c)s, data2->%(c)s);' % \
++                    {'c': columnName, 'f': funcDict[type.key.toAtomicType()] }
++                print "}"
++
++# Index table related functions
++        print '''
++/*  This function is used to compare "%(s)s" records on table in iterartion loops for compound-index operations.
++    After been called, cursor point to current position in the index
++    Parameters: struct ovsdb_idl_index_cursor *cursor. Cursor used to iterate over the indexed data on this table.
++                const struct "%(s)s" *const_data1,  const struct "%(s)s" *const_data2. Data to be compared.
++    Return value: 0 if both data values are equal, -1 if first parameter is less than second and 1 otherwise. */''' % {'s' : structName}
++        print 'int'
++        print '''%(s)s_index_compare(struct ovsdb_idl_index_cursor *cursor, const struct %(s)s *const_data1,  const struct %(s)s *const_data2)
++{
++    struct %(s)s *data1 = CONST_CAST(struct %(s)s *, const_data1);
++    struct %(s)s *data2 = CONST_CAST(struct %(s)s *, const_data2);
++    return ovsdb_idl_index_compare(cursor, &data1->header_, &data2->header_);
++}''' % { 's' : structName }
++        print '''
++/*  This function is called to position the cursor at the first row in "%(s)s" table on the associated compound-index.
++    Parameters: struct ovsdb_idl_index_cursor *cursor. Cursor used to iterate over the indexed data on this table.
++    Return value: The first row in the corresponding index. */''' %  {'s' : structName }
++        print '''const struct %(s)s *\n%(s)s_index_first(struct ovsdb_idl_index_cursor *cursor)
++{
++    return %(s)s_cast(ovsdb_idl_index_first(cursor));
++}''' % { 's' : structName }
++        print '''
++/*  This function is called to position the cursor at the next row in "%(s)s" table on the associated compound-index.
++    Parameters: struct ovsdb_idl_index_cursor *cursor. Cursor used to iterate over the indexed data on this table.
++    Return value: The next row in the corresponding index. */''' %  {'s' : structName, 'c' : columnName }
++        print '''const struct %(s)s *\n%(s)s_index_next(struct ovsdb_idl_index_cursor *cursor)
++{
++    return %(s)s_cast(ovsdb_idl_index_next(cursor));
++}''' % { 's' : structName }
++        print '''
++/*  This function is used to find the data of the row in "%(s)s" table that meet criteria with the requested data
++    associated in the compound-index.
++    Parameters: struct ovsdb_idl_index_cursor *cursor. Cursor used to iterate over the indexed data on this table.
++                const struct %(s)s *const_data. Data to be searched.
++    Return value: The row in the corresponding index if found or NULL otherwise. */''' %  {'s' : structName }
++        print '''const struct %(s)s *\n%(s)s_index_find(struct ovsdb_idl_index_cursor *cursor, const struct %(s)s *const_data)
++{
++    struct %(s)s *data = CONST_CAST(struct %(s)s *, const_data);
++    return %(s)s_cast(ovsdb_idl_index_find(cursor, &data->header_));
++}''' % { 's' : structName }
++        print '''
++/*  This function is used to set the cursor pointing to the row in "%(s)s" table that meet criteria of the requested data
++    associated in the compound-index.
++    Parameters: struct ovsdb_idl_index_cursor *cursor. Cursor used to iterate over the indexed data on this table.
++                const struct %(s)s *const_data. Data to be searched.
++    Return value: The row in the corresponding index closest to the criteria. */''' %  {'s' : structName }
++        print '''const struct %(s)s *\n%(s)s_index_forward_to(struct ovsdb_idl_index_cursor *cursor, const struct %(s)s *const_data)
++{
++    struct %(s)s *data = CONST_CAST(struct %(s)s *, const_data);
++    return %(s)s_cast(ovsdb_idl_index_forward_to(cursor, &data->header_));
++}''' % { 's' : structName }
++        print '''
++/*  This function is used to get the data of the row in the current position pointed by the cursor in
++    "%(s)s" table.
++    Parameters: struct ovsdb_idl_index_cursor *cursor. Cursor used to iterate over the indexed data on this table.
++    Return value: The row in the corresponding index if found or NULL otherwise. */''' %  {'s' : structName, 'c' : columnName }
++        print '''const struct %(s)s *\n%(s)s_index_get_data(const struct ovsdb_idl_index_cursor *cursor)
++{
++    return %(s)s_cast(ovsdb_idl_index_data(CONST_CAST(struct ovsdb_idl_index_cursor*, cursor)));
++}''' % { 's' : structName }
++# End Index table related functions
+         # Table columns.
+         print "\nstruct ovsdb_idl_column %s_columns[%s_N_COLUMNS];" % (
+             structName, structName.upper())
+@@ -921,6 +1035,10 @@ static void\n%s_columns_init(void)
+             print "    c->mutable = %s;" % mutable
+             print "    c->parse = %(s)s_parse_%(c)s;" % d
+             print "    c->unparse = %(s)s_unparse_%(c)s;" % d
++            if isColumnIndexable(column):
++                print '    c->compare = %(s)s_index_%(c)s_cmp;' % d
++            else:
++                print '    c->compare = NULL;'
+         print "}"
+ 
+     # Table classes.
+diff --git a/tests/.gitignore b/tests/.gitignore
+index f4540a3..ed017c1 100644
+--- a/tests/.gitignore
++++ b/tests/.gitignore
+@@ -38,6 +38,7 @@
+ /test-rstp
+ /test-sflow
+ /test-sha1
++/test-skiplist
+ /test-stp
+ /test-strtok_r
+ /test-timeval
+diff --git a/tests/automake.mk b/tests/automake.mk
+index 6ce503f..6413b56 100644
+--- a/tests/automake.mk
++++ b/tests/automake.mk
+@@ -167,6 +167,7 @@ valgrind_wrappers = \
+ 	tests/valgrind/test-reconnect \
+ 	tests/valgrind/test-rstp \
+ 	tests/valgrind/test-sha1 \
++	tests/valgrind/test-skiplist \
+ 	tests/valgrind/test-stp \
+ 	tests/valgrind/test-type-props \
+ 	tests/valgrind/test-unix-socket \
+@@ -312,6 +313,7 @@ tests_ovstest_SOURCES = \
+ 	tests/test-rstp.c \
+ 	tests/test-sflow.c \
+ 	tests/test-sha1.c \
++	tests/test-skiplist.c \
+ 	tests/test-stp.c \
+ 	tests/test-util.c \
+ 	tests/test-uuid.c \
+diff --git a/tests/library.at b/tests/library.at
+index d5dcb12..4542156 100644
+--- a/tests/library.at
++++ b/tests/library.at
+@@ -51,6 +51,17 @@ AT_CHECK([ovstest test-sha1], [0], [.........
+ ])
+ AT_CLEANUP
+ 
++AT_SETUP([test skiplist])
++AT_KEYWORDS([skiplist])
++AT_CHECK([ovstest test-skiplist], [0], [skiplist insert
++skiplist delete
++skiplist find
++skiplist forward_to
++skiplist random
++
++])
++AT_CLEANUP
++
+ AT_SETUP([test type properties])
+ AT_CHECK([test-type-props])
+ AT_CLEANUP
+diff --git a/tests/test-skiplist.c b/tests/test-skiplist.c
+new file mode 100644
+index 0000000..291ff26
+--- /dev/null
++++ b/tests/test-skiplist.c
+@@ -0,0 +1,212 @@
++/* Copyright (C) 2016 Hewlett Packard Enterprise Development LP
++ * All Rights Reserved.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License"); you may
++ * not use this file except in compliance with the License. You may obtain
++ * a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++ * License for the specific language governing permissions and limitations
++ * under the License.
++ */
++
++/* A non-exhaustive test for some of the functions and macros declared in
++ * skiplist.h. */
++
++#include <config.h>
++#undef NDEBUG
++#include <assert.h>
++#include <stdio.h>
++#include <string.h>
++#include "ovstest.h"
++#include "skiplist.h"
++#include "random.h"
++#include "util.h"
++
++static void
++test_skiplist_main(int argc OVS_UNUSED, char *argv[] OVS_UNUSED);
++
++static int test_skiplist_cmp(const void *a, const void *b, const void *conf);
++
++static void test_skiplist_insert(void);
++static void test_skiplist_delete(void);
++static void test_skiplist_find(void);
++static void test_skiplist_forward_to(void);
++static void test_skiplist_random(void);
++
++static int test_skiplist_cmp(const void *a, const void *b, const void *conf OVS_UNUSED)
++{
++    const int *n = (const int *)a;
++    const int *m = (const int *)b;
++    return (*n > *m) - (*n < *m);
++}
++
++static void test_skiplist_insert(void)
++{
++    struct skiplist *sl = skiplist_create(14, test_skiplist_cmp, NULL);
++    skiplist_set_free_func(sl, free);
++    int i;
++    int *integer;
++
++    /* Insert a million rows */
++    for(i = 0; i < 1000000; i++){
++        integer = malloc(sizeof(int));
++        *integer = i;
++        skiplist_insert(sl, integer);
++    }
++
++    /* Check that the skiplist maintains the list sorted */
++    struct skiplist_node *node = skiplist_first(sl);
++
++    for(i = 0; i < 1000000; i++){
++        integer = (int*)skiplist_get_data(node);
++        assert(i == *integer);
++        node = skiplist_next(node);
++    }
++
++    skiplist_destroy(sl);
++}
++
++static void test_skiplist_delete(void)
++{
++    struct skiplist *sl = skiplist_create(3, test_skiplist_cmp, NULL);
++    int a, b, c;
++    a = 1;
++    b = 2;
++    c = 3;
++    /* Insert rows */
++    skiplist_insert(sl, &a);
++    skiplist_insert(sl, &c);
++    skiplist_insert(sl, &b);
++
++    /* Check that the items exists */
++    assert(a == *(int *)skiplist_get_data(skiplist_find(sl, &a)));
++    assert(b == *(int *)skiplist_get_data(skiplist_find(sl, &b)));
++    assert(c == *(int *)skiplist_get_data(skiplist_find(sl, &c)));
++
++    /* Delete b*/
++    skiplist_delete(sl, &b);
++
++    /* Check that the items doesn't exists */
++    assert(a == *(int *)skiplist_get_data(skiplist_find(sl, &a)));
++    assert(NULL == skiplist_get_data(skiplist_find(sl, &b)));
++    assert(c == *(int *)skiplist_get_data(skiplist_find(sl, &c)));
++
++    skiplist_destroy(sl);
++}
++
++static void test_skiplist_find(void)
++{
++    struct skiplist *sl = skiplist_create(14, test_skiplist_cmp, NULL);
++    skiplist_set_free_func(sl, free);
++
++    int i;
++    int *integer;
++
++    /* Insert a million of rows */
++    for(i = 0; i < 1000000; i++){
++        integer = malloc(sizeof(int));
++        *integer = i;
++        skiplist_insert(sl, integer);
++    }
++
++    /* Seek all the items */
++    for(i = 0; i < 1000000; i++){
++        integer = (int*)skiplist_get_data(skiplist_find(sl, &i));
++        assert(i == *integer);
++    }
++
++    skiplist_destroy(sl);
++}
++
++static void test_skiplist_forward_to(void)
++{
++    struct skiplist *sl = skiplist_create(3, test_skiplist_cmp, NULL);
++    int a, b, c, d, x;
++    a = 1;
++    b = 3;
++    c = 7;
++    d = 10;
++    /* Insert rows */
++    skiplist_insert(sl, &a);
++    skiplist_insert(sl, &c);
++    skiplist_insert(sl, &b);
++    skiplist_insert(sl, &d);
++
++    /* Check that forward_to returns the expected value */
++    x = a;
++    assert(a == *(int *)skiplist_get_data(skiplist_forward_to(sl, &x)));
++
++    x = 2;
++    assert(b == *(int *)skiplist_get_data(skiplist_forward_to(sl, &x)));
++
++    x = 5;
++    assert(c == *(int *)skiplist_get_data(skiplist_forward_to(sl, &x)));
++
++    x = 8;
++    assert(d == *(int *)skiplist_get_data(skiplist_forward_to(sl, &x)));
++
++    x = 15;
++    assert(NULL == (int *)skiplist_get_data(skiplist_forward_to(sl, &x)));
++
++    /* Destroy skiplist */
++    skiplist_destroy(sl);
++}
++
++static void
++test_skiplist_random(void)
++{
++    int j;
++    for(j=1; j<64; j++) {
++        struct skiplist *sl = skiplist_create(j, test_skiplist_cmp, NULL);
++        int total_numbers = 50;
++        int expected_count = 0;
++        int *numbers = malloc(sizeof(int) * total_numbers);
++        int i, op, element;
++        for(i = 0; i < total_numbers; i++){
++            numbers[i] = i;
++        }
++        random_init();
++        for(i = 0; i < total_numbers*1000; i++){
++            op = random_uint32() % 2;
++            element = random_range(total_numbers);
++            if(op == 0){
++                if(!skiplist_find(sl, &numbers[element])) {
++                    expected_count++;
++                }
++                skiplist_insert(sl, &numbers[element]);
++            } else {
++                if(skiplist_find(sl, &numbers[element])) {
++                    expected_count--;
++                }
++                skiplist_delete(sl, &numbers[element]);
++            }
++            ovs_assert(expected_count == skiplist_get_size(sl));
++        }
++
++        skiplist_destroy(sl);
++        free(numbers);
++    }
++}
++
++static void
++test_skiplist_main(int argc OVS_UNUSED, char *argv[] OVS_UNUSED)
++{
++    printf("skiplist insert\n");
++    test_skiplist_insert();
++    printf("skiplist delete\n");
++    test_skiplist_delete();
++    printf("skiplist find\n");
++    test_skiplist_find();
++    printf("skiplist forward_to\n");
++    test_skiplist_forward_to();
++    printf("skiplist random\n");
++    test_skiplist_random();
++    printf("\n");
++}
++
++OVSTEST_REGISTER("test-skiplist", test_skiplist_main);

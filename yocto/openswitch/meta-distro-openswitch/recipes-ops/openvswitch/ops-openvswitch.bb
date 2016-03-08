@@ -8,6 +8,8 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-openvswitch;protocol=http \
    file://ovsdb-server.service \
    file://enable-jemalloc-ovsdb-server.patch \
    file://partial-map-updates.patch \
+   file://on-demand-fetching.patch \
+   file://compound-indexes.patch \
 "
 
 SRCREV = "fdf5466566253bf2bacb0a23f7ff2f3d4c4ef8cf"
