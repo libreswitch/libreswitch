@@ -487,6 +487,8 @@ python write_version_detail () {
 
             if 'SRCREV' in sdata.keys():
                 version_detail.write(" SRCREV=%s" % (sdata['SRCREV']))
+                if (("PV" in sdata.keys()) and ((sdata['PV']).endswith('999'))):
+                    version_detail.write("~DIRTY")
             else:
                 version_detail.write(" SRCREV=INVALID")
 
