@@ -1,0 +1,15 @@
+# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+
+[Unit]
+Description=OpenSwitch stpd Module Daemon
+After=ovsdb-server.service ops-init.service
+
+[Service]
+Type=forking
+ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-stpd.pid
+ExecStart=/sbin/ip netns exec swns /usr/bin/ops-stpd --detach --pidfile -vSYSLOG:INFO
+PIDFile=/var/run/openvswitch/ops-stpd.pid
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target
