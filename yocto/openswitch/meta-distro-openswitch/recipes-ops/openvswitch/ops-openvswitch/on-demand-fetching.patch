@@ -29,7 +29,7 @@ index dd35e5a..f86f947 100644
 
  struct ovsdb_idl_class {
 diff --git a/lib/ovsdb-idl.c b/lib/ovsdb-idl.c
-index ccbb449..26999b8 100644
+index ccbb449..e02f305 100644
 --- a/lib/ovsdb-idl.c
 +++ b/lib/ovsdb-idl.c
 @@ -76,6 +76,15 @@ struct ovsdb_idl_arc {
@@ -164,7 +164,7 @@ index ccbb449..26999b8 100644
  /* Turns on OVSDB_IDL_MONITOR and OVSDB_IDL_ALERT for 'column' in 'idl'.  Also
   * ensures that any tables referenced by 'column' will be replicated, even if
   * no columns in that table are selected for replication (see
-@@ -1008,6 +1061,141 @@ ovsdb_idl_parse_update__(struct ovsdb_idl *idl,
+@@ -1008,6 +1061,150 @@ ovsdb_idl_parse_update__(struct ovsdb_idl *idl,
      return NULL;
  }
 
@@ -234,8 +234,6 @@ index ccbb449..26999b8 100644
 +    }
 +
 +    /* Parse the json reply and get the UUID and value of the fetched column */
-+    array = json_array(shash_find_data(json_object(fetch_reply), "rows"));
-+
 +    struct json_array *rows_array = json_array(shash_find_data(json_object(fetch_reply), "rows"));
 +    for (int i = 0; i < rows_array->n; ++i) {
 +        /* Read the uuid of the fetched row */
@@ -257,36 +255,47 @@ index ccbb449..26999b8 100644
 +                ovsdb_idl_get_row_for_uuid(idl, fetch_node->table->class,
 +                    &uuid));
 +
-+        SHASH_FOR_EACH(shash_node, &fetch_node->columns) {
-+            column = shash_node->data;
-+            /* Read the fetched value */
-+            column_value = shash_find_data(json_object(rows_array->elems[i]),
-+                    column->name);
-+            if (!column_value) {
-+                return ovsdb_syntax_error(fetch_reply, NULL,
-+                        "Fetch reply for table %s does not include "
-+                        "the requested table value", table->class->name);
-+            }
++        /* If the row was deleted before the fetch reply was received,
++         * then there is no need to process the reply */
++        if (row != NULL) {
++            SHASH_FOR_EACH(shash_node, &fetch_node->columns) {
++                column = shash_node->data;
++                /* Read the fetched value */
++                column_value = shash_find_data(json_object(rows_array->elems[i]),
++                                               column->name);
++                if (!column_value) {
++                    return ovsdb_syntax_error(fetch_reply, NULL,
++                            "Fetch reply for table %s does not include "
++                            "the requested table value", table->class->name);
++                }
 +
-+            if (ovsdb_datum_from_json(&column_data, &column->type,
-+                        column_value, NULL) != NULL) {
-+                return ovsdb_syntax_error(fetch_reply, NULL,
-+                        "Fetch reply for column %s contains bad column value",
-+                        column->name);
-+            }
++                if (ovsdb_datum_from_json(&column_data, &column->type,
++                            column_value, NULL) != NULL) {
++                    /* In case this was a column request, remove it from the
++                     * outstanding_col_fetch_reqs */
++                    if (fetch_node->fetch_type == OVSDB_IDL_COLUMN_FETCH) {
++                        shash_find_and_delete(&table->outstanding_col_fetch_reqs,
++                                              column->name);
++                    }
 +
-+            /* Update the row */
-+            column_idx = column - table->class->columns;
-+            old = &row->old[column_idx];
++                    return ovsdb_syntax_error(fetch_reply, NULL,
++                            "Fetch reply for column %s contains bad column value",
++                            column->name);
++                }
 +
-+            if (!ovsdb_datum_equals(old, &column_data, &column->type)) {
-+                column->parse(row, &column_data);
-+                ovsdb_datum_swap(old, &column_data);
-+            }
++                /* Update the row */
++                column_idx = column - table->class->columns;
++                old = &row->old[column_idx];
 +
-+            ovsdb_datum_destroy(&column_data, &column->type);
-+            if (fetch_node->fetch_type == OVSDB_IDL_ROW_FETCH) {
-+                row->outstanding_fetch_reqs--;
++                if (!ovsdb_datum_equals(old, &column_data, &column->type)) {
++                    column->parse(row, &column_data);
++                    ovsdb_datum_swap(old, &column_data);
++                }
++
++                ovsdb_datum_destroy(&column_data, &column->type);
++                if (fetch_node->fetch_type == OVSDB_IDL_ROW_FETCH) {
++                    row->outstanding_fetch_reqs--;
++                }
 +            }
 +        }
 +    }
@@ -306,7 +315,7 @@ index ccbb449..26999b8 100644
  static struct ovsdb_idl_row *
  ovsdb_idl_get_row(struct ovsdb_idl_table *table, const struct uuid *uuid)
  {
-@@ -1296,6 +1484,7 @@ ovsdb_idl_row_create__(const struct ovsdb_idl_table_class *class)
+@@ -1296,6 +1493,7 @@ ovsdb_idl_row_create__(const struct ovsdb_idl_table_class *class)
      list_init(&row->dst_arcs);
      hmap_node_nullify(&row->txn_node);
      list_init(&row->track_node);
@@ -314,7 +323,7 @@ index ccbb449..26999b8 100644
      return row;
  }
 
-@@ -1591,6 +1780,271 @@ ovsdb_idl_get(const struct ovsdb_idl_row *row,
+@@ -1591,6 +1789,271 @@ ovsdb_idl_get(const struct ovsdb_idl_row *row,
      return ovsdb_idl_read(row, column);
  }
 
@@ -586,7 +595,7 @@ index ccbb449..26999b8 100644
  /* Returns true if the field represented by 'column' in 'row' may be modified,
   * false if it is immutable.
   *
-@@ -2296,8 +2750,9 @@ ovsdb_idl_txn_write__(const struct ovsdb_idl_row *row_,
+@@ -2296,8 +2759,9 @@ ovsdb_idl_txn_write__(const struct ovsdb_idl_row *row_,
 
      ovs_assert(row->new != NULL);
      ovs_assert(column_idx < class->n_columns);
@@ -657,7 +666,7 @@ index 4c66ae0..7305486 100644
                            const struct ovsdb_idl_column *);
 
 diff --git a/ovsdb/ovsdb-idlc.in b/ovsdb/ovsdb-idlc.in
-index 6f52c40..4ee3954 100755
+index 9feb691..ad76998 100755
 --- a/ovsdb/ovsdb-idlc.in
 +++ b/ovsdb/ovsdb-idlc.in
 @@ -255,6 +255,22 @@ struct %(s)s *%(s)s_insert(struct ovsdb_idl_txn *);
