@@ -6,7 +6,7 @@ DEPENDS = "yaml-cpp gtest i2c-tools"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-config-yaml;protocol=https"
 
-SRCREV = "d5fb658fc0b9b0f0a50f9eb28cd72bea7179394e"
+SRCREV = "449079ac2cb3df276107da64ddec8348a69e166b"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
