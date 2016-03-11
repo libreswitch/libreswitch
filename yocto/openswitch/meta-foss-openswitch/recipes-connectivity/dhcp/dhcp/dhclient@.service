@@ -1,3 +1,4 @@
+# Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
 [Unit]
 Description=DHCP client service %I
 After=systemd-user-sessions.service
@@ -10,6 +11,7 @@ SuccessExitStatus=SIGKILL
 ExecStart=/sbin/dhclient -4 -v -nw -pf /run/dhclient.%i.pid -lf /var/lib/dhcp/dhclient.%i.leases %I
 ExecStop=/sbin/dhclient -r  -lf /var/lib/dhcp/dhclient.%i.leases %I
 ExecStopPost=/bin/rm -f /var/lib/dhcp/dhclient.%i.leases
+Restart=on-abort
 
 [Install]
 WantedBy=dhclient.target
