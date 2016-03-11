@@ -19,6 +19,7 @@ inherit pythonnative python-dir
 SRC_URI += "file://systemctl-alias.sh \
     file://silent-fsck-on-boot.patch \
     file://revert-ipv6ll-address-setting.patch \
+    file://system.conf \
 "
 
 # We remove the dependency from os-release to avoid rebuilding constantly
@@ -30,6 +31,7 @@ do_install_append() {
     install -d ${D}${sysconfdir}/profile.d
     install -m 755 ${WORKDIR}/systemctl-alias.sh ${D}${sysconfdir}/profile.d/systemctl-alias.sh
     ln -s /dev/null ${D}/etc/udev/rules.d/80-net-setup-link.rules
+    install -m 644 ${WORKDIR}/system.conf ${D}${sysconfdir}/systemd/
 }
 
 # We use systemd core dump
