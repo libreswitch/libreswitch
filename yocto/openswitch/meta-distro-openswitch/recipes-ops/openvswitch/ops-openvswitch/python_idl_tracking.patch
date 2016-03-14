@@ -1,0 +1,251 @@
+diff --git a/python/ovs/db/idl.py b/python/ovs/db/idl.py
+index b6c986e..b9490e9 100644
+--- a/python/ovs/db/idl.py
++++ b/python/ovs/db/idl.py
+@@ -14,6 +14,9 @@
+ 
+ import uuid
+ 
++import six
++import collections
++
+ import ovs.jsonrpc
+ import ovs.db.parser
+ import ovs.db.schema
+@@ -406,7 +409,19 @@ class Idl(object):
+         if not new:
+             # Delete row.
+             if row:
+-                del table.rows[uuid]
++                # tracking
++                if hasattr(self._db.tables[table.name], 'track_list'):
++                    _deleted = table.rows.pop(uuid)
++                    seqno = self.change_seqno + 1
++                    if _deleted.uuid in self._db.tables[table.name].track_list:
++                        self._db.tables[table.name].track_list[
++                            _deleted.uuid].delete_seqno = seqno
++                    else:
++                        self._db.tables[table.name].track_list[
++                            _deleted.uuid] = TrackInfo(delete_seqno=seqno)
++                else:
++                    del table.rows[uuid]
++
+                 changed = True
+                 self.notify(ROW_DELETE, row)
+             else:
+@@ -418,6 +433,13 @@ class Idl(object):
+             if not row:
+                 row = self.__create_row(table, uuid)
+                 changed = True
++
++                # tracking
++                if hasattr(self._db.tables[table.name], 'track_list'):
++                    seqno = self.change_seqno + 1
++                    self._db.tables[table.name].track_list[
++                        row.uuid] = TrackInfo(create_seqno=seqno)
++
+             else:
+                 # XXX rate-limit
+                 vlog.warn("cannot add existing row %s to table %s"
+@@ -441,7 +463,10 @@ class Idl(object):
+ 
+     def __row_update(self, table, row, row_json):
+         changed = False
+-        for column_name, datum_json in row_json.iteritems():
++
++        # tracking
++        tracked_columns = []
++        for column_name, datum_json in six.iteritems(row_json):
+             column = table.columns.get(column_name)
+             if not column:
+                 # XXX rate-limit
+@@ -451,7 +476,7 @@ class Idl(object):
+ 
+             try:
+                 datum = ovs.db.data.Datum.from_json(column.type, datum_json)
+-            except error.Error, e:
++            except error.Error as e:
+                 # XXX rate-limit
+                 vlog.warn("error parsing column %s in table %s: %s"
+                           % (column_name, table.name, e))
+@@ -459,12 +484,29 @@ class Idl(object):
+ 
+             if datum != row._data[column_name]:
+                 row._data[column_name] = datum
++
++                # tracking
++                if hasattr(column, 'track'):
++                    tracked_columns.append(column_name)
++
+                 if column.alert:
+                     changed = True
+             else:
+                 # Didn't really change but the OVSDB monitor protocol always
+                 # includes every value in a row.
+                 pass
++
++        # tracking
++        if tracked_columns:
++            seqno = self.change_seqno + 1
++            if row.uuid in table.track_list:
++                table.track_list[row.uuid].columns =\
++                    table.track_list[row.uuid].columns | set(tracked_columns)
++                table.track_list[row.uuid].update_seqno = seqno
++            else:
++                table.track_list[row.uuid] =\
++                    TrackInfo(tracked_columns, update_seqno=seqno)
++
+         return changed
+ 
+     def __create_row(self, table, uuid):
+@@ -487,6 +529,108 @@ class Idl(object):
+         if txn:
+             txn._process_reply(msg)
+ 
++    def track_add_column(self, table, column):
++        """
++        Enable tracking for 'column' in 'table'
++        """
++        if table not in self._db.tables:
++            raise error.Error("table %s is not registered with idl", table)
++
++        if column not in self._db.tables[table].columns:
++            raise error.Error("column %s in table %s" +
++                              "is not registered with idl", table, column)
++
++        # set column track
++        self._db.tables[table].columns[column].track = True
++
++        # set table track list
++        if not hasattr(self._db.tables[table], 'track_list'):
++            self._db.tables[table].track_list = TrackList()
++
++    def track_remove_column(self, table, column):
++        """
++        Disable tracking for 'column' in 'table'
++        """
++        if table not in self._db.tables:
++            raise error.Error("table %s is not registered with idl", table)
++
++        if column not in self._db.tables[table].columns:
++            raise error.Error("column %s in table %s is" +
++                              "not registered with idl", table, column)
++
++        if hasattr(self._db.tables[table].columns[column], 'track'):
++            del self._db.tables[table].columns[column].track
++
++        if hasattr(self._db.tables[table], 'track_list'):
++            del self._db.tables[table].track_list
++
++    def track_add_all_columns(self, table):
++        """
++        Enable tracking for all registered 'columns' in 'table'
++        """
++        if table not in self._db.tables:
++            raise error.Error("table %s is not registered with idl", table)
++
++        for columnschema in self._db.tables[table].columns.itervalues():
++            columnschema.track = True
++
++        self._db.tables[table].track_list = TrackList()
++
++    def track_remove_all_columns(self, table):
++        """
++        Disable tracking for all registered 'columns' in 'table'
++        """
++        if table not in self._db.tables:
++            raise error.Error("table %s is not registered with idl", table)
++
++        for columnschema in self._db.tables[table].columns.itervalues():
++            if hasattr(columnschema, 'track'):
++                del columnschema.track
++
++        if hasattr(self._db.tables[table], 'track_list'):
++            del self._db.tables[table].track_list
++
++    def track_clear_table(self, table):
++        """
++        Clear all tracking data for 'table'
++        """
++        if table not in self._db.tables:
++            raise error.Error("table %s is not registered with idl", table)
++
++        if hasattr(self._db.tables[table], 'track_list'):
++            self._db.tables[table].track_list.clear()
++
++    def track_add_all(self):
++        """
++        Enable tracking for all registered 'columns'
++        for all registered 'tables'
++        """
++        for tableschema in self._db.tables.itervalues():
++            for columnschema in tableschema.columns.itervalues():
++                columnschema.track = True
++            tableschema.track_list = TrackList()
++
++    def track_clear_all(self):
++        """
++        Clear all tracking data for all registered 'tables'
++        """
++        for tableschema in self._db.tables.itervalues():
++            if hasattr(tableschema, 'track_list'):
++                tableschema.track_list.clear()
++
++    def track_get(self, table):
++        """
++        Get tracking data for 'table'
++        """
++        if table not in self._db.tables:
++            raise error.Error("table %s is not registered with idl", table)
++
++        if not hasattr(self._db.tables[table], 'track_list'):
++            raise error.Error("table %s is not being " +
++                              "tracked for changes", table)
++
++        return self._db.tables[table].track_list
++
+ 
+ def _uuid_to_row(atom, base):
+     if base.ref_table:
+@@ -1404,3 +1548,41 @@ class SchemaHelper(object):
+ 
+         table.columns = new_columns
+         return table
++
++
++class TrackInfo(object):
++    def __init__(self, columns=[], create_seqno=0,
++                 delete_seqno=0, update_seqno=0):
++        self.columns = set(columns)
++        self.create_seqno = create_seqno
++        self.delete_seqno = delete_seqno
++        self.update_seqno = update_seqno
++
++
++class TrackList(collections.MutableMapping):
++
++    def __init__(self, *args, **kwargs):
++        self.store = dict()
++        self.update(dict(*args, **kwargs))
++
++    def __getitem__(self, key):
++        assert isinstance(key, uuid.UUID)
++
++        return self.store[key]
++
++    def __setitem__(self, key, value):
++        assert isinstance(key, uuid.UUID)
++        assert isinstance(value, TrackInfo)
++
++        self.store[key] = value
++
++    def __delitem__(self, key):
++        assert isinstance(key, uuid.UUID)
++
++        del self.store[key]
++
++    def __iter__(self):
++        return iter(self.store)
++
++    def __len__(self):
++        return len(self.store)
