@@ -25,6 +25,7 @@ DEPENDS = "\
 	thrift \
 	thrift-native \
 	python-thrift \
+	libpcap \
 "
 
 RDEPENDS_${PN} = "\

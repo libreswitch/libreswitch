@@ -8,7 +8,7 @@ OPS_P4C_REPO = "github.com/p4lang/p4c-bm.git"
 SRC_URI = "\
 	git://${OPS_P4C_REPO};protocol=https;branch=ops \
 "
-SRCREV = "7f0fe25836d9fb4cfe533865b06c7bf6fbbbe89e"
+SRCREV = "e7901218fd74eeca2af6e8fbcf4d5916c0552069"
 PV = "git${SRCPV}"
 S = "${WORKDIR}/git"
 
@@ -34,10 +34,19 @@ RDEPENDS_${PN} = "\
 	thrift \
 "
 
-FILES_${PN} += "/usr/share/p4c_bm_install.tar.gz"
-
 inherit pythonnative
 inherit autotools-brokensep
+inherit setuptools
+
+do_compile() {
+    distutils_do_compile
+    base_do_compile
+}
+
+do_install() {
+    distutils_do_install
+    autotools_do_install
+}
 
 EXTRA_OECONF = "CPPFLAGS='${CPPFLAGS} -DHOST_BYTE_ORDER_CALLER'"
 
@@ -49,12 +58,3 @@ export PYTHON_SITEPACKAGES_DIR
 
 LIBTOOL = "${B}/${HOST_SYS}-libtool"
 EXTRA_OEMAKE = "'LIBTOOL=${LIBTOOL}' PFX=${PKG_CONFIG_SYSROOT_DIR} STAGING_DIR=${STAGING_DIR_NATIVE}"
-
-# FIXME: re-install (copy) the python package from sstate after make clean
-do_expand_p4c_bm() {
-	# p4c_bm_install.tar.gz contains files relative to / and they
-	# end up in ${STAGING_LIBDIR}/... after this
-	tar -C / -xvzf ${STAGING_DATADIR}/p4c_bm_install.tar.gz
-}
-
-addtask expand_p4c_bm after do_populate_root
