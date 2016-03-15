@@ -2,10 +2,12 @@ SUMMARY = "Platform Configuration files for OpenSwitch"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
+DEPENDS = "yaml-cpp gtest i2c-tools"
+
 SRC_URI = "git://git.openswitch.net/openswitch/ops-hw-config;protocol=http \
 "
 
-SRCREV = "984a8619a1b9281a1a8fff798352d72ce4a46658"
+SRCREV = "b040f4aa0bb9bcc12b06416e6cddd8def127c3fb"
 
 PLATFORM_PATH?="${MACHINE}"
 
@@ -15,7 +17,7 @@ PV = "git${SRCPV}"
 
 S = "${WORKDIR}/git"
 
-do_install () {
+do_install_append () {
     install -d ${D}${sysconfdir}/openswitch/platform/${PLATFORM_PATH}
     for f in ${S}/${PLATFORM_PATH}/*.yaml ; do
         d=`dirname "$f"`
@@ -29,6 +31,6 @@ do_install () {
     done
 }
 
-FILES_${PN} = "${sysconfdir}"
+FILES_${PN} += "${sysconfdir}"
 
-inherit openswitch
+inherit openswitch cmake
