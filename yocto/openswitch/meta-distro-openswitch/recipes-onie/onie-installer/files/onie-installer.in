@@ -29,6 +29,7 @@ echo -e "${bold}OpenSwitch ONIE installer (version $installer_version) for $MACH
 attr_bitmask="0x0000000000000001"
 label="OpenSwitch"
 config_label="$label Conf"
+diags_label="$label Diags"
 primary_label="$label 1"
 secondary_label="$label 2"
 mount_point=/mnt/ops
@@ -67,9 +68,19 @@ setup_nos_partitions()
 
     # Find if we have a config partition
     CONFIG_PARTITION_NUMBER=$(get_partition_number "$config_label")
+    DIAGS_PARTITION_NUMBER=$(get_partition_number "$diags_label")
     PRIMARY_PARTITION_NUMBER=$(get_partition_number "$primary_label")
     SECONDARY_PARTITION_NUMBER=$(get_partition_number "$secondary_label")
+
     if ! $OPS_CLEAN_INSTALL && [ -n "$CONFIG_PARTITION_NUMBER" ]; then
+        # Check that either all the partitions existed before, or none. Otherwise require a clean installation.
+        #
+        if ! ( [ -n "$CONFIG_PARTITION_NUMBER" ] && [ -n "$DIAGS_PARTITION_NUMBER" ] && [ -n "$PRIMARY_PARTITION_NUMBER" ] && [ -n "$SECONDARY_PARTITION_NUMBER” ] ) \
+          || ! ( [ -z "$CONFIG_PARTITION_NUMBER" ] && [ -z "$DIAGS_PARTITION_NUMBER" ] && [ -z "$PRIMARY_PARTITION_NUMBER" ] && [ -z "$SECONDARY_PARTITION_NUMBER” ] ); then
+          echo -e "${bold} --- Detected incorrect number of partitions, please clean your ONIE installation or perform an OPS clean install --- ${low}"
+          exit 1
+        fi
+
         echo
         echo -e "${bold} --- Existing installation found, installing on the inactive partition --- ${low}"
 
@@ -114,11 +125,52 @@ setup_nos_partitions()
         fi
 
         if ! $OPS_CLEAN_INSTALL ; then
-            echo
-            echo -e "${bold} --- Not previous installation found, performing a clean installation --- ${low}"
+                echo
+                echo -e "${bold} --- Not previous installation found, performing a clean installation --- ${low}"
         else
-            echo
-            echo -e "${bold} --- Performing a forced clean installation --- ${low}"
+                echo
+                echo -e "${bold} --- Performing a forced clean installation --- ${low}"
+
+                if [ -n "$CONFIG_PARTITION_NUMBER" ] ; then
+                  echo
+                  echo -e "${bold} --- Removing config partition --- ${low}"
+                  sgdisk -d ${CONFIG_PARTITION_NUMBER} ${NOS_DISK} || {
+                          echo -e "${red}ERROR${normal}: Failed to delete partition ${NOS_DISK}${CONFIG_PARTITION_NUMBER}!"
+                          exit 1
+                  }
+                fi
+
+                if [ -n "$DIAGS_PARTITION_NUMBER" ] ; then
+                  echo
+                  echo -e "${bold} --- Removing diags partition --- ${low}"
+                  sgdisk -d ${DIAGS_PARTITION_NUMBER} ${NOS_DISK} || {
+                          echo -e "${red}ERROR${normal}: Failed to delete partition ${NOS_DISK}${DIAGS_PARTITION_NUMBER}!"
+                          exit 1
+                  }
+                fi
+
+                if [ -n "$PRIMARY_PARTITION_NUMBER" ] ; then
+                  echo
+                  echo -e "${bold} --- Removing primary partition --- ${low}"
+                  sgdisk -d ${PRIMARY_PARTITION_NUMBER} ${NOS_DISK} || {
+                          echo -e "${red}ERROR${normal}: Failed to delete partition ${NOS_DISK}${PRIMARY_PARTITION_NUMBER}!"
+                          exit 1
+                  }
+                fi
+
+                if [ -n "$SECONDARY_PARTITION_NUMBER" ] ; then
+                  echo
+                  echo -e "${bold} --- Removing secondary partition --- ${low}"
+                  sgdisk -d ${SECONDARY_PARTITION_NUMBER} ${NOS_DISK} || {
+                          echo -e "${red}ERROR${normal}: Failed to delete partition ${NOS_DISK}${SECONDARY_PARTITION_NUMBER}!"
+                          exit 1
+                  }
+                fi
+                partprobe ${NOS_DISK}
+                CONFIG_PARTITION_NUMBER=""
+                DIAGS_PARTITION_NUMBER=""
+                PRIMARY_PARTITION_NUMBER=""
+                SECONDARY_PARTITION_NUMBER=""
         fi
 
         # Create the partitions
@@ -137,8 +189,23 @@ setup_nos_partitions()
             partprobe ${NOS_DISK}
         fi
 
+        if [ -z "$DIAGS_PARTITION_NUMBER" ] ; then
+            DIAGS_PARTITION_NUMBER=$((${CONFIG_PARTITION_NUMBER} + 1))
+            echo
+            echo -e "${bold} --- Creating the diags partition (#${DIAGS_PARTITION_NUMBER}, label $diags_label) --- ${low}"
+            first_sector=$(($(sgdisk -i $((${DIAGS_PARTITION_NUMBER} - 1)) ${NOS_DISK} | grep 'Last sector:' | awk '{ print $3 }') + 1))
+            sgdisk --new=${DIAGS_PARTITION_NUMBER}:${first_sector}:+${DIAGS_PARTITION_SIZE} \
+               --typecode=${DIAGS_PARTITION_NUMBER}:8300 \
+               --attributes=${DIAGS_PARTITION_NUMBER}:=:$attr_bitmask \
+               --change-name=${DIAGS_PARTITION_NUMBER}:"$diags_label"  ${NOS_DISK} || {
+                    echo -e "${red}ERROR${normal}: Failed to create partition ${NOS_DISK}${DIAGS_PARTITION_NUMBER}!"
+                    exit 1
+                }
+            partprobe ${NOS_DISK}
+        fi
+
         if [ -z "$PRIMARY_PARTITION_NUMBER" ] ; then
-            PRIMARY_PARTITION_NUMBER=$((${CONFIG_PARTITION_NUMBER} + 1))
+            PRIMARY_PARTITION_NUMBER=$((${DIAGS_PARTITION_NUMBER} + 1))
             echo
             echo -e "${bold} --- Creating the primary partition (#${PRIMARY_PARTITION_NUMBER}, label $primary_label) --- ${low}"
             first_sector=$(($(sgdisk -i $((${PRIMARY_PARTITION_NUMBER} - 1)) ${NOS_DISK} | grep 'Last sector:' | awk '{ print $3 }') + 1))
@@ -171,6 +238,9 @@ setup_nos_partitions()
         echo
         echo -e "${bold} --- Formatting configuration partition in ext4 --- ${low}"
         mkfs.ext4 -L "$config_label" -q ${NOS_DISK}${CONFIG_PARTITION_NUMBER}
+        echo
+        echo -e "${bold} --- Formatting diagnostics partition in ext4 --- ${low}"
+        mkfs.ext4 -L "$diags_label" -q ${NOS_DISK}${DIAGS_PARTITION_NUMBER}
         echo
         echo -e "${bold} --- Formatting primary partition in ext4 --- ${low}"
         mkfs.ext4 -L "$primary_label" -q ${NOS_DISK}${PRIMARY_PARTITION_NUMBER}
