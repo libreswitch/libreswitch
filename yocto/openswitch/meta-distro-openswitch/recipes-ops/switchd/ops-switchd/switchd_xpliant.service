@@ -1,0 +1,18 @@
+# Copyright (C) 2016, Cavium, Inc. All Rights Reserved.
+
+[Unit]
+Description=OpenSwitch Switch Daemon for Xpliant
+After=ovsdb-server.service ops-init.service
+
+[Service]
+Type=forking
+Environment="AAPL_ROM_PATH=/etc/xpliant/platform/aapl/"
+# HOST_PACKET_IF_MODE={ TAP_DMA, TAP_NETDEV, KNET_NETDEV }
+Environment="HOST_PACKET_IF_MODE=TAP_DMA"
+ExecStart=/sbin/ip netns exec swns /usr/sbin/ops-switchd --no-chdir --pidfile --detach -vSYSLOG:INFO
+WorkingDirectory=/var/run/openvswitch
+PIDFile=/var/run/openvswitch/ops-switchd.pid
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
