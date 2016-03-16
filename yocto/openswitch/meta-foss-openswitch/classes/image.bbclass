@@ -474,52 +474,60 @@ python write_version_detail () {
     import string
     import re
     from urlparse import urlparse
+    import yaml
 
     srctype_nomodify_list = ["https", "http", "ftp", "file"]
 
     installed_pkg_list = image_list_installed_packages(d)
 
+    pkgs_info = []
+
+    for pkg in installed_pkg_list.split('\n'):
+        pkg_info = {}
+
+        pkg_info["PKG"] = pkg
+
+        sdata = oe.packagedata.read_subpkgdata(pkg, d)
+
+        if 'SRCREV' in sdata.keys():
+            pkg_info["SRCREV"] = sdata['SRCREV']
+            if (("PV" in sdata.keys()) and ((sdata['PV']).endswith('999'))):
+                pkg_info["SRCREV"] = sdata['SRCREV']+"~DIRTY"
+        else:
+            pkg_info["SRCREV"] = "INVALID"
+
+        if 'PV' in sdata.keys():
+            pkg_info["PV"] = sdata['PV']
+        else:
+            pkg_info["PV"] = "NA"
+
+        if 'SRC_URI' in sdata.keys():
+            full_uri_str = ''.join(sdata['SRC_URI'])
+            primary_uri_str = (full_uri_str.split())[0]
+
+            parsed_url = urlparse(primary_uri_str)
+            pkg_info["TYPE"] = parsed_url.scheme
+
+            if parsed_url.scheme not in srctype_nomodify_list:
+                primary_uri_str = primary_uri_str.replace(parsed_url.scheme,
+                'https', 1)
+
+            #Remove the "protocol=" clause from the URL
+            primary_uri_str = re.sub(r';protocol=(.*);?', '', primary_uri_str)
+
+            pkg_info["SRC_URL"] = str(primary_uri_str)
+        else:
+            pkg_info["TYPE"] = "other"
+            pkg_info["SRC_URL"] = "NA"
+
+        pkgs_info.append(pkg_info)
+
     with open(d.getVar('VERSION_DETAIL', True), 'w+') as version_detail:
-        for pkg in installed_pkg_list.split('\n'):
-            version_detail.write("PKG=%s" % pkg)
-
-            sdata = oe.packagedata.read_subpkgdata(pkg, d)
-
-            if 'SRCREV' in sdata.keys():
-                version_detail.write(" SRCREV=%s" % (sdata['SRCREV']))
-                if (("PV" in sdata.keys()) and ((sdata['PV']).endswith('999'))):
-                    version_detail.write("~DIRTY")
-            else:
-                version_detail.write(" SRCREV=INVALID")
-
-            if 'PV' in sdata.keys():
-                version_detail.write(" PV=%s" % (sdata['PV']))
-            else:
-                version_detail.write(" PV=NA")
-
-            if 'SRC_URI' in sdata.keys():
-                full_uri_str = ''.join(sdata['SRC_URI'])
-                primary_uri_str = (full_uri_str.split())[0]
-
-                parsed_url = urlparse(primary_uri_str)
-                version_detail.write(" TYPE=%s" % parsed_url.scheme)
-
-                if parsed_url.scheme not in srctype_nomodify_list:
-                    primary_uri_str = primary_uri_str.replace(parsed_url.scheme, 'https', 1)
-
-                #Remove the "protocol=" clause from the URL
-                primary_uri_str = re.sub(r';protocol=(.*);?', '', primary_uri_str)
-
-                version_detail.write(" SRC_URL=%s" % str(primary_uri_str))
-            else:
-                version_detail.write(" TYPE=other")
-                version_detail.write(" SRC_URL=NA")
-
-            version_detail.write("\n")
+        yaml.dump_all(pkgs_info, version_detail, default_flow_style=False)
 
     #copy the image manifest & version_detail files to the image at "/var/lib/"
     copyfile((d.getVar('IMAGE_MANIFEST', True)), (d.getVar('IMAGE_ROOTFS', True) + "/var/lib/image.manifest"))
-    copyfile((d.getVar('VERSION_DETAIL', True)), (d.getVar('IMAGE_ROOTFS', True) + "/var/lib/version_detail"))
+    copyfile((d.getVar('VERSION_DETAIL', True)), (d.getVar('IMAGE_ROOTFS', True) + "/var/lib/version_detail.yaml"))
 }
 
 # Can be use to create /etc/timestamp during image construction to give a reasonably 
