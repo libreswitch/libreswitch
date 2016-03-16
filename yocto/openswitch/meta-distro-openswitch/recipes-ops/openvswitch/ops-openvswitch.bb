@@ -6,7 +6,6 @@ DEPENDS = "openssl python perl systemd libtool libyaml jemalloc ops"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-openvswitch;protocol=http \
    file://ovsdb-server.service \
-   file://enable-jemalloc-ovsdb-server.patch \
    file://partial-map-updates.patch \
    file://on-demand-fetching.patch \
    file://compound-indexes.patch \
@@ -32,10 +31,9 @@ RDEPENDS_ops-ovsdb = "ops"
 RDEPENDS_python-ops-ovsdb = "python-io python-netclient python-datetime \
   python-logging python-threading python-math python-fcntl python-resource"
 
-# ops-openvswitch was patched to support the --enable-jemalloc flag
 EXTRA_OECONF += "TARGET_PYTHON=${bindir}/python \
                  TARGET_PERL=${bindir}/perl \
-                 --disable-static --enable-shared --enable-jemalloc \
+                 --disable-static --enable-shared LIBS=-ljemalloc \
                  ${@bb.utils.contains('MACHINE_FEATURES', 'ops-container', '--enable-simulator-provider', '',d)} \
                  "
 FILES_ops-ovsdb = "/run /var/run /var/log /var/volatile ${bindir}/ovsdb* \
