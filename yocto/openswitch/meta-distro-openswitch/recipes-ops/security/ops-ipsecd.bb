@@ -24,4 +24,8 @@ do_install_append() {
      install -m 0644 ${WORKDIR}/ops-ipsecd.service ${D}${systemd_unitdir}/system/
 }
 
+do_unit_test_append() {
+     do_gtest_harness tests/ops-ipsecd-ut
+}
+
 inherit openswitch systemd cmake
