@@ -151,4 +151,3 @@ RCONFLICTS_${PN}-telnetd += "netkit-telnetd"
 RPROVIDES_${PN}-telnetd = "telnetd"
 
 FILES_${PN}-inetd = "${bindir}/inetd.${BPN}"
-

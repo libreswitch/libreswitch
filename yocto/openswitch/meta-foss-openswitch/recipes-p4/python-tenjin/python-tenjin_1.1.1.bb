@@ -13,6 +13,8 @@ SRC_URI[sha256sum] = "a5e044f3e2c0fc5f5f1162273d541b8f592036c7f9ef99444ff540704e
 
 DEPENDS = "python-native"
 
-inherit setuptools native
+inherit setuptools
 
 S = "${WORKDIR}/${SRCNAME}-${PV}"
+
+BBCLASSEXTEND = "native"

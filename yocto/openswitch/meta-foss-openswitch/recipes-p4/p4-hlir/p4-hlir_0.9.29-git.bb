@@ -18,10 +18,11 @@ SRC_URI = "https://github.com/p4lang/p4-hlir/archive/${SRC_COMMIT}.tar.gz"
 SRC_URI[md5sum] = "f64460688df9eb6837ece6d31b238658"
 SRC_URI[sha256sum] = "c9f2bb9df98cdf5df9da2c06e0f4861b96d709501628fa98e9d9b693d441b88b"
 
-DEPENDS = "python-native python-ply"
+DEPENDS = "python-ply"
+DEPENDS_class-native = "python-ply-native"
 
-inherit setuptools native
+inherit setuptools
 
 S = "${WORKDIR}/p4-hlir-${SRC_COMMIT}"
 
-# BBCLASSEXTEND = "native"
+BBCLASSEXTEND = "native"

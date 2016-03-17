@@ -15,4 +15,4 @@ SRC_URI[sha256sum] = "5d9b1a9dd66f1fe28bbd98e4d8ed1a22d8da0d08d902407dcc4a0702c8
 
 inherit autotools
 
-BBCLASSEXTEND = "nativesdk"
+BBCLASSEXTEND = "native nativesdk"

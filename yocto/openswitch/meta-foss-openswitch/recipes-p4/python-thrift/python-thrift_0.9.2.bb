@@ -14,3 +14,5 @@ SRC_URI[sha256sum] = "08f665e4b033c9d2d0b6174d869273104362c80e77ee4c01054a74141e
 S = "${WORKDIR}/${SRCNAME}-${PV}"
 
 inherit setuptools
+
+BBCLASSEXTEND = "native"

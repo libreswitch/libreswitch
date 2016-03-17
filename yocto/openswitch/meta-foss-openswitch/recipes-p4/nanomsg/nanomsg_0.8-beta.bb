@@ -25,3 +25,8 @@ DEPENDS = " \
 
 LIBTOOL = "${B}/${HOST_SYS}-libtool"
 EXTRA_OEMAKE = "'LIBTOOL=${LIBTOOL}'"
+
+DEPENDS_class-native = "libtool-native"
+EXTRA_OEMAKE_class-native = "LIBTOOL=${BUILD_SYS}-libtool"
+
+BBCLASSEXTEND = "native"
