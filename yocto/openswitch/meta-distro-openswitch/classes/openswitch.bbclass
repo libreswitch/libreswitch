@@ -16,8 +16,6 @@ def enable_devenv_debugging(d):
 
 DEBUG_BUILD = "${@enable_devenv_debugging(d)}"
 
-ORIG_DEBUG_FLAGS := "${DEBUG_FLAGS}"
-
 # Enable profiling for devenv recipes (meaning they are in external src)
 def enable_devenv_profiling(d):
     externalsrc = d.getVar('EXTERNALSRC', True)
@@ -25,17 +23,17 @@ def enable_devenv_profiling(d):
         if os.path.isfile(os.path.join(d.getVar('TOPDIR', True), 'devenv-coverage-enabled')):
             d.setVar("INHIBIT_PACKAGE_STRIP", "1")
             d.prependVarFlag('do_compile', 'prefuncs', "profile_compile_prefunc ")
-            return "-fprofile-arcs -ftest-coverage"
+            return "-fprofile-arcs -ftest-coverage -fdebug-prefix-map=${@d.getVar('S')}=/usr/src/debug/${BPN}/${PV}-${PR} "
         # Inside the devenv, we need symbol remmaping to get the split debug packages to work properly
-        return "${ORIG_DEBUG_FLAGS} -fdebug-prefix-map=${@d.getVar('S')}=/usr/src/debug/${BPN}/${PV}-${PR}"
-    return "${ORIG_DEBUG_FLAGS}"
+        return "-fdebug-prefix-map=${@d.getVar('S')}=/usr/src/debug/${BPN}/${PV}-${PR}"
+    return ""
 
 python profile_compile_prefunc() {
     bb.warn('Profiling enabled for package %s on the devenv' % (d.getVar('PN', True)))
 }
 
 # Debug flags is used by DEBUG_OPTIMIZATION that is used by SELECTED_OPTIMIZATION when DEBUG_BUILD is 1
-DEBUG_FLAGS = "${@enable_devenv_profiling(d)}"
+DEBUG_FLAGS += "${@enable_devenv_profiling(d)}"
 
 # Support for static analysis using HP Fortify
 inherit python-dir
