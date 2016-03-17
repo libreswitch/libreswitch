@@ -626,6 +626,7 @@ testenv_run: _testenv_header
 	$(V) $(MAKE) export_docker_image $(TOPOLOGY_TEST_IMAGE)
 	$(V) $(SUDO) rm -Rf $(BUILDDIR)/test/$(TESTSUITE)
 	$(V) $(MAKE) _testenv_rerun
+	$(V) $(SUDO) modprobe bonding
 
 ifeq (testenv_rerun,$(firstword $(MAKECMDGOALS)))
   $(eval $(call PARSE_TWO_ARGUMENTS,testenv_rerun))
@@ -812,6 +813,7 @@ _devenv_ct_init:
 	$(V) if [ ! -f .sandbox_uuid ] ; then \
 	  echo "$$($(UUIDGEN_NATIVE) -t)" >.sandbox_uuid; \
 	fi
+	$(V) $(SUDO) modprobe bonding
 
 # Sandbox unique ID is used as a prefix to the name
 # while creating docker instances to run tests.
