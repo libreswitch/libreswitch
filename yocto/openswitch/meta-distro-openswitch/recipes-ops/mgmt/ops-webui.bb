@@ -21,9 +21,8 @@ RDEPENDS_${PN} = "lighttpd"
 
 do_compile() {
     ./tools/scripts/extract-node-tars
-    oe_runnpm run test
-    oe_runnpm run buildprod
     oe_runnpm run testcover
+    oe_runnpm run buildprod
 }
 
 do_install() {
