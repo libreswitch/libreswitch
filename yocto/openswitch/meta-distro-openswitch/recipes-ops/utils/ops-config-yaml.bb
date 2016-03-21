@@ -14,4 +14,4 @@ PV = "git${SRCPV}"
 
 S = "${WORKDIR}/git"
 
-inherit openswitch cmake
+inherit openswitch
