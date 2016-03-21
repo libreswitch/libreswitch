@@ -16,8 +16,8 @@ HOME_URL="http://www.openswitch.net"
 # BUILD_ID = "${@get_build_id(d)}"
 
 # BUILD_ID for the developer's build.
-BUILD_ID = "${MACHINE}-${DISTRO_SHORTNAME}-${METADATA_BRANCH}"
-BUILD_ID .= "-${DISTRO_VERSION}-${DATETIME}-dev"
+BUILD_ID = "${MACHINE}-${DISTRO_SHORTNAME}-${DISTRO_VERSION}"
+BUILD_ID .= "-${METADATA_BRANCH}-${DATETIME}-dev"
 
 # BUILD_ID will be updated by the build process through build_info.conf.
 include build_info.conf
