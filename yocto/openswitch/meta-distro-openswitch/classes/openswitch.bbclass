@@ -28,6 +28,9 @@ def enable_devenv_profiling(d):
         return "-fdebug-prefix-map=${@d.getVar('S')}=/usr/src/debug/${BPN}/${PV}-${PR}"
     return ""
 
+# We use machine specific paths on the debug-prefix maps, so we want to avoid trashing the shared states
+enable_devenv_profiling[vardepvalue] = ""
+
 python profile_compile_prefunc() {
     bb.warn('Profiling enabled for package %s on the devenv' % (d.getVar('PN', True)))
 }
