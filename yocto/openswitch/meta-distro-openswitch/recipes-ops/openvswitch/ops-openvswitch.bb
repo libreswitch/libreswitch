@@ -95,7 +95,6 @@ do_install_append() {
     install -m 0644 lib/libopenvswitch.pc ${D}/${libdir}/pkgconfig/
     install -m 0644 ofproto/libofproto.pc ${D}/${libdir}/pkgconfig/
     install -m 0644 ovsdb/libovsdb.pc ${D}/${libdir}/pkgconfig/
-    install -m 0644 plugins/libplugins.pc ${D}/${libdir}/pkgconfig/
     install -d ${D}${systemd_unitdir}/system
     install -d ${D}/var/local/openvswitch
     install -m 0644 ${WORKDIR}/ovsdb-server.service ${D}${systemd_unitdir}/system/
