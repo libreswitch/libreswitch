@@ -27,9 +27,7 @@ def enable_devenv_profiling(d):
         # Inside the devenv, we need symbol remmaping to get the split debug packages to work properly
         return "-fdebug-prefix-map=${@d.getVar('S')}=/usr/src/debug/${BPN}/${PV}-${PR}"
     return ""
-
-# We use machine specific paths on the debug-prefix maps, so we want to avoid trashing the shared states
-enable_devenv_profiling[vardepvalue] = ""
+enable_devenv_profiling[vardepsexclude] = "TOPDIR S"
 
 python profile_compile_prefunc() {
     bb.warn('Profiling enabled for package %s on the devenv' % (d.getVar('PN', True)))
@@ -81,6 +79,7 @@ def get_cmake_c_compiler(d):
         if os.path.isfile(os.path.join(d.getVar('TOPDIR', True), 'devenv-sca-enabled')):
             return "${WORKDIR}/fortify-gcc"
     return "${CCACHE}${HOST_PREFIX}gcc"
+get_cmake_c_compiler[vardepsexclude] = "TOPDIR"
 
 def get_cmake_cxx_compiler(d):
     externalsrc = d.getVar('EXTERNALSRC', True)
@@ -88,6 +87,7 @@ def get_cmake_cxx_compiler(d):
         if os.path.isfile(os.path.join(d.getVar('TOPDIR', True), 'devenv-sca-enabled')):
             return "${WORKDIR}/fortify-g++"
     return "${CCACHE}${HOST_PREFIX}g++"
+get_cmake_cxx_compiler[vardepsexclude] = "TOPDIR"
 
 export CC = "${@get_cmake_c_compiler(d)} ${HOST_CC_ARCH}${TOOLCHAIN_OPTIONS}"
 export CXX = "${@get_cmake_cxx_compiler(d)} ${HOST_CC_ARCH}${TOOLCHAIN_OPTIONS}"
