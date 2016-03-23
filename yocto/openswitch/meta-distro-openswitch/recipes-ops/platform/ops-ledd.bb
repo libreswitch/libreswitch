@@ -2,7 +2,7 @@ SUMMARY = "OpenSwitch LED Daemon"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
-DEPENDS = "ops-hw-config ops-ovsdb ops-cli"
+DEPENDS = "ops-hw-config ops-ovsdb ops-cli ops-supportability"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-ledd;protocol=http \
            file://ops-ledd.service \
