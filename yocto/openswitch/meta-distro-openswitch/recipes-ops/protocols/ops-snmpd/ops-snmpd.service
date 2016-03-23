@@ -1,0 +1,14 @@
+# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+
+[Unit]
+Description=OpenSwitch snmpd Module Daemon
+After=ovsdb-server.service ops-init.service snmpd.service
+
+[Service]
+ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-snmpd.pid
+ExecStart=/usr/bin/ops-snmpd --detach --pidfile
+PIDFile=/var/run/openvswitch/ops-snmpd.pid
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target
