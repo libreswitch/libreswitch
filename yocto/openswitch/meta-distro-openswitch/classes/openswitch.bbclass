@@ -15,6 +15,7 @@ def enable_devenv_debugging(d):
     return "0"
 
 DEBUG_BUILD = "${@enable_devenv_debugging(d)}"
+TOPDIR[vardepvalue] = ""
 
 # Enable profiling for devenv recipes (meaning they are in external src)
 def enable_devenv_profiling(d):
@@ -70,6 +71,7 @@ EOF
         chmod +x ${WORKDIR}/fortify-${c}
     done
 }
+generate_sca_wrappers[vardepsexclude] = "TOPDIR"
 
 addtask generate_sca_wrappers after do_patch before do_configure
 
