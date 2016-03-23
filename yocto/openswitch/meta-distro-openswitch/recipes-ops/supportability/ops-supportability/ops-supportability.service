@@ -1,0 +1,14 @@
+# Copyright (C) 2016 Hewlett Packard Enterprise Development LP
+
+[Unit]
+Description=OpenSwitch Supportability Daemon
+After=ovsdb-server.service ops-init.service
+
+[Service]
+Type=simple
+ExecStartPre=/bin/rm -f /var/run/ops_supportability.pid
+ExecStart=/usr/bin/ops_supportability
+PIDFile=/var/run/ops_supportability.pid
+
+[Install]
+WantedBy=multi-user.target

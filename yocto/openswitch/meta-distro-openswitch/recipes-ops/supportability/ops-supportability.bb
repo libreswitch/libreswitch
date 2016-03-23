@@ -6,7 +6,7 @@ DEPENDS = "ops-ovsdb libyaml ops-cli"
 
 RDEPENDS_${PN} = "python-argparse python-json python-ops-ovsdb python-distribute python-pyyaml python-systemd"
 
-SRC_URI = "git://git.openswitch.net/openswitch/ops-supportability;protocol=https"
+SRC_URI = "git://git.openswitch.net/openswitch/ops-supportability;protocol=https  file://ops-supportability.service"
 
 SRCREV = "ccc6d5cc579774943c2fce38ce9cef94a14061e1"
 
@@ -36,8 +36,12 @@ do_install() {
 }
 
 do_install_append(){
+
    install -d   ${D}/etc/openswitch/supportability
    install -d   ${D}/usr/bin
+   install -d   ${D}${systemd_unitdir}/system
+
+   install -c -m 0644 ${WORKDIR}/ops-supportability.service ${D}${systemd_unitdir}/system/
    install -c -m 0644 ${S}/conf/*.yaml ${D}/etc/openswitch/supportability/
    install -c -m 0444 ${S}/conf/ops_showtech.yaml ${D}/etc/openswitch/supportability/ops_showtech.defaults.yaml
    install -c -m 755 ${S}/scripts/*   ${D}/usr/bin/
@@ -47,3 +51,7 @@ FILES_${PN} += "/usr/lib/cli/plugins/ \
                 /etc/openswitch/supportability"
 
 SYSTEMD_PACKAGES = "${PN}"
+
+SYSTEMD_SERVICE_${PN} = "ops-supportability.service"
+
+inherit openswitch setuptools systemd
