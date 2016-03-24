@@ -1,0 +1,12 @@
+[Unit]
+Description=Fast kexec reboot of the existing kernel and rootfs
+Documentation=man:kexec(8)
+DefaultDependencies=no
+Before=shutdown.target umount.target final.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/kexec -l /boot/bzImage --reuse-cmdline
+
+[Install]
+WantedBy=kexec.target
