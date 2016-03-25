@@ -1,0 +1,14 @@
+--- a/parser/Makefile	2016-03-29 19:40:52.601783563 +0200
++++ b/parser/Makefile	2016-03-29 19:41:07.989783148 +0200
+@@ -27,9 +27,9 @@
+ LOCALEDIR=/usr/share/locale
+ MANPAGES=apparmor.d.5 apparmor.7 apparmor_parser.8 subdomain.conf.5
+ 
+-YACC	:= /usr/bin/bison
++YACC	:= bison
+ YFLAGS	:= -d
+-LEX	:= /usr/bin/flex
++LEX	:= flex
+ LEXFLAGS = -B -v
+ WARNINGS = -Wall
+ EXTRA_WARNINGS = -Wsign-compare -Wmissing-field-initializers -Wformat-security -Wunused-parameter

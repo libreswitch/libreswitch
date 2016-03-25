@@ -1,0 +1,11 @@
+--- a/parser/Makefile 2016-03-25 11:11:45.807843796 +0100
++++ b/parser/Makefile	2016-03-25 11:11:51.639843639 +0100
+@@ -95,7 +95,7 @@
+   INCLUDE_APPARMOR =
+   APPARMOR_H =
+ else
+-  LIBAPPARMOR_SRC = ../libraries/libapparmor/
++  LIBAPPARMOR_SRC = ../libraries/libapparmor
+   LOCAL_LIBAPPARMOR_INCLUDE = $(LIBAPPARMOR_SRC)/include
+   LOCAL_LIBAPPARMOR_LDPATH = $(LIBAPPARMOR_SRC)/src/.libs
+ 
