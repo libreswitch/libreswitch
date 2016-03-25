@@ -9,7 +9,7 @@ PV = "git${SRCPV}"
 
 SRC_URI = "gitsm://git.openswitch.net/openswitch/ops-switchd-p4switch-plugin;protocol=http"
 
-SRCREV = "ee94e9d0f362b6e834abf9a0692f60413309f875"
+SRCREV = "299a07a69a28708229e5d615a727714af602c46e"
 
 S = "${WORKDIR}/git"
 
