@@ -42,7 +42,11 @@ EXTRA_OECONF_remove = "--without-python"
 EXTRA_OECONF += "with-python"
 
 # Enable Audit framework on OpenSwitch
-PACKAGECONFIG += "audit"
+PACKAGECONFIG_append += "audit"
+
+# Make sure to only build against AppArmor if we want to
+PACKAGECONFIG[apparmor] = "--enable-apparmor,--disable-apparmor,apparmor"
+PACKAGECONFIG_append += "${@bb.utils.contains('DISTRO_FEATURES', 'apparmor', 'apparmor', '', d)}"
 
 PACKAGES =+ "python-${PN}-dbg python-${PN} python-${PN}-dev"
 
