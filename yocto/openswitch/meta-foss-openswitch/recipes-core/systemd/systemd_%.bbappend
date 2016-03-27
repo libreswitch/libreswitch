@@ -65,4 +65,3 @@ FILES_python-${PN}-dev += "${libdir}/${PYTHON_DIR}/site-packages/systemd/*.la"
 #		exit 0;
 #	fi
 #}
-

@@ -20,7 +20,7 @@ SRC_URI += " \
 
 PR_append = "_openswitch"
 
-# We break down valgrind in smaller packages so that we can pull in only the 
+# We break down valgrind in smaller packages so that we can pull in only the
 # tools that we really need. This is useful in RAM-bound file systems
 
 PACKAGES = " ${PN}-staticdev \
@@ -28,7 +28,7 @@ PACKAGES = " ${PN}-staticdev \
   ${PN}-helgrind ${PN}-exp-sgcheck ${PN}-exp-dhat ${PN}-drd ${PN}-lackey \
   ${PN}-exp-bbv ${PN}-callgrind \
   ${PN} ${PN}-dbg ${PN}-dev ${PN}-doc ${PN}-locale \
-" 
+"
 
 FILES_${PN}-nulgrind = "/usr/lib/valgrind/*none*"
 FILES_${PN}-cachegrind = "/usr/lib/valgrind/*cachegrind*"
@@ -41,4 +41,3 @@ FILES_${PN}-drd = "/usr/lib/valgrind/*drd*"
 FILES_${PN}-lackey = "/usr/lib/valgrind/*lackey*"
 FILES_${PN}-exp-bbv = "/usr/lib/valgrind/*exp-bbv*"
 FILES_${PN}-callgrind = "/usr/lib/valgrind/*callgrind*"
-

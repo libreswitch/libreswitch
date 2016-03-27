@@ -4,4 +4,3 @@ PR_append = "_openswitch"
 
 RRECOMMENDS_${PN} += "kernel-module-xt-nat \
 "
-
