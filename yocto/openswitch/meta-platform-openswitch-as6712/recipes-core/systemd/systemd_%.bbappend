@@ -1,6 +1,6 @@
 # Copyright (C) 2015 Hewlett Packard Enterprise Development LP
 
-PR_append = "_as5712"
+PR_append = "_as6712"
 
 FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 
@@ -18,4 +18,3 @@ do_install_append() {
     install -d ${D}${sysconfdir}/systemd/system/kexec.target.wants/
     ln -sf /lib/systemd/system/kexec-reboot.service ${D}${sysconfdir}/systemd/system/kexec.target.wants/kexec-reboot.service
 }
-

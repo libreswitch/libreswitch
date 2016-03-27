@@ -11,4 +11,3 @@ SRC_URI += "file://ops-fragment.cfg \
 	file://openvswitch.cfg \
         file://vmware-guest.cfg \
 "
-

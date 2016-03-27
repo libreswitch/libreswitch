@@ -12,4 +12,3 @@ SRC_URI += "file://ops-fragment.cfg \
         file://strongswan-fragment.cfg \
         file://ops-audit.cfg \
 "
-
