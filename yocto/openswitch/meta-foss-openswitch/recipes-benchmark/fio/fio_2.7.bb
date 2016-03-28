@@ -10,20 +10,32 @@ SECTION = "console/tests"
 LICENSE = "GPLv2"
 LIC_FILES_CHKSUM = "file://COPYING;md5=393a5ca445f6965873eca0259a17f833"
 
-DEPENDS = "libaio"
+DEPENDS = "libaio zlib"
 
-# rev for v2.0.5
-SRCREV = "02efadeb8b05144bcf2fc7796e1da2e7db211d00"
-SRC_URI = "git://git.kernel.dk/fio.git \
-           file://armv6-support.patch \
-  "
+PACKAGECONFIG_NUMA = "numa"
+# ARM does not currently support NUMA
+PACKAGECONFIG_NUMA_arm = ""
+
+PACKAGECONFIG ??= "${PACKAGECONFIG_NUMA}"
+PACKAGECONFIG[numa] = ",--disable-numa,numactl"
+
+# rev for v2.7
+SRCREV = "99ac409c91fb38af259e871a305b1461d1b02fa4"
+SRC_URI = "git://git.kernel.dk/fio.git"
 
 S = "${WORKDIR}/git"
 
-EXTRA_OEMAKE = "CC='${CC}' CFLAGS='${CFLAGS}' LDFLAGS='${LDFLAGS}'"
+# avoids build breaks when using no-static-libs.inc
+DISABLE_STATIC = ""
+
+EXTRA_OEMAKE = "CC='${CC}' LDFLAGS='${LDFLAGS}'"
+
+do_configure() {
+    ./configure ${EXTRA_OECONF}
+}
 
 do_install() {
-	oe_runmake install DESTDIR=${D} bindir=${bindir} mandir=${mandir}
-	install -d ${D}/${docdir}/${PN}
-	cp -a ${S}/examples ${D}/${docdir}/${PN}/
+    oe_runmake install DESTDIR=${D} prefix=${prefix} mandir=${mandir}
+    install -d ${D}/${docdir}/${PN}
+    cp -R --no-dereference --preserve=mode,links -v ${S}/examples ${D}/${docdir}/${PN}/
 }
