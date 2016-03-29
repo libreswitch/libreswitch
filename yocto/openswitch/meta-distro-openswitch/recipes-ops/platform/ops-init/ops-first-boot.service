@@ -1,0 +1,18 @@
+# Copyright (C) 2016 Hewlett Packard Enterprise Development LP
+
+[Unit]
+Description=openswitch first boot process
+DefaultDependencies=no
+Conflicts=shutdown.target
+After=systemd-remount-fs.service
+Before=systemd-sysusers.service sysinit.target shutdown.target systemd-machine-id-commit.service
+!ConditionFileNotEmpty=/etc/machine-id
+
+#Todo list: We will update this for generic mechanism and will do modularize this setup later.
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/setcap cap_audit_write+eip /usr/bin/vtysh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

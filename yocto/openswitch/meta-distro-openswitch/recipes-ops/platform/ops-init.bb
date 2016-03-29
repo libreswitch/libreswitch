@@ -5,6 +5,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 RDEPENDS_${PN} = "bash"
 
 SRC_URI = "file://ops-init.service \
+           file://ops-first-boot.service \
            file://ops-init.sh \
            file://ops-profile.sh \
            file://ops-vrf-sysctl-set.conf \
@@ -21,6 +22,7 @@ do_install () {
     install -d ${D}${sysconfdir}/ops/sysctl.d
     install -d ${D}${sysconfdir}/sysctl.d
 
+    install -m 0644 ${WORKDIR}/ops-first-boot.service ${D}${systemd_unitdir}/system
     install -m 0644 ${WORKDIR}/ops-init.service ${D}${systemd_unitdir}/system
     install -m 0755 ${WORKDIR}/ops-init.sh ${D}${sbindir}/ops-init
     install -m 0755 ${WORKDIR}/ops-profile.sh ${D}${sysconfdir}/profile.d/ops-profile
@@ -31,6 +33,6 @@ do_install () {
 
 FILES_${PN} += "${sysconfdir}/ops/sysctl.d"
 SYSTEMD_PACKAGES = "${PN}"
-SYSTEMD_SERVICE_${PN} = "ops-init.service"
+SYSTEMD_SERVICE_${PN} = "ops-init.service ops-first-boot.service"
 
 inherit systemd
