@@ -9,7 +9,7 @@ DEPENDS = "openssl libpcap"
 SRC_URI = "git://github.com/mfontanini/libtins.git;protocol=https"
 
 PR = "3"
-SRCREV = "bcd8cc58f7d016368cd33bc09c61563a3011932a"
+SRCREV = "4b0976571ec5768ccde12ae3d6d53db8fee5a7a4"
 
 S = "${WORKDIR}/git"
 
