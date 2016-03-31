@@ -63,6 +63,8 @@ TARGET_INTERPRETER=$(STAGING_DIR_TARGET)/lib/ld-linux-x86-64.so.2
 
 UUIDGEN_NATIVE=$(STAGING_DIR_NATIVE)/usr/bin/uuidgen
 PYTEST_NATIVE=$(STAGING_DIR_NATIVE)/usr/bin/py.test
+# Rake binary path
+RAKE_NATIVE = $(STAGING_DIR_NATIVE)/usr/bin/rake
 
 # Static Code Analysis tool. Right now we support Fortify, but others like coverity could be added
 SCA_TOOLCHAIN ?= fortify

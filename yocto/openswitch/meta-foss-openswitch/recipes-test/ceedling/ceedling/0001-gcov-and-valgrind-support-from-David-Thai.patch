@@ -1,0 +1,329 @@
+From 651a316345728918478a94f24f3e77a78072bb89 Mon Sep 17 00:00:00 2001
+From: Damien Keehn <damien.keehn@hpe.com>
+Date: Thu, 24 Mar 2016 19:25:35 -0700
+Subject: [PATCH 1/1] gcov and valgrind support from David Thai
+
+---
+ plugins/gcov/defaults.yml            | 37 ++++++++++++++++++++++--
+ plugins/gcov/gcov.rake               | 35 +++++++++++++++++++++++
+ plugins/gcov/gcov.rb                 | 13 +++++++--
+ plugins/gcov/template.erb            |  2 +-
+ plugins/valgrind/config/defaults.yml | 10 +++++++
+ plugins/valgrind/lib/template.erb    | 14 ++++++++++
+ plugins/valgrind/lib/valgrind.rb     | 35 +++++++++++++++++++++++
+ plugins/valgrind/valgrind.rake       | 54 ++++++++++++++++++++++++++++++++++++
+ 8 files changed, 195 insertions(+), 5 deletions(-)
+ create mode 100644 plugins/valgrind/config/defaults.yml
+ create mode 100644 plugins/valgrind/lib/template.erb
+ create mode 100644 plugins/valgrind/lib/valgrind.rb
+ create mode 100644 plugins/valgrind/valgrind.rake
+
+diff --git a/plugins/gcov/defaults.yml b/plugins/gcov/defaults.yml
+index 78be972..e19d6ea 100755
+--- a/plugins/gcov/defaults.yml
++++ b/plugins/gcov/defaults.yml
+@@ -10,7 +10,7 @@
+       - -I"$": COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR
+       - -I"$": COLLECTION_PATHS_TEST_TOOLCHAIN_INCLUDE
+       - -D$: COLLECTION_DEFINES_TEST_AND_VENDOR
+-      - -DGCOV_COMPILER
++      - -DTOOLS_GCOV_COMPILER
+       - -c "${1}"
+       - -o "${2}"
+   :gcov_linker:
+@@ -31,4 +31,37 @@
+       - -o "$": GCOV_BUILD_OUTPUT_PATH
+       - "\"${1}\""
+
+-...
++  :gcov_lcov:
++    :executable: lcov
++    :arguments:
++      - --capture
++      - --directory ${1}
++      - --base-directory ${1}
++      - -c -o ${1}/lcov.info
++
++  :gcov_lcov_exclude:
++    :executable: lcov
++    :arguments:
++      - --remove ${1}/lcov.info
++      - '/runners*'
++      - '/cmock*'
++      - '/unity*'
++      - -o ${1}/lcov.info
++
++  :gcov_lcov_list:
++    :executable: lcov
++    :background_exec: FALSE
++    :arguments:
++      - --list ${1}/lcov.info
++
++  :gcov_genhtml:
++    :executable: genhtml
++    :arguments:
++      - ${1}/lcov.info
++      - --output-directory ${2}
++
++  :gcov_browser:
++    :executable: firefox
++    :background_exec: :auto
++    :arguments:
++      - ${1}
+diff --git a/plugins/gcov/gcov.rake b/plugins/gcov/gcov.rake
+index 197a064..9a0059d 100755
+--- a/plugins/gcov/gcov.rake
++++ b/plugins/gcov/gcov.rake
+@@ -1,10 +1,12 @@
+
+ directory(GCOV_BUILD_OUTPUT_PATH)
++directory(GCOV_HTML_OUTPUT_PATH)
+ directory(GCOV_RESULTS_PATH)
+ directory(GCOV_ARTIFACTS_PATH)
+ directory(GCOV_DEPENDENCIES_PATH)
+
+ CLEAN.include(File.join(GCOV_BUILD_OUTPUT_PATH, '*'))
++CLEAN.include(File.join(GCOV_HTML_OUTPUT_PATH, '*'))
+ CLEAN.include(File.join(GCOV_RESULTS_PATH, '*'))
+ CLEAN.include(File.join(GCOV_DEPENDENCIES_PATH, '*'))
+
+@@ -18,8 +20,10 @@ rule(/#{GCOV_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
+   ]) do |object|
+
+   if (File.basename(object.source) =~ /^(#{PROJECT_TEST_FILE_PREFIX}|#{CMOCK_MOCK_PREFIX}|#{GCOV_IGNORE_SOURCES.join('|')})/i)
++    @ceedling[:streaminator].stdout_puts("\nsource: #{object.source}")
+     @ceedling[:generator].generate_object_file(
+       TOOLS_GCOV_COMPILER,
++      OPERATION_COMPILE_SYM,
+       GCOV_SYM,
+       object.source,
+       object.name,
+@@ -150,3 +154,34 @@ namespace REFRESH_SYM do
+ end
+ end
+
++namespace UTILS_SYM do
++
++  desc "Generate lcov data from code coverage"
++  task LCOV_SYM do
++    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_LCOV, [], GCOV_BUILD_OUTPUT_PATH)
++    @ceedling[:streaminator].stdout_puts("INFO: #{command[:line]}")
++    @ceedling[:tool_executor].exec(command[:line], command[:options])
++
++    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_LCOV_EXCLUDE, [], GCOV_BUILD_OUTPUT_PATH)
++    @ceedling[:streaminator].stdout_puts("INFO: #{command[:line]}")
++    @ceedling[:tool_executor].exec(command[:line], command[:options])
++
++    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_LCOV_LIST, [], GCOV_BUILD_OUTPUT_PATH)
++    @ceedling[:streaminator].stdout_puts("INFO: #{command[:line]}")
++    @ceedling[:tool_executor].exec(command[:line], command[:options])
++  end
++end
++
++namespace UTILS_SYM do
++
++  desc "Generate HTML pages and open in browser"
++  task HTML_SYM do
++    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_GENHTML, [], GCOV_BUILD_OUTPUT_PATH, GCOV_HTML_OUTPUT_PATH)
++    @ceedling[:streaminator].stdout_puts("INFO: #{command[:line]}")
++    @ceedling[:tool_executor].exec(command[:line], command[:options])
++
++    command = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_BROWSER, [], GCOV_HTML_INDEX)
++    @ceedling[:streaminator].stdout_puts("INFO: #{command[:line]}")
++    @ceedling[:tool_executor].exec(command[:line], command[:options])
++  end
++end
+diff --git a/plugins/gcov/gcov.rb b/plugins/gcov/gcov.rb
+index 36f14a9..2127d01 100755
+--- a/plugins/gcov/gcov.rb
++++ b/plugins/gcov/gcov.rb
+@@ -3,10 +3,18 @@ require 'ceedling/constants'
+
+ GCOV_ROOT_NAME         = 'gcov'
+ GCOV_TASK_ROOT         = GCOV_ROOT_NAME + ':'
+-GCOV_SYM               = GCOV_ROOT_NAME.to_sym
++GCOV_SYM               = GCOV_ROOT_NAME.to_sym unless defined?(GCOV_SYM)
++LCOV_ROOT_NAME         = 'lcov'
++LCOV_TASK_ROOT         = LCOV_ROOT_NAME + ':'
++LCOV_SYM               = LCOV_ROOT_NAME.to_sym unless defined?(LCOV_SYM)
++HTML_ROOT_NAME         = 'html'
++HTML_TASK_ROOT         = HTML_ROOT_NAME + ':'
++HTML_SYM               = HTML_ROOT_NAME.to_sym unless defined?(HTML_SYM)
+
+ GCOV_BUILD_PATH        = "#{PROJECT_BUILD_ROOT}/#{GCOV_ROOT_NAME}"
+ GCOV_BUILD_OUTPUT_PATH = "#{GCOV_BUILD_PATH}/out"
++GCOV_HTML_OUTPUT_PATH  = "#{GCOV_BUILD_PATH}/html"
++GCOV_HTML_INDEX        = "#{GCOV_BUILD_PATH}/html/index.html"
+ GCOV_RESULTS_PATH      = "#{GCOV_BUILD_PATH}/results"
+ GCOV_DEPENDENCIES_PATH = "#{GCOV_BUILD_PATH}/dependencies"
+ GCOV_ARTIFACTS_PATH    = "#{PROJECT_BUILD_ARTIFACTS_ROOT}/#{GCOV_ROOT_NAME}"
+@@ -36,6 +44,7 @@ class Gcov < Plugin
+     compile_command =
+       @ceedling[:tool_executor].build_command_line(
+         TOOLS_GCOV_COMPILER,
++        [],
+         source,
+         object,
+         @ceedling[:file_path_utils].form_test_build_list_filepath( object ) )
+@@ -108,7 +117,7 @@ class Gcov < Plugin
+
+     coverage_sources.each do |source|
+       basename         = File.basename(source)
+-      command          = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORT, basename)
++      command          = @ceedling[:tool_executor].build_command_line(TOOLS_GCOV_REPORT, [], basename)
+       shell_results    = @ceedling[:tool_executor].exec(command[:line], command[:options])
+       coverage_results = shell_results[:output]
+
+diff --git a/plugins/gcov/template.erb b/plugins/gcov/template.erb
+index a6d6929..5e5a174 100644
+--- a/plugins/gcov/template.erb
++++ b/plugins/gcov/template.erb
+@@ -1,7 +1,7 @@
+ % function_string = hash[:coverage][:functions].to_s
+ % branch_string   = hash[:coverage][:branches].to_s
+ % format_string   = "%#{[function_string.length, branch_string.length].max}i"
+-<%=@ceedling[:plugin_reportinator].generate_banner("#{BULLSEYE_ROOT_NAME.upcase}: CODE COVERAGE SUMMARY")%>
++<%=@ceedling[:plugin_reportinator].generate_banner("#{GCOV_ROOT_NAME.upcase}: CODE COVERAGE SUMMARY")%>
+ % if (!hash[:coverage][:functions].nil?)
+ FUNCTIONS: <%=sprintf(format_string, hash[:coverage][:functions])%>%
+ % else
+diff --git a/plugins/valgrind/config/defaults.yml b/plugins/valgrind/config/defaults.yml
+new file mode 100644
+index 0000000..42f661f
+--- /dev/null
++++ b/plugins/valgrind/config/defaults.yml
+@@ -0,0 +1,10 @@
++---
++
++:tools:
++  :valgrind:
++    :executable: valgrind
++    :arguments:
++        - --leak-check=full
++        - --show-reachable=yes
++        - --track-origins=yes
++        - ${1}
+diff --git a/plugins/valgrind/lib/template.erb b/plugins/valgrind/lib/template.erb
+new file mode 100644
+index 0000000..3ce2de0
+--- /dev/null
++++ b/plugins/valgrind/lib/template.erb
+@@ -0,0 +1,14 @@
++% function_string = hash[:coverage][:functions].to_s
++% branch_string   = hash[:coverage][:branches].to_s
++% format_string   = "%#{[function_string.length, branch_string.length].max}i"
++<%=@ceedling[:plugin_reportinator].generate_banner("#{VALGRIND_ROOT_NAME.upcase}: VALGRIND SUMMARY")%>
++% if (!hash[:coverage][:functions].nil?)
++FUNCTIONS: <%=sprintf(format_string, hash[:coverage][:functions])%>%
++% else
++FUNCTIONS: none
++% end
++% if (!hash[:coverage][:branches].nil?)
++BRANCHES:  <%=sprintf(format_string, hash[:coverage][:branches])%>%
++% else
++BRANCHES:  none
++% end
+diff --git a/plugins/valgrind/lib/valgrind.rb b/plugins/valgrind/lib/valgrind.rb
+new file mode 100644
+index 0000000..5f42292
+--- /dev/null
++++ b/plugins/valgrind/lib/valgrind.rb
+@@ -0,0 +1,35 @@
++require 'ceedling/plugin'
++require 'ceedling/constants'
++
++VALGRIND_ROOT_NAME         = 'valgrind'
++VALGRIND_TASK_ROOT         = VALGRIND_ROOT_NAME + ':'
++VALGRIND_SYM               = VALGRIND_ROOT_NAME.to_sym unless defined?(VALGRIND_SYM)
++
++
++VALGRIND_BUILD_PATH        = "#{PROJECT_BUILD_ROOT}/test"
++VALGRIND_BUILD_OUTPUT_PATH = "#{VALGRIND_BUILD_PATH}/out"
++
++VALGRIND_IGNORE_SOURCES    = ['unity', 'cmock', 'cexception']
++
++class Valgrind < Plugin
++
++  attr_reader :config
++
++  def setup
++    @result_list = []
++
++    @config = {
++      :project_test_build_output_path     => VALGRIND_BUILD_OUTPUT_PATH
++      }
++
++    @coverage_template_all = @ceedling[:file_wrapper].read( File.join( PLUGINS_VALGRIND_PATH, 'template.erb') )
++  end
++
++  #
++end
++
++# end blocks always executed following rake run
++END {
++  # cache our input configurations to use in comparison upon next execution
++  @ceedling[:cacheinator].cache_test_config( @ceedling[:setupinator].config_hash ) if (@ceedling[:task_invoker].invoked?(/^#{VALGRIND_TASK_ROOT}/))
++}
+diff --git a/plugins/valgrind/valgrind.rake b/plugins/valgrind/valgrind.rake
+new file mode 100644
+index 0000000..90c1ffb
+--- /dev/null
++++ b/plugins/valgrind/valgrind.rake
+@@ -0,0 +1,54 @@
++
++directory(VALGRIND_BUILD_OUTPUT_PATH)
++
++CLEAN.include(File.join(VALGRIND_BUILD_OUTPUT_PATH, '*'))
++
++CLOBBER.include(File.join(VALGRIND_BUILD_PATH, '**/*'))
++
++task :directories => [VALGRIND_BUILD_OUTPUT_PATH]
++
++namespace VALGRIND_SYM do
++
++  task :source_coverage => COLLECTION_ALL_SOURCE.pathmap("#{VALGRIND_BUILD_OUTPUT_PATH}/%n#{@ceedling[:configurator].extension_object}")
++
++  desc "Run valgrind on all tests"
++  task :all => [:directories] do
++    @ceedling[:configurator].replace_flattened_config(@ceedling[VALGRIND_SYM].config)
++    COLLECTION_ALL_TESTS.each do |test|
++      executable = @ceedling[:file_path_utils].form_test_executable_filepath(test)
++      command = @ceedling[:tool_executor].build_command_line(TOOLS_VALGRIND, [], executable)
++      @ceedling[:streaminator].stdout_puts("INFO: #{command[:line]}")
++      @ceedling[:tool_executor].exec(command[:line], command[:options])
++    end
++    @ceedling[:configurator].restore_config
++  end
++
++  desc "Run valgrind on single test/executible ([*] real test or source file name, no path)."
++  task :* do
++    message = "\nOops! '#{VALGRIND_ROOT_NAME}:*' isn't a real task. " +
++              "Use a real test or source file name (no path) in place of the wildcard.\n" +
++              "Example: rake #{VALGRIND_ROOT_NAME}:foo.c\n\n"
++
++    @ceedling[:streaminator].stdout_puts( message )
++  end
++
++  ## TODO path and patter currently not working, so are test:path test:pattern
++
++  # use a rule to increase efficiency for large projects
++  # valgrind test tasks by regex
++  rule(/^#{VALGRIND_TASK_ROOT}\S+$/ => [
++      proc do |task_name|
++        test = task_name.sub(/#{VALGRIND_TASK_ROOT}/, '')
++        test = "#{PROJECT_TEST_FILE_PREFIX}#{test}" if not (test.start_with?(PROJECT_TEST_FILE_PREFIX))
++        @ceedling[:file_finder].find_test_from_file_path(test)
++      end
++  ]) do |test|
++    @ceedling[:configurator].replace_flattened_config(@ceedling[VALGRIND_SYM].config)
++    executable = @ceedling[:file_path_utils].form_test_executable_filepath(test.source)
++    command = @ceedling[:tool_executor].build_command_line(TOOLS_VALGRIND, [], executable)
++    @ceedling[:streaminator].stdout_puts("INFO: #{command[:line]}")
++    @ceedling[:tool_executor].exec(command[:line], command[:options])
++    @ceedling[:configurator].restore_config
++  end
++
++end
+--
+1.9.1
+
