@@ -17,7 +17,7 @@ B = "${S}"
 inherit npm
 
 # Put it after the inherit NPM to override the dependency on node
-RDEPENDS_${PN} = "lighttpd"
+RDEPENDS_${PN} = "ops-restd"
 
 do_compile() {
     ./tools/scripts/extract-node-tars
