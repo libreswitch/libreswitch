@@ -17,12 +17,15 @@ PV = "git${SRCPV}"
 S = "${WORKDIR}/git"
 
 do_install_append() {
-     install -d ${D}${systemd_unitdir}/system
-     install -m 0644 ${WORKDIR}/ops-stpd.service ${D}${systemd_unitdir}/system/
+# Commenting this out until we have a working ops-stpd daemon
+#     install -d ${D}${systemd_unitdir}/system
+#     install -m 0644 ${WORKDIR}/ops-stpd.service ${D}${systemd_unitdir}/system/
 }
 
 FILES_${PN} += "${libdir}/openvswitch/plugins ${includedir}/plugins/*"
-SYSTEMD_PACKAGES = "${PN}"
-SYSTEMD_SERVICE_${PN} = "ops-stpd.service"
+
+# Commenting this out until we have a working ops-stpd daemon
+#SYSTEMD_PACKAGES = "${PN}"
+#SYSTEMD_SERVICE_${PN} = "ops-stpd.service"
 
 inherit openswitch cmake systemd
