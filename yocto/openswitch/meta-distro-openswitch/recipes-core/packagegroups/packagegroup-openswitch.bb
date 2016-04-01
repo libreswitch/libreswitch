@@ -39,6 +39,7 @@ RDEPENDS_packagegroup-ops-base = "\
     pwauth \
     shadow \
     cronie \
+    systemd-analyze \
     auditd audispd-plugins audit-python \
     inetutils-hostname inetutils-ifconfig \
     inetutils-tftp inetutils-traceroute inetutils-ftp inetutils-telnet \
