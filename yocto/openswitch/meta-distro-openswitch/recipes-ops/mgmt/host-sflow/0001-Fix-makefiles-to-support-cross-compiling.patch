@@ -1,17 +1,17 @@
-From cce442785f22ffea7d0828fd54544fe8f0afe3bc Mon Sep 17 00:00:00 2001
-From: Diego Dompe <dompe@hpe.com>
-Date: Mon, 28 Dec 2015 13:32:54 -0600
-Subject: [PATCH] Fix makefiles to support cross compiling
+From 9a1b3c4ff71271c18e1a8a7a4ed075b884490fd9 Mon Sep 17 00:00:00 2001
+From: Ligeo George <ligeo.george@hpe.com>
+Date: Fri, 1 Apr 2016 16:23:06 -0700
+Subject: [PATCH] [PATCH] Fix makefiles to support cross compiling
 
-Signed-off-by: Diego Dompe <dompe@hpe.com>
+Signed-off-by: Ligeo George <ligeo.george@hpe.com>
 ---
- src/Linux/Makefile | 21 +++++++++++----------
+ src/Linux/Makefile | 30 ++++++++++++++++++------------
  src/json/Makefile  |  2 +-
  src/sflow/Makefile |  3 +--
- 3 files changed, 13 insertions(+), 13 deletions(-)
+ 3 files changed, 20 insertions(+), 15 deletions(-)
 
 diff --git a/src/Linux/Makefile b/src/Linux/Makefile
-index c508f25..5c266bc 100644
+index c508f25..c3f9edd 100644
 --- a/src/Linux/Makefile
 +++ b/src/Linux/Makefile
 @@ -5,10 +5,10 @@ HEADERS= hsflowd.h hsflowtokens.h hsflow_ethtool.h sflowovsd.h cpu_utils.h Makef
@@ -36,7 +36,7 @@ index c508f25..5c266bc 100644
  endif
  ifeq ($(ULOG),yes)
  	CFLAGS += -DHSF_ULOG
-@@ -31,7 +31,7 @@ endif
+@@ -31,17 +31,17 @@ endif
  # if NFLOG is not set, assume it should be "yes" if the include file is present
  # (So you can use "make NFLOG=no" to compile without this feature)
  ifeq ($(NFLOG),)
@@ -45,16 +45,30 @@ index c508f25..5c266bc 100644
  endif
  ifeq ($(NFLOG),yes)
  #	CFLAGS += -I/usr/include/libnl3 -DHSF_NFLOG
-@@ -41,7 +41,7 @@ ifeq ($(NFLOG),yes)
+ #	LIBS += -lnl-3 -lnl-nf-3
+-	CFLAGS += -I/usr/include/libnfnetlink -DHSF_NFLOG
+-	LIBS += -lnfnetlink
++	CFLAGS += -I$(TARGET_SYSROOT)/usr/include/libnfnetlink -DHSF_NFLOG
++	LIBS += -L$(TARGET_SYSROOT)/usr/lib -lnfnetlink
  endif
  
  # make the inclusion of sflowovsd options
 -WITH_SFLOWOVSD=yes
-+WITH_SFLOWOVSD ?= yes
++WITH_SFLOWOVSD ?= no
  
  # Cumulus Linux
  ifeq ($(CUMULUS),)
-@@ -215,6 +215,8 @@ endif
+@@ -205,6 +205,9 @@ endif
+ ifeq ($(BINDIR),)
+ 	BINDIR=/usr/sbin
+ endif
++ifeq ($(USRBINDIR),)
++	USRBINDIR=/usr/bin
++endif
+ ifeq ($(INITDIR),)
+ 	INITDIR=/etc/init.d
+ endif
+@@ -215,12 +218,16 @@ endif
  INSTALL=install
  
  # INSTROOT may be passed in, e.g. RPM_BUILD_ROOT
@@ -62,13 +76,21 @@ index c508f25..5c266bc 100644
 +
  ifeq ($(INSTROOT),)
  	BIN_D=$(BINDIR)
++	USRBIN_D=$(USRBINDIR)
  	INIT_D=$(INITDIR)
-@@ -275,13 +277,13 @@ install: $(INSTALLTGTS)
+ 	CONF_D=$(CONFDIR)
+ else
+ 	BIN_D=$(INSTROOT)/$(BINDIR)
++	USRBIN_D=$(INSTROOT)/$(USRBINDIR)
+ 	INIT_D=$(INSTROOT)/$(INITDIR)
+ 	CONF_D=$(INSTROOT)/$(CONFDIR)
+ endif
+@@ -275,13 +282,13 @@ install: $(INSTALLTGTS)
  install-hsflowd: hsflowd
  	$(INSTALL) -d $(BIN_D)
  	$(INSTALL) -m 700 hsflowd $(BIN_D)
 -	if [ ! -e $(INIT_D)/hsflowd ]; then $(INSTALL) -d $(INIT_D); $(INSTALL) -m 755 $(HSFLOWD_INITSCRIPT) $(INIT_D)/hsflowd; fi
-+	#if [ ! -e $(INIT_D)/hsflowd ]; then $(INSTALL) -d $(INIT_D); $(INSTALL) -m 755 $(HSFLOWD_INITSCRIPT) $(INIT_D)/hsflowd; fi
++	if [ ! -e $(USRBIN_D)/hsflowd ]; then $(INSTALL) -d $(USRBIN_D); $(INSTALL) -m 755 $(HSFLOWD_INITSCRIPT) $(USRBIN_D)/hsflowd; fi
  	if [ ! -e $(CONF_D)/hsflowd.conf ]; then $(INSTALL) -d $(CONF_D); $(INSTALL) -m 644 scripts/hsflowd.conf $(CONF_D); fi
  
  install-sflowovsd: sflowovsd
@@ -79,7 +101,7 @@ index c508f25..5c266bc 100644
  
  #### SCHEDULE ####
  
-@@ -289,8 +291,8 @@ install-sflowovsd: sflowovsd
+@@ -289,8 +296,8 @@ install-sflowovsd: sflowovsd
  # necessary links into the /etc/init.d/rc*.d directories to start and stop the daemon
  # at the required runlevels.
  
@@ -90,7 +112,7 @@ index c508f25..5c266bc 100644
  	SCHEDULETGTS += schedule-sflowovsd
  endif
  
-@@ -340,4 +342,3 @@ readJSON.o: readJSON.c $(HEADERS)
+@@ -340,4 +347,3 @@ readJSON.o: readJSON.c $(HEADERS)
  sflowovsd.o: sflowovsd.c $(HEADERS)
  readContainerCounters.o: readContainerCounters.c $(HEADERS)
  readAsicCounters.o: readAsicCounters.c $(HEADERS)

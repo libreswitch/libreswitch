@@ -19,6 +19,7 @@ PACKAGES = ' \
             '
 
 PACKAGES += "${@bb.utils.contains("IMAGE_FEATURES", "ops-p4", "packagegroup-ops-p4", "", d)}"
+PACKAGES += "${@bb.utils.contains("MACHINE_FEATURES", "ops-container", "packagegroup-ops-container", "", d)}"
 
 RDEPENDS_packagegroup-ops-base = "\
     os-release \
@@ -100,4 +101,8 @@ RDEPENDS_packagegroup-ops-p4 = "\
     ops-switchd-p4switch-plugin \
     ops-p4dp \
     ops-p4c \
+    "
+
+RDEPENDS_packagegroup-ops-container = "\
+    host-sflow \
     "

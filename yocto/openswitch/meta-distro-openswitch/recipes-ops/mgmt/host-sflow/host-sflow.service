@@ -1,0 +1,14 @@
+# Copyright (C) 2015-2016 Hewlett Packard Enterprise Development LP
+[Unit]
+Description=Host sFlow Daemon
+After=ovsdb-server.service ops-init.service
+
+[Service]
+Type=forking
+ExecStart=/sbin/ip netns exec swns /usr/bin/hsflowd start
+ExecStop=/sbin/ip netns exec swns /usr/bin/hsflowd stop
+ExecReload=/sbin/ip netns exec swns /usr/bin/hsflowd restart
+
+
+[Install]
+WantedBy=multi-user.target
