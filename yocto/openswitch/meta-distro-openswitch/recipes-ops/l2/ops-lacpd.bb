@@ -2,7 +2,7 @@ SUMMARY = "OpenSwitch LACP Daemon"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
-DEPENDS = "ops-ovsdb ops-utils ops-cli"
+DEPENDS = "ops-ovsdb ops-utils ops-cli ops-supportability"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-lacpd;protocol=http\
            file://ops-lacpd.service \
