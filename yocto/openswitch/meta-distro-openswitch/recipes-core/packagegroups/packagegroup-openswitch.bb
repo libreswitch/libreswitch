@@ -54,12 +54,12 @@ RDEPENDS_packagegroup-ops-base = "\
     ops-hw-config \
     ops-cfgd ops-fand ops-ledd ops-pmd ops-powerd ops-sysd ops-tempd \
     ops-dhcp-tftp \
-    ops-intfd ops-lacpd ops-lldpd ops-vland ops-arpmgrd ops-hw-vtep \
+    ops-intfd ops-lacpd ops-lldpd ops-vland ops-arpmgrd \
     ops-script-utils \
     ops-cli ops-restd ops-webui \
     ops-portd ops-quagga \
     ops-aaa-utils \
-    ops-bufmond \
+    ${@bb.utils.contains('MACHINE_FEATURES', 'ops-container', '', 'ops-bufmond',d)} \
     ops-broadview \
     ops-mgmt-intf \
     dnsmasq \
