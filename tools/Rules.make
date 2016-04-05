@@ -460,6 +460,10 @@ devenv_clean: dev_header
 
 DEVENV_BRANCH?=*auto*
 
+define QUERY_RECIPE
+	echo "$(2) `query-recipe.py --var $(1) $(2)`";
+endef
+
 define DEVENV_ADD
 	if ! grep -q '^$(1)$$' .devenv 2>/dev/null ; then \
 	  $(call DEVTOOL, modify --extract $(1) $(BUILD_ROOT)/src/$(1)) ; \
@@ -491,6 +495,22 @@ ifneq ($(findstring devenv_add,$(MAKECMDGOALS)),)
 endif
 devenv_add: dev_header
 	$(V)$(foreach P, $(PACKAGE), $(call DEVENV_ADD,$(P)))
+
+.PHONY: query_recipe
+
+$(eval $(call PARSE_ARGUMENTS,query_recipe))
+ifneq ($(findstring query_recipe,$(MAKECMDGOALS)),)
+  ifeq ($(VAR),)
+   $(error ====== VAR variable is empty, please specify which variable to query (VAR=SRCREV, VAR=SRC_URI, etc.) =====)
+  endif
+  PACKAGE?=$(EXTRA_ARGS)
+  ifeq ($(PACKAGE),)
+   $(error ====== PACKAGE variable is empty, please specify which package(s) you want  =====)
+  endif
+endif
+
+query_recipe:
+	@$(foreach P, $(PACKAGE), $(call QUERY_RECIPE,$(VAR),$(P)))
 
 ifeq (devenv_import,$(firstword $(MAKECMDGOALS)))
   $(eval $(call PARSE_TWO_ARGUMENTS,devenv_import))
