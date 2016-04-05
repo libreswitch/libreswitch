@@ -1,0 +1,375 @@
+#!/bin/sh
+#  Copyright (C) 2016 Hewlett Packard Enterprise Development LP
+#  Copyright 2005 Red Hat, Inc.
+#
+#  Author:  Jeff Moyer <jmoyer@redhat.com>
+
+#  boot with  "crashkernel=128M@0M"
+#  and check below
+#  grep "Crash kernel" /proc/iomem
+#  cat /sys/kernel/kexec_crash_size
+#  cat /sys/kernel/kexec_crash_loaded
+
+
+#### Global Variables ####
+# In the meantime that we get a custom initramfs, we should use a custom init unit to just perform the kdump
+KDUMP_COMMANDLINE_APPEND="irqpoll nr_cpus=1 reset_devices cgroup_disable=memory mce=off acpi_no_memhotplug systemd.unit=kdump.target"
+KDUMP_BOOTDIR="/boot"
+KDUMP_IMG="bzImage"
+KDUMP_CONFIG_FILE="/etc/kdump.conf"
+standard_kexec_args="-p"
+LOGGER="$(which logger) -p info -t kdump"
+MAKEDUMPFILE=$(which makedumpfile)
+KEXEC=$(which kexec);
+VMCORE_DMESG=/usr/sbin/vmcore-dmesg
+KDUMP_KERNEL=""
+KDUMP_INITRD=""
+############################
+
+
+######## Library routine start ########
+
+# Function: check_core_compress
+#
+# Description: This routine is invoked after system start or reboot .
+#              It compress vmcore,/etc/os-release  /var/log/messages and
+#              renames tar.gz file with crash time information
+#
+
+function check_core_compress()
+{
+    local files="/etc/os-release  /var/log/messages";
+
+    local time_stamp_fmt=$(date +"%Y%m%d.%H%M%S")
+
+    local kdump_path=`grep ^path $KDUMP_CONFIG_FILE | cut -d' '  -f2-`
+    if [ -z "$kdump_path" ]; then
+        coredir="/var/crash/kernel-core"
+    else
+        coredir="${kdump_path}/kernel-core"
+    fi
+
+    if [ -f  $coredir/vmcore-dmesg.txt ] ;then
+        files="${files}  ${coredir}/vmcore-dmesg.txt"
+    fi
+
+    if [ -f ${coredir}/crash_time_stamp.txt ] ; then
+        time_stamp_fmt=$(cat ${coredir}/crash_time_stamp.txt)
+        rm -f ${coredir}/crash_time_stamp.txt
+    fi
+
+    # compress core file during service start .
+    # We don't compress kernel core during crash.
+    # we want uncompressed core and mimimum downtime
+    # 300~400MB kernel core compression time takes 1~2 minumtes.
+
+    if [ -f ${coredir}/vmcore ] ; then
+        tar -czf ${coredir}/vmcore_incomplete.tar.gz ${coredir}/vmcore ${files}
+        if [ $? -eq 0 ]; then
+            rm -f ${coredir}/vmcore  ${coredir}/vmcore-dmesg.txt
+            mv ${coredir}/vmcore_incomplete.tar.gz ${coredir}/vmcore.${time_stamp_fmt}.tar.gz
+            $LOGGER "archived and compressed vmcore to ${coredir}"
+        else
+            $LOGGER "failed to compress vmcore to $coredir"
+        fi
+    fi
+}
+
+# Function :  remove_cmdline_param
+#
+# Description: This function removes given parameter from command string.
+#              Helper function for kexec
+#
+function remove_cmdline_param()
+{
+    local cmdline=$1
+    shift
+
+    for arg in $@; do
+        cmdline=`echo $cmdline | \
+        sed -e "s/\b$arg=[^ ]*\b//g" \
+        -e "s/\b$arg\b//g"`
+    done
+    echo $cmdline
+}
+
+
+# Function :  append_cmdline
+#
+# Description :  This function appends argument "$2=$3" to string ($1)
+#                if not already present.
+#                Helper function for kexec
+#
+function append_cmdline()
+{
+    local cmdline=$1
+    local newstr=${cmdline/$2/""}
+
+    # unchanged str implies argument wasn't there
+    if [ "$cmdline" == "$newstr" ]; then
+        cmdline="${cmdline} ${2}=${3}"
+    fi
+
+    echo $cmdline
+}
+
+# Function : prepare_cmdline_parm
+#
+# Description : This function performs a series of edits on the command line
+#               Helper function for kexec
+#
+function prepare_cmdline_parm()
+{
+    local cmdline=$(cat /proc/cmdline)
+    cmdline=`remove_cmdline_param "$cmdline" crashkernel mem hugepages hugepagesz quiet`
+    cmdline="${cmdline} ${KDUMP_COMMANDLINE_APPEND}"
+    echo $cmdline
+}
+
+# Function: save_kernel_logs
+#
+# Description : This function generates vmcore-dmesg.txt from vmcore
+#
+function save_kernel_logs()
+{
+    local _path=$1
+
+    mkdir -p $_path
+
+    if [ ! -f ${VMCORE_DMESG} ];then
+        $LOGGER "Skipping saving vmcore-dmesg.txt. File ${VMCORE_DMESG}  is not present"
+        return;
+    fi
+
+    $LOGGER "saving vmcore-dmesg.txt to $_path"
+    ${VMCORE_DMESG}  /proc/vmcore > $_path/vmcore-dmesg-incomplete.txt
+    if [ $? == 0 ]; then
+        mv $_path/vmcore-dmesg-incomplete.txt $_path/vmcore-dmesg.txt
+        $LOGGER "saved vmcore-dmesg.txt to $_path"
+    else
+        $LOGGER "failed to save vmcore-dmesg.txt to $_path"
+    fi
+
+}
+
+# Function : save_core
+#
+# Description : This function creates vmcore using makedumpfile utility
+#
+function save_core()
+{
+    local kdump_path=`grep ^path $KDUMP_CONFIG_FILE | cut -d' '  -f2-`
+    local kdump_conf_option=$(grep core_collector $KDUMP_CONFIG_FILE | sed "s/core_collector//g; s/makedumpfile//g")
+    local time_stamp_fmt=$(date +"%Y%m%d.%H%M%S")
+    if [ -z "$kdump_path" ]; then
+        coredir="/var/crash/kernel-core"
+    else
+        coredir="${kdump_path}/kernel-core"
+    fi
+
+    mkdir -p $coredir
+    save_kernel_logs "${coredir}"
+    echo $time_stamp_fmt > ${coredir}/crash_time_stamp.txt
+    $MAKEDUMPFILE $kdump_conf_option /proc/vmcore ${coredir}/vmcore-incomplete
+    if [ $? -eq 0 ]; then
+        mv ${coredir}/vmcore-incomplete ${coredir}/vmcore
+        $LOGGER "saved a vmcore to $coredir"
+        rm -f  ${coredir}/vmcore.*
+    else
+        $LOGGER "failed to save a vmcore to $coredir"
+    fi
+}
+
+
+# Function : check_config
+#
+# Description : This function checks all required prerequisite parameters
+#               which are required to load kexec . If anything is missing
+#               function will return error and script will not launch kexec.
+#
+function check_config()
+{
+    local kdump_kver=$(uname -r | sed 's/smp//g')
+    KDUMP_KERNEL="${KDUMP_BOOTDIR}/${KDUMP_IMG}-${kdump_kver}"
+    KDUMP_INITRD=$KDUMP_KERNEL
+    # We are using primary kernel as kdump kernel
+    if [ ! -f $KDUMP_KERNEL ]; then
+        $LOGGER "No kdump kernel image found ${KDUMP_KERNEL}"
+        return 1
+    fi
+
+    if [ ! -f $KDUMP_INITRD ]; then
+        $LOGGER "No kdump initial ramdisk found ${KDUMP_INITRD}"
+        return 1
+    fi
+    return 0
+}
+
+# Function : load_kexec
+#
+# Description : This function launches kexec .
+#
+function load_kexec()
+{
+    KDUMP_COMMANDLINE=`prepare_cmdline_parm`
+
+    if ! grep -q /sys/kernel/debug /proc/mounts;
+    then
+        mount -t debugfs debug /sys/kernel/debug
+        MNTDEBUG=/sys/kernel/debug
+    fi
+
+    $KEXEC $standard_kexec_args --command-line="$KDUMP_COMMANDLINE" \
+    --initrd=$KDUMP_INITRD $KDUMP_KERNEL 2>/dev/null
+    if [ $? == 0 ]; then
+        umount $MNTDEBUG 2>/dev/null
+        $LOGGER "kexec: loaded kdump kernel"
+        return 0
+    else
+        umount $MNTDEBUG 2>/dev/null
+        $LOGGER "kexec: failed to load kdump kernel"
+        return 1
+    fi
+}
+
+
+# Function : status
+#
+# Description : This function check launching status of kexec
+#
+function status()
+{
+
+    local check=$(grep -o "crashkernel=" /proc/cmdline)
+    if [[ "$check" != "crashkernel=" ]]; then
+        return 3;
+    fi
+
+    if [ ! -e /sys/kernel/kexec_crash_loaded ]
+    then
+        return 2
+    fi
+
+    local rc=`cat /sys/kernel/kexec_crash_loaded`
+    if [ $rc == 1 ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Function : start
+#
+# Description : This function prepare invokes multiple routine to launch kexec
+#                -
+function start()
+{
+    check_core_compress
+    status
+    local rc=$?
+    case $rc in
+
+        # Expected case .
+        # if user run this script manually
+    0)
+        $LOGGER "Kdump already running";
+        return 0
+        ;;
+
+
+        # Expected case . status will return 1 . It will continue to load
+        # secondary kernel.
+    1)
+        break;
+        ;;
+
+
+    2)
+        $LOGGER "Kdump is not supported on this kernel";
+        return 1;
+        ;;
+
+
+    3)
+        $LOGGER "crashkernel parameter not specified in bootloader";
+        return 1;
+        ;;
+
+    *)
+        $LOGGER "Unknown option for kexec status";
+        return 1;
+        ;;
+    esac
+
+    check_config
+    if [ $? != 0 ]; then
+        echo  "Failed to start up";
+        $LOGGER "failed to start up, config file incorrect"
+        return 1
+    fi
+    load_kexec
+    if [ $? != 0 ]; then
+        echo  "Failed to start up";
+        $LOGGER "failed to start up"
+        return 1
+    fi
+
+    echo "Starting kdump";
+    $LOGGER "started up"
+    return 0
+}
+
+# Function : main
+#
+# Description : This function is invoked first and responsible for invoking
+#               other library function to enable kdump service
+#
+function main()
+{
+    # return code
+    local rc=1
+    if [ $# -eq 0 ] ; then
+        if [ -s /proc/vmcore ]; then
+            save_core
+            reboot
+        else
+            start
+            rc=$?
+        fi
+    fi
+
+    if [ $# -eq 1 ] ; then
+        case "$1" in
+        status)
+            status
+            case "$?" in
+            0)
+                echo "Kdump is operational"
+                rc=0
+                ;;
+            1)
+                echo "Kdump is not operational"
+                rc=3
+                ;;
+            2)
+                echo "Kdump is unsupported on this kernel"
+                rc=3
+                ;;
+            esac
+            return $rc
+            ;;
+
+        *)
+            echo $"Usage: $0 status"
+            return $rc
+        esac
+    fi
+
+    return $rc
+}
+####### End of library routines #####
+
+###### Start main routine ######
+main $@
+exit $?
+###### End main routine ######

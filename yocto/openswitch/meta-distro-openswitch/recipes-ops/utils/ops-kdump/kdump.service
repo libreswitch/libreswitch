@@ -1,0 +1,14 @@
+# Copyright (C) 2016 Hewlett Packard Enterprise Development LP
+
+[Unit]
+Description=OpenSwitch Kernel Dump Service
+After=syslog.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/kdump
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+WantedBy=kdump.target
