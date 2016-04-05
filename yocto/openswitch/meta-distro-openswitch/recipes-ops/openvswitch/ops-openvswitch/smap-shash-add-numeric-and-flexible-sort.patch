@@ -1,0 +1,208 @@
+From e4b192bf6075cad9386c054e7671c05a3ece9128 Mon Sep 17 00:00:00 2001
+From: Kevin Worth <kevin.worth@hpe.com>
+Date: Mon, 21 Mar 2016 17:01:15 -0700
+Subject: [PATCH] smap,shash: add numeric and flexible sort
+
+The default implementation of shash_sort and smap_sort provide only
+lexigraphic sorting. This patch allows both a numeric sort and a flexible
+version where the caller provides a comparison function
+("compar" being the name used in other standard functions e.g. qsort(3))
+
+Change-Id: I12fd3f8eef3f627fc1482bda47ba8b2329123121
+Signed-off-by: Kevin Worth <kevin.worth@hpe.com>
+---
+ lib/shash.c | 36 ++++++++++++++++++++++++++++++++++--
+ lib/shash.h |  4 ++++
+ lib/smap.c  | 39 +++++++++++++++++++++++++++++++++++----
+ lib/smap.h  |  4 ++++
+ 4 files changed, 77 insertions(+), 6 deletions(-)
+
+diff --git a/lib/shash.c b/lib/shash.c
+index 4285c07..87cefd7 100644
+--- a/lib/shash.c
++++ b/lib/shash.c
+@@ -1,5 +1,6 @@
+ /*
+  * Copyright (c) 2009, 2010, 2011, 2012 Nicira, Inc.
++ * Copyright (C) 2016 Hewlett Packard Enterprise Development LP
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+@@ -260,8 +261,19 @@ compare_nodes_by_name(const void *a_, const void *b_)
+     return strcmp((*a)->name, (*b)->name);
+ }
+ 
++static int
++compare_nodes_by_name_numeric(const void *a_, const void *b_)
++{
++    const struct shash_node *const *a = a_;
++    const struct shash_node *const *b = b_;
++    return (strtoul((*a)->name, NULL, 0) > strtoul((*b)->name, NULL, 0)) -
++           (strtoul((*a)->name, NULL, 0) < strtoul((*b)->name, NULL, 0));
++}
++
++/* Performs shash_sort, but allows a different comparison function */
+ const struct shash_node **
+-shash_sort(const struct shash *sh)
++shash_sort_with_compar(const struct shash *sh,
++                       int (*compar)(const void *, const void *))
+ {
+     if (shash_is_empty(sh)) {
+         return NULL;
+@@ -278,12 +290,32 @@ shash_sort(const struct shash *sh)
+         }
+         ovs_assert(i == n);
+ 
+-        qsort(nodes, n, sizeof *nodes, compare_nodes_by_name);
++        qsort(nodes, n, sizeof *nodes, compar);
+ 
+         return nodes;
+     }
+ }
+ 
++/* Returns an array of nodes sorted by name or NULL if 'sh' is empty.  The
++ * caller is responsible for freeing this array. */
++const struct shash_node **
++shash_sort(const struct shash *sh)
++{
++    return shash_sort_with_compar(sh, compare_nodes_by_name);
++}
++
++/* Returns an array of nodes sorted by name or NULL if 'sh' is empty.
++ * The caller is responsible for freeing this array.
++ *
++ * Names are assumed to be numbers represented as strings such that the strings
++ * "10", "20", "100" will be sorted in that order, whereas lexigraphical
++ * sorting would result in "10", "100", "20"). */
++const struct shash_node **
++shash_sort_numeric(const struct shash *sh)
++{
++    return shash_sort_with_compar(sh, compare_nodes_by_name_numeric);
++}
++
+ /* Returns true if 'a' and 'b' contain the same keys (regardless of their
+  * values), false otherwise. */
+ bool
+diff --git a/lib/shash.h b/lib/shash.h
+index 97d36ba..405413d 100644
+--- a/lib/shash.h
++++ b/lib/shash.h
+@@ -1,5 +1,6 @@
+ /*
+  * Copyright (c) 2009, 2010, 2011 Nicira, Inc.
++ * Copyright (C) 2016 Hewlett Packard Enterprise Development LP
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+@@ -64,6 +65,9 @@ void *shash_find_and_delete(struct shash *, const char *);
+ void *shash_find_and_delete_assert(struct shash *, const char *);
+ struct shash_node *shash_first(const struct shash *);
+ const struct shash_node **shash_sort(const struct shash *);
++const struct shash_node **shash_sort_numeric(const struct shash *);
++const struct shash_node **shash_sort_with_compar(const struct shash *,
++                                        int (*)(const void *, const void *));
+ bool shash_equal_keys(const struct shash *, const struct shash *);
+ struct shash_node *shash_random_node(struct shash *);
+ 
+diff --git a/lib/smap.c b/lib/smap.c
+index 07dd23a..def83b6 100644
+--- a/lib/smap.c
++++ b/lib/smap.c
+@@ -1,4 +1,5 @@
+ /* Copyright (c) 2012, 2014, 2015 Nicira, Inc.
++ * Copyright (C) 2016 Hewlett Packard Enterprise Development LP
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+@@ -27,6 +28,7 @@ static struct smap_node *smap_add__(struct smap *, char *, void *,
+ static struct smap_node *smap_find__(const struct smap *, const char *key,
+                                      size_t key_len, size_t hash);
+ static int compare_nodes_by_key(const void *, const void *);
++static int compare_nodes_by_key_numeric(const void *, const void *);
+ 
+ /* Public Functions. */
+ 
+@@ -264,10 +266,10 @@ smap_clone(struct smap *dst, const struct smap *src)
+     }
+ }
+ 
+-/* Returns an array of nodes sorted on key or NULL if 'smap' is empty.  The
+- * caller is responsible for freeing this array. */
++/* Performs smap_sort, but allows a different comparison function */
+ const struct smap_node **
+-smap_sort(const struct smap *smap)
++smap_sort_with_compar(const struct smap *smap,
++                      int (*compar)(const void *, const void *))
+ {
+     if (smap_is_empty(smap)) {
+         return NULL;
+@@ -284,12 +286,32 @@ smap_sort(const struct smap *smap)
+         }
+         ovs_assert(i == n);
+ 
+-        qsort(nodes, n, sizeof *nodes, compare_nodes_by_key);
++        qsort(nodes, n, sizeof *nodes, compar);
+ 
+         return nodes;
+     }
+ }
+ 
++/* Returns an array of nodes sorted on key or NULL if 'smap' is empty.  The
++ * caller is responsible for freeing this array. */
++const struct smap_node **
++smap_sort(const struct smap *smap)
++{
++    return smap_sort_with_compar(smap, compare_nodes_by_key);
++}
++
++/* Returns an array of nodes sorted on key or NULL if 'smap' is empty.
++ * The caller is responsible for freeing this array.
++ *
++ * Keys are assumed to be numbers represented as strings such that the strings
++ * "10", "20", "100" will be sorted in that order, whereas lexigraphical
++ * sorting would result in "10", "100", "20"). */
++const struct smap_node **
++smap_sort_numeric(const struct smap *smap)
++{
++    return smap_sort_with_compar(smap, compare_nodes_by_key_numeric);
++}
++
+ /* Adds each of the key-value pairs from 'json' (which must be a JSON object
+  * whose values are strings) to 'smap'.
+  *
+@@ -379,3 +401,12 @@ compare_nodes_by_key(const void *a_, const void *b_)
+     const struct smap_node *const *b = b_;
+     return strcmp((*a)->key, (*b)->key);
+ }
++
++static int
++compare_nodes_by_key_numeric(const void *a_, const void *b_)
++{
++    const struct smap_node *const *a = a_;
++    const struct smap_node *const *b = b_;
++    return (strtoul((*a)->key, NULL, 0) > strtoul((*b)->key, NULL, 0)) -
++           (strtoul((*a)->key, NULL, 0) < strtoul((*b)->key, NULL, 0));
++}
+diff --git a/lib/smap.h b/lib/smap.h
+index 489497a..eafeb80 100644
+--- a/lib/smap.h
++++ b/lib/smap.h
+@@ -1,4 +1,5 @@
+ /* Copyright (c) 2012, 2014, 2015 Nicira, Inc.
++ * Copyright (C) 2016 Hewlett Packard Enterprise Development LP
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+@@ -85,6 +86,9 @@ size_t smap_count(const struct smap *);
+ 
+ void smap_clone(struct smap *dst, const struct smap *src);
+ const struct smap_node **smap_sort(const struct smap *);
++const struct smap_node **smap_sort_numeric(const struct smap *);
++const struct smap_node **smap_sort_with_compar(const struct smap *,
++                                        int (*)(const void *, const void *));
+ 
+ void smap_from_json(struct smap *, const struct json *);
+ struct json *smap_to_json(const struct smap *);
+-- 
+1.9.1
+
