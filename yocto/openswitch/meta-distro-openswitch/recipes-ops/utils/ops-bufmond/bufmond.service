@@ -5,10 +5,11 @@ Description=OpenSwitch Buffer monitoring Daemon
 After=ovsdb-server.service ops-init.service
 
 [Service]
-Type=oneshot
-ExecStartPre=/bin/rm -f /var/run/bufmond.pid
-ExecStart=/usr/bin/bufmond
-PIDFile=/var/run/bufmond.pid
+Type=forking
+RemainAfterExit=yes
+ExecStartPre=/bin/rm -f /var/run/openvswitch/bufmond.pid
+ExecStart=/sbin/ip netns exec nonet /usr/bin/bufmond --detach --pidfile -vSYSLOG:INFO
+PIDFile=/var/run/openvswitch/bufmond.pid
 
 [Install]
 WantedBy=multi-user.target
