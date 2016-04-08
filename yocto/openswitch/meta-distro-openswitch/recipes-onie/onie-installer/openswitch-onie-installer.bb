@@ -17,7 +17,7 @@ S = "${WORKDIR}"
 
 do_deploy () {
     install -d ${DEPLOYDIR}
-    cat onie.config onie-installer.in ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}-${MACHINE}.cpio.gz > \
+    echo "DISTRO_NAME=${DISTRO_NAME}" | cat - onie.config onie-installer.in ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}-${MACHINE}.cpio.gz > \
        ${DEPLOYDIR}/onie-installer-${ONIE_PREFIX}
     chmod +x ${DEPLOYDIR}/onie-installer-${ONIE_PREFIX}
 }

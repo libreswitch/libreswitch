@@ -310,9 +310,9 @@ if [ $(awk -F= '/^NAME/ { print $2 } ' /etc/os-release) == \"onie\" ] ; then
         exit 1
     }
 else
-    # Check we are running on $label
-    if [ $(awk -F= '/^NAME/ { print $2 } ' /etc/os-release) != "$label" ] ; then
-        echo -e "${red}ERROR${normal}: This machine does not seem to be running ONIE or $label; aborting!"
+    # Check we are running on correct distro
+    if [ $(awk -F= '/^NAME/ { print $2 } ' /etc/os-release) != $DISTRO_NAME ] ; then
+        echo -e "${red}ERROR${normal}: This machine does not seem to be running ONIE or $DISTRO_NAME; aborting!"
         exit 1
     fi
 
@@ -362,6 +362,7 @@ EOF
 }
 
 banner
+
 # Clear any left-over mounts
 umount $mount_point 2>/dev/null
 mkdir -p $mount_point
