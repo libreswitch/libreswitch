@@ -12,7 +12,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-openvswitch;protocol=http \
    file://idl_tracking_python.patch \
 "
 
-SRCREV = "20cdf72f988d3d72c703974986451f83425180c0"
+SRCREV = "0d50803f70419dc37a0f55f5e9b81efbfe152562"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
