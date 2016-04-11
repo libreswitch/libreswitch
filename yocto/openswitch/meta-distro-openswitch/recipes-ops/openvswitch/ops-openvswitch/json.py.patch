@@ -1,0 +1,87 @@
+diff --git a/python/ovs/json.py b/python/ovs/json.py
+index d329ee4..0c41fc0 100644
+--- a/python/ovs/json.py
++++ b/python/ovs/json.py
+@@ -25,6 +25,7 @@ escapes = {ord('"'): u"\\\"",
+            ord("\n"): u"\\n",
+            ord("\r"): u"\\r",
+            ord("\t"): u"\\t"}
++special_chars = [chr(i) for i in range(32)]
+ for esc in range(32):
+     if esc not in escapes:
+         escapes[esc] = u"\\u%04x" % esc
+@@ -162,6 +163,7 @@ class Parser(object):
+         # Lexical analysis.
+         self.lex_state = Parser.__lex_start
+         self.buffer = ""
++        self.strbuf = None
+         self.line_number = 0
+         self.column_number = 0
+         self.byte_number = 0
+@@ -191,6 +193,8 @@ class Parser(object):
+ 
+     def __lex_start_string(self, _):
+         self.lex_state = Parser.__lex_string
++        self.strbuf = ''
++        self.start = self.end+1
+ 
+     def __lex_start_error(self, c):
+         if ord(c) >= 32 and ord(c) < 128:
+@@ -357,7 +361,11 @@ class Parser(object):
+                   "t": u"\t"}
+ 
+     def __lex_finish_string(self):
+-        inp = self.buffer
++        if self.strbuf:
++            inp = self.strbuf + self.bufcpy[self.start:self.end]
++        else:
++            inp = self.bufcpy[self.start:self.end]
++        self.strbuf = None
+         out = u""
+         while len(inp):
+             backslash = inp.find('\\')
+@@ -403,18 +411,16 @@ class Parser(object):
+         self.__parser_input('string', out)
+ 
+     def __lex_string_escape(self, c):
+-        self.buffer += c
+         self.lex_state = Parser.__lex_string
+         return True
+ 
+     def __lex_string(self, c):
+         if c == '\\':
+-            self.buffer += c
+             self.lex_state = Parser.__lex_string_escape
+         elif c == '"':
+             self.__lex_finish_string()
+-        elif ord(c) >= 0x20:
+-            self.buffer += c
++        elif c not in special_chars:
++            pass
+         else:
+             self.__error("U+%04X must be escaped in quoted string" % ord(c))
+         return True
+@@ -547,8 +553,14 @@ class Parser(object):
+ 
+     def feed(self, s):
+         i = 0
++        self.start = 0
++        self.end = 0
++        self.bufcpy = s
++        buflen = len(s)
+         while True:
+-            if self.done or i >= len(s):
++            if self.done or i >= buflen:
++                if self.strbuf is not None:
++                    self.strbuf = self.strbuf + self.bufcpy[self.start:self.end]
+                 return i
+ 
+             c = s[i]
+@@ -561,6 +573,7 @@ class Parser(object):
+                     self.column_number += 1
+ 
+                 i += 1
++                self.end += 1
+ 
+     def is_done(self):
+         return self.done
