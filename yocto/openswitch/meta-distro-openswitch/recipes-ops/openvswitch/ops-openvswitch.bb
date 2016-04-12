@@ -13,7 +13,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-openvswitch;protocol=http \
    file://smap-shash-add-numeric-and-flexible-sort.patch \
 "
 
-SRCREV = "0d50803f70419dc37a0f55f5e9b81efbfe152562"
+SRCREV = "7322f396e8b75f8c59cc1f129ca32098d0e12853"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.

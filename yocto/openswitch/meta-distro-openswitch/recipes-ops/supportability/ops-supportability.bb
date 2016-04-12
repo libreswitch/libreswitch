@@ -4,11 +4,11 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 
 DEPENDS = "ops-ovsdb libyaml ops-cli"
 
-RDEPENDS_${PN} = "python-argparse python-json python-ops-ovsdb python-distribute python-pyyaml python-systemd"
+RDEPENDS_${PN} = "python-pyinotify python-xattr python-argparse python-json python-ops-ovsdb python-distribute python-pyyaml python-systemd"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-supportability;protocol=https  file://ops-supportability.service"
 
-SRCREV = "ccc6d5cc579774943c2fce38ce9cef94a14061e1"
+SRCREV = "7c1c404302440879301cb56009bd07b92ee33f3a"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.

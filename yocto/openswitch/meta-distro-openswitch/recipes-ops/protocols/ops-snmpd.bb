@@ -30,6 +30,6 @@ do_install_append() {
 SYSTEMD_PACKAGES = "${PN}"
 SYSTEMD_SERVICE_${PN} = "ops-snmpd.service"
 
-FILES_${PN} += "/usr/lib/cli/plugins/"
+FILES_${PN} += "${libdir}/libops_snmptrap.so.1* /usr/lib/cli/plugins"
 
 inherit openswitch cmake systemd

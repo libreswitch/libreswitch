@@ -9,6 +9,7 @@ Type=simple
 ExecStartPre=/bin/rm -f /var/run/ops_supportability.pid
 ExecStart=/usr/bin/ops_supportability
 PIDFile=/var/run/ops_supportability.pid
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target

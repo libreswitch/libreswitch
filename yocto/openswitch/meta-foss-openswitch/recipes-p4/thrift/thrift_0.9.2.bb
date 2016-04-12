@@ -41,25 +41,26 @@ DEPENDS = " \
 "
 
 EXTRA_OECONF = " \
-	--with-cpp \
+	--with-cpp              \
 	--with-python=${PYTHON} \
-	--with-c_glib \
-	--with-go \
-	--without-csharp \
-	--without-d \
-	--without-erlang \
-	--without-haskell \
-	--without-java  \
-	--without-perl \
-	--without-php \
+	--with-c_glib           \
+	--without-csharp        \
+	--without-d             \
+	--without-erlang        \
+	--without-go            \
+	--without-haskell       \
+	--without-java          \
+	--without-libevent      \
+	--without-lua           \
+	--without-nodejs        \
+	--without-perl          \
+	--without-php           \
 	--without-php_extension \
-	--without-qt4 \
-	--without-ruby \
-	--without-libevent \
-	--without-zlib \
-	--without-nodejs \
-	--disable-tests \
-	--disable-tutorial \
+	--without-qt4           \
+	--without-ruby          \
+	--without-zlib          \
+	--disable-tests         \
+	--disable-tutorial      \
 "
 
 BBCLASSEXTEND = "native"

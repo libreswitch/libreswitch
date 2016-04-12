@@ -8,6 +8,7 @@ Type=forking
 ExecStart=/sbin/ip netns exec swns /usr/bin/hsflowd start
 ExecStop=/sbin/ip netns exec swns /usr/bin/hsflowd stop
 ExecReload=/sbin/ip netns exec swns /usr/bin/hsflowd restart
+PIDFile=/var/run/hsflowd.pid
 
 
 [Install]

@@ -34,5 +34,6 @@ FILES_${PN} += "/usr/share/opsplugins"
 FILES_${PN} += "/usr/lib/cli/plugins/"
 SYSTEMD_PACKAGES = "${PN}"
 SYSTEMD_SERVICE_${PN} = "ops-classifierd.service"
+SYSTEMD_AUTO_ENABLE = "disable"
 
 inherit openswitch cmake pkgconfig systemd

@@ -6,9 +6,9 @@ After=ovsdb-server.service ops-init.service
 
 [Service]
 Type=forking
-ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-classifier.pid
-ExecStart=/sbin/ip netns exec nonet /usr/bin/ops-classifier --detach --pidfile -vSYSLOG:INFO
-PIDFile=/var/run/openvswitch/ops-classifier.pid
+ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-classifierd.pid
+ExecStart=/sbin/ip netns exec nonet /usr/bin/ops-classifierd --detach --pidfile -vSYSLOG:INFO
+PIDFile=/var/run/openvswitch/ops-classifierd.pid
 Restart=on-abort
 
 [Install]
