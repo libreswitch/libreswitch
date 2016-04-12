@@ -8,3 +8,4 @@ tmpfs                /var/volatile        tmpfs      defaults              0  0
 
 # Mount the configuration partition at /var/local
 LABEL=OpenSwitch\040Conf /var/local        auto       defaults              1  1
+LABEL=OpenSwitch\040Diags /var/diagnostics           auto       defaults              0  0
