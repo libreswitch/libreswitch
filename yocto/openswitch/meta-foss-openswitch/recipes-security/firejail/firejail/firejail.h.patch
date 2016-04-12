@@ -1,0 +1,15 @@
+--- firejail-0.9.38.orig/src/firejail/firejail.h	2016-02-05 04:52:41.000000000 -0800
++++ firejail-0.9.38/src/firejail/firejail.h	2016-04-11 17:15:29.346008518 -0700
+@@ -64,6 +64,12 @@
+ #define DEFAULT_ROOT_PROFILE	"server"
+ #define MAX_INCLUDE_LEVEL 6		// include levels in profile files
+ 
++typedef struct ug_list
++{
++    uint32_t* ug_id_list;
++    int size;
++} ug_list_t;
++
+ // main.c
+ typedef struct bridge_t {
+ 	// on the host
