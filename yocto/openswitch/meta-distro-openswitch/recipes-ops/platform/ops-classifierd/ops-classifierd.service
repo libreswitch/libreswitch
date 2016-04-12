@@ -1,0 +1,15 @@
+# Copyright (C) 2016 Hewlett Packard Enterprise Development LP
+
+[Unit]
+Description=OpenSwitch Classifier Daemon
+After=ovsdb-server.service ops-init.service
+
+[Service]
+Type=forking
+ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-classifier.pid
+ExecStart=/sbin/ip netns exec nonet /usr/bin/ops-classifier --detach --pidfile -vSYSLOG:INFO
+PIDFile=/var/run/openvswitch/ops-classifier.pid
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target
