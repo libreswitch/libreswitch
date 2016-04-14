@@ -2,7 +2,7 @@ SUMMARY = "OpenSwitch REST Service Daemon"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://setup.py;beginline=1;endline=15;md5=718b8f9952f79dfe2d10ad2e7e01f255"
 
-DEPENDS = "python-inflect-native python-tornado-native ops-openvswitch ops-ovsdb"
+DEPENDS = "python-inflect-native python-tornado-native ops-openvswitch ops-ovsdb ops-supportability"
 
 RDEPENDS_${PN} = "python-argparse python-json python-ops-ovsdb python-distribute python-tornado python-html python-pkgutil python-subprocess python-numbers python-inflect python-xml ops-restapi python-unixadmin python-jsonschema python-jsonpatch ops-aaa-utils ops-passwd-srv python-pycrypto"
 
