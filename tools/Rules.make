@@ -711,6 +711,13 @@ define TESTENV_PREPARE
 
 endef
 
+ifneq ($(TESTENV_STRESS),)
+# If not specified, run at least 3 iterations and max 13
+TESTENV_ITERATIONS?=$(shell echo $$(expr $$RANDOM % 10 + 3))
+TESTENV_EXTRA_PARAMETERS=-k '$(TESTENV_STRESS)'
+endif
+TENV_ITERATIONS?=1
+
 _testenv_rerun:
 	$(V) $(SUDO) rm -Rf $(BUILDDIR)/test/$(TESTSUITE)/code_under_test
 	$(V) mkdir -p $(BUILDDIR)/test/$(TESTSUITE)/code_under_test
@@ -720,7 +727,11 @@ _testenv_rerun:
 	$(V) \
 	  if [ "$(TESTSUITE)" == "legacy" ] ; then \
 	    export VSI_IMAGE_NAME=$(TOPOLOGY_TEST_IMAGE) ;\
-	    $(MAKE) devenv_ct_test PY_TEST_ARGS="--exitfirst --junitxml=$(BUILDDIR)/test/$(TESTSUITE)/test-results.xml $(BUILDDIR)/test/$(TESTSUITE)/code_under_test" ; \
+            $(ECHO) "\nIterating the tests $(TESTENV_ITERATIONS) times\n" ; \
+	    for iteration in $$(seq 1 $(TESTENV_ITERATIONS)) ; do \
+	      $(ECHO) "\nRunning the testsuite on iteration $$iteration" ; \
+	      $(MAKE) devenv_ct_test PY_TEST_ARGS="$(TESTENV_EXTRA_PARAMETERS) --exitfirst --junitxml=$(BUILDDIR)/test/$(TESTSUITE)/test-results.xml $(BUILDDIR)/test/$(TESTSUITE)/code_under_test" || exit 1 ; \
+	    done ; \
 	  else \
 	    cd $(BUILDDIR)/test/$(TESTSUITE) ; unset CURL_CA_BUNDLE; tox ; \
 	  fi
