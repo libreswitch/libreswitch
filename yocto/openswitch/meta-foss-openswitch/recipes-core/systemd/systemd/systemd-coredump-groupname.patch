@@ -1,0 +1,55 @@
+diff --git a/src/journal/coredump.c b/src/journal/coredump.c
+index f7ba019..da9aa6e 100644
+--- a/src/journal/coredump.c
++++ b/src/journal/coredump.c
+@@ -25,6 +25,7 @@
+ #include <sys/prctl.h>
+ #include <sys/types.h>
+ #include <sys/xattr.h>
++#include <grp.h>
+ 
+ #ifdef HAVE_ELFUTILS
+ #  include <dwarf.h>
+@@ -98,6 +99,7 @@ static DEFINE_CONFIG_PARSE_ENUM(config_parse_coredump_storage, coredump_storage,
+ 
+ static CoredumpStorage arg_storage = COREDUMP_STORAGE_EXTERNAL;
+ static bool arg_compress = true;
++static char* arg_group = NULL;
+ static off_t arg_process_size_max = PROCESS_SIZE_MAX;
+ static off_t arg_external_size_max = EXTERNAL_SIZE_MAX;
+ static size_t arg_journal_size_max = JOURNAL_SIZE_MAX;
+@@ -113,6 +115,7 @@ static int parse_config(void) {
+                 { "Coredump", "JournalSizeMax",   config_parse_iec_size,          0, &arg_journal_size_max  },
+                 { "Coredump", "KeepFree",         config_parse_iec_off,           0, &arg_keep_free         },
+                 { "Coredump", "MaxUse",           config_parse_iec_off,           0, &arg_max_use           },
++                { "Coredump", "GroupName",        config_parse_string,            0, &arg_group             },
+                 {}
+         };
+ 
+@@ -205,7 +208,7 @@ static int fix_permissions(
+                 const char *target,
+                 const char *info[_INFO_LEN],
+                 uid_t uid) {
+-
++        struct group* grpdata;
+         assert(fd >= 0);
+         assert(filename);
+         assert(target);
+@@ -216,6 +219,17 @@ static int fix_permissions(
+         fix_acl(fd, uid);
+         fix_xattr(fd, info);
+ 
++        if(arg_group != NULL)
++        {
++            /* Convert group name into group id */
++            grpdata = getgrnam(arg_group);
++            if(grpdata!= NULL)
++            {
++                fchown(fd,-1,grpdata->gr_gid);
++            }
++        }
++
++
+         if (fsync(fd) < 0)
+                 return log_error_errno(errno, "Failed to sync coredump %s: %m", filename);
+ 

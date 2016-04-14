@@ -19,6 +19,8 @@ inherit pythonnative python-dir
 SRC_URI += "file://systemctl-alias.sh \
     file://silent-fsck-on-boot.patch \
     file://revert-ipv6ll-address-setting.patch \
+    file://systemd-coredump-groupname.patch \
+    file://systemd-coredump-conf.patch \
     file://system.conf \
 "
 

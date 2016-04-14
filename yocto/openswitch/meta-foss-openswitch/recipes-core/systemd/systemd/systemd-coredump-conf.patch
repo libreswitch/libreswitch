@@ -1,0 +1,12 @@
+diff --git a/src/journal/coredump.conf b/src/journal/coredump.conf
+index c2f0643..8199246 100644
+--- a/src/journal/coredump.conf
++++ b/src/journal/coredump.conf
+@@ -12,6 +12,7 @@
+ # See coredump.conf(5) for details.
+
+ [Coredump]
++GroupName=ops_coredump
+ #Storage=external
+ #Compress=yes
+ #ProcessSizeMax=2G
