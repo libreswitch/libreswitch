@@ -733,7 +733,11 @@ _testenv_rerun:
 	      $(MAKE) devenv_ct_test PY_TEST_ARGS="$(TESTENV_EXTRA_PARAMETERS) --exitfirst --junitxml=$(BUILDDIR)/test/$(TESTSUITE)/test-results.xml $(BUILDDIR)/test/$(TESTSUITE)/code_under_test" || exit 1 ; \
 	    done ; \
 	  else \
-	    cd $(BUILDDIR)/test/$(TESTSUITE) ; unset CURL_CA_BUNDLE; tox ; \
+            $(ECHO) "\nIterating the tests $(TESTENV_ITERATIONS) times\n" ; \
+	    for iteration in $$(seq 1 $(TESTENV_ITERATIONS)) ; do \
+	      $(ECHO) "\nRunning the testsuite on iteration $$iteration" ; \
+	      cd $(BUILDDIR)/test/$(TESTSUITE) ; unset CURL_CA_BUNDLE; export TESTENV_EXTRA_PARAMETERS='$(TESTENV_EXTRA_PARAMETERS)' ; tox || exit 1 ; \
+            done ; \
 	  fi
 
 # We try to export this symbol only when the target is invoked, since the expansion
