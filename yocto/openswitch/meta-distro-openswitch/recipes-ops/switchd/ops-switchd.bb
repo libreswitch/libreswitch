@@ -26,10 +26,9 @@ RDEPENDS_${PN} = "openssl procps util-linux-uuidgen util-linux-libuuid coreutils
   ops-openvswitch ops-ovsdb \
   ${@bb.utils.contains('MACHINE_FEATURES', 'ops-container', 'openvswitch-sim-switch', '',d)} \
 "
-
 RDEPENDS_${PN}_remove := "${@bb.utils.contains("IMAGE_FEATURES", "ops-p4", "openvswitch-sim-switch", "",d)}"
 
-FILES_${PN} = "${sbindir}/ops-switchd ${libdir}/libswitchd_plugins.so.1*"
+FILES_${PN} = "${sbindir}/ops-switchd ${libdir}/libswitchd_plugins.so.1* ${libdir}/openvswitch/plugins/"
 
 do_install_append() {
    install -d ${D}${systemd_unitdir}/system
