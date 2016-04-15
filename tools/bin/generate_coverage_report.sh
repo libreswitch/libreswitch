@@ -1,0 +1,88 @@
+COV_MODULE=$1
+COV_CONF_FILE="src/$COV_MODULE/ft_ct_coverage"        # Configuration file. If it exists then CT/FT coverage will be performed.
+                                                      # example: http://git.openswitch.net/cgit/openswitch/ops-lacpd/tree/ft_ct_coverage
+COV_MINIMUM=-1                                        # Minimum default of coverage. -1 as we want all runs to pass
+COV_REPORT_DIR="coverage"                             # Location where the coverage report data will be placed
+COV_DATA_DIR="src/$COV_MODULE/"                       # Repo directory where coverage data will be stored (gcda && gcno)
+
+# If the COV_CONF_FILE does not exist, do not continue, i.e no coverage enabled at the repo.
+if [ -f $COV_CONF_FILE ]
+then
+  # Makes the build system compile repos added to the devenv with gcov flags
+  touch build/devenv-coverage-enable
+  export VSI_COV_DATA_DIR=$PWD/$COV_DATA_DIR
+  # Create coverage data baseline
+  mkdir -p $COV_REPORT_DIR
+  rm -rf $COV_REPORT_DIR/*
+  # Clear all coverage counters before running the tests
+  lcov --zerocounters --directory $COV_DATA_DIR
+  lcov --initial --capture --directory $COV_DATA_DIR --output-file $COV_REPORT_DIR/app_base.info
+  # Run the Feature Tests
+  make testenv_run feature $COV_MODULE
+  # Capture the coverage raw data and check that coverage data was generated
+  COV_RAW_DATA=`lcov --capture --directory $COV_DATA_DIR --output-file $COV_REPORT_DIR/app_test.info 2>&1`
+  if grep -q "ERROR: no \.gcda files found" <<< $COV_RAW_DATA; then
+    echo "WARNING: No coverage data was generated during test run. Exiting now with no coverage report"
+    exit 0
+  fi
+  # The file where the coverage data will be placed
+  LCOV_COV_FILE="app_total.info"
+  # Read the configured minimum coverage percentage and exclude patterns from the repo conf file
+  # Configure exclude patterns using wildcars and separated by spaces, e.g to remove gtest and openvswitch files use:
+  # Exclude_pattern=*gtest* *openvswitch*
+  while read -r line
+  do
+    tmp=`echo "$line" | sed -rn 's/^Minimum_coverage=([0-9]+)$/\1/p'`
+    if [ ! -z "$tmp" ]
+    then
+      COV_MINIMUM=$tmp
+    fi
+    tmp=`echo "$line" | sed -rn 's/^Exclude_pattern=(.*)$/\1/p'`
+    if [ ! -z "$tmp" ]
+    then
+      COV_EXCLUDE_PATTERN=$tmp
+    fi
+  done < "$COV_CONF_FILE"
+  # Check if exclusion pattern is configured and apply it.
+  if [ ! -z "$COV_EXCLUDE_PATTERN" ]
+  then
+    echo "The configured FT/CT code coverage exclude pattern is: $COV_EXCLUDE_PATTERN"
+    echo "Going to exclude files from report:"
+    lcov --remove $COV_REPORT_DIR/app_base.info $COV_EXCLUDE_PATTERN --output-file $COV_REPORT_DIR/data_base.info
+    lcov --remove $COV_REPORT_DIR/app_test.info $COV_EXCLUDE_PATTERN --output-file $COV_REPORT_DIR/data_test.info
+    COV_RESULT=`lcov --add-tracefile $COV_REPORT_DIR/data_base.info --add-tracefile $COV_REPORT_DIR/data_test.info --output-file $COV_REPORT_DIR/$LCOV_COV_FILE`
+  else
+    COV_RESULT=`lcov --add-tracefile $COV_REPORT_DIR/app_base.info --add-tracefile $COV_REPORT_DIR/app_test.info --output-file $COV_REPORT_DIR/$LCOV_COV_FILE`
+  fi
+  echo "*** Going to merge baseline data with raw coverage data. ***"
+  echo "Coverage result after merging with baseline data:"
+  echo $COV_RESULT
+  # Get actual coverage from command output
+  COV_REPORTED=`echo "$COV_RESULT" | sed -rn 's/lines\.\.\.\.\.\.:[[:space:]]([[:digit:]]+).*/\1/p'`
+  if [ -z "$COV_REPORTED" ]
+  then
+    COV_REPORTED=0
+  fi
+  # Generate the HTML report
+  mkdir -p $COV_REPORT_DIR/html
+  cd $COV_REPORT_DIR/html
+  # TODO: Implement Branch Analysis
+  echo "Creating HTML report"
+  genhtml --no-branch-coverage ../$LCOV_COV_FILE > /dev/null 2>&1
+  cd ../..
+  echo ""
+  echo "**** Configuration and result info: ****"
+  echo ""
+  echo "The configured coverage threshold is: $COV_MINIMUM"
+  echo "The configured FT/CT code coverage exclude pattern is: $COV_EXCLUDE_PATTERN"
+  echo "The actual reported coverage is: $COV_REPORTED"
+  echo ""
+  if [ "$COV_MINIMUM" -gt "$COV_REPORTED" ]
+  then
+    echo "The code does not have enough coverage"
+  else
+    exit 0
+  fi
+else
+  echo "Code coverage not enabled or unsupported platform, skipping..."
+fi

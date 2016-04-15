@@ -54,5 +54,8 @@ endif
 ##RECIPE##-nfs-undeploy:
 	$(V)$(call DEVTOOL, undeploy-target -s ##RECIPE## localhost:$(NFSROOTPATH))
 
+##RECIPE##-generate_coverage_report:
+	$(V) $(BUILD_ROOT)/tools/bin/generate_coverage_report.sh ##RECIPE##
+
 -include src/##RECIPE##/Rules-ops-build.make
 #END_##RECIPE##
