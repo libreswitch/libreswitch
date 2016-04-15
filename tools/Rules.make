@@ -716,7 +716,7 @@ ifneq ($(TESTENV_STRESS),)
 TESTENV_ITERATIONS?=$(shell echo $$(expr $$RANDOM % 10 + 3))
 TESTENV_EXTRA_PARAMETERS=-k '$(TESTENV_STRESS)'
 endif
-TENV_ITERATIONS?=1
+TESTENV_ITERATIONS?=1
 
 _testenv_rerun:
 	$(V) $(SUDO) rm -Rf $(BUILDDIR)/test/$(TESTSUITE)/code_under_test

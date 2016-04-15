@@ -36,7 +36,9 @@ topology_docker==1.5.0
 ##########################
 
 # OpenSwitch support node
--e git+https://github.com/HPENetworking/topology_docker_openswitch.git@86ff05d21543e01a6779de6a74c1b3a93c7187cc#egg=topology_docker_openswitch
+-e git+https://github.com/HPENetworking/topology_docker_openswitch.git@7e237e1181f98930bb40ee703f3af167d3afec29#egg=topology_docker_openswitch
+-e git+https://github.com/HPENetworking/topology_docker_openvswitch.git@master#egg=topology_docker_openvswitch
+-e git+https://github.com/HPENetworking/topology_docker_p4switch.git@master#egg=topology_docker_p4switch
 
 
 ##########################
