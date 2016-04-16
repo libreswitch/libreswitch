@@ -30,13 +30,13 @@ COV_CONF_FILE="src/$COV_MODULE/ft_ct_coverage"        # Configuration file. If i
                                                       # example: http://git.openswitch.net/cgit/openswitch/ops-lacpd/tree/ft_ct_coverage
 COV_MINIMUM=-1                                        # Minimum default of coverage. -1 as we want all runs to pass
 COV_REPORT_DIR="coverage"                             # Location where the coverage report data will be placed
-COV_DATA_DIR="src/$COV_MODULE/"                       # Repo directory where coverage data will be stored (gcda && gcno)
+COV_DATA_DIR="src/"                                   # Repo directory where coverage data will be stored (gcda && gcno)
 
 # If the COV_CONF_FILE does not exist, do not continue, i.e no coverage enabled at the repo.
 if [ -f $COV_CONF_FILE ]
 then
   # Makes the build system compile repos added to the devenv with gcov flags
-  touch build/devenv-coverage-enable
+  touch build/devenv-coverage-enabled
   # Compile the moduler under test, which causes the gcno files to be generated.
   # The gcno files are needed prior to running the tests so that a baseline can be created
   make $COV_MODULE-build
@@ -45,8 +45,12 @@ then
   rm -rf $COV_REPORT_DIR/*
   # Clear all coverage counters before running the tests
   lcov --zerocounters --directory $COV_DATA_DIR
-  # Create coverage data baseline
-  lcov --initial --capture --directory $COV_DATA_DIR --output-file $COV_REPORT_DIR/app_base.info
+  # Create coverage data baseline, check that gcno files exist before proceeding
+  COV_BASE_DATA=`lcov --initial --capture --directory $COV_DATA_DIR --output-file $COV_REPORT_DIR/app_base.info 2>&1`
+  if grep -q "ERROR: no \.gcno files found" <<< $COV_BASE_DATA; then
+    echo "WARNING: No coverage notes file was generated during module compilation. Exiting now with no coverage report"
+    exit 0
+  fi
   # Run the Feature Tests
   make testenv_run feature $COV_MODULE
   # Capture the coverage raw data and check that coverage data was generated
@@ -106,7 +110,7 @@ then
   echo "The configured coverage threshold is: $COV_MINIMUM"
   echo "The configured FT/CT code coverage exclude pattern is: $COV_EXCLUDE_PATTERN"
   echo "The actual reported coverage is: $COV_REPORTED"
-  echo "The location of the report is: $COV_REPORT_DIR/html"
+  echo "The location of the FT/CT code coverage report is: $COV_REPORT_DIR/html"
   if [ "$COV_MINIMUM" -gt "$COV_REPORTED" ]
   then
     echo "The code does not have enough coverage"

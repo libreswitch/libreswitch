@@ -184,13 +184,13 @@ do_coverage_report() {
     mkdir -p ${COVERAGE_REPORT_DIR}/html
     genhtml ${COVERAGE_REPORT_DIR}/${MODULE_NAME} -o ${COVERAGE_REPORT_DIR}/html --demangle-cpp --branch-coverage
     #This is not visible on the developer console due to our version of open embedded
-    bbplain "Coverage report is at ${COVERAGE_REPORT_DIR}/html/index.html"
+    bbplain "Unit Test coverage report is at ${COVERAGE_REPORT_DIR}/html/index.html"
 }
 
 #Workaround for bbplain not showing on the console when executed from a shell task
 python do_show_coverage_report() {
     if os.path.isfile(os.path.join(d.getVar('TOPDIR', True), 'devenv-coverage-enabled')):
-        bb.plain('Coverage report is at %s/coverage/html/index.html' % (d.getVar('B', True)))
+        bb.plain('Unit Test coverage report is at %s/coverage/html/index.html' % (d.getVar('B', True)))
 }
 
 # Enable unit tests and coverage for devenv recipes (meaning they are in external src)

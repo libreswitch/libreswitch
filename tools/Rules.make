@@ -611,6 +611,11 @@ testenv_init: dev_header
 
 TOPOLOGY_TEST_IMAGE?=ops_$(USER)$(subst /,_,$(BUILD_ROOT))
 
+# TOPOLOGY_TEST_COV_DIR: directory in the local system that contains the gcov gcno (coverage notes) files.
+# The attributes.json expects this directory.
+# In the current implementation, this directory is shared between the host and the container using Docker volumes to collect the coverage data (gcda) files.
+TOPOLOGY_TEST_COV_DIR?=$(BUILD_ROOT)/src
+
 ifeq (testenv_run,$(firstword $(MAKECMDGOALS)))
   $(eval $(call PARSE_TWO_ARGUMENTS,testenv_run))
   export TESTSUITE?=$(EXTRA_ARGS_1)
@@ -699,15 +704,17 @@ define TESTENV_PREPARE
 	   else \
 		 cp tools/topology/tox.ini $(BUILDDIR)/test/$(TESTSUITE)/ ; \
 	   fi ; \
+	   output_attr_json=$(BUILDDIR)/test/$(TESTSUITE)/attributes.json ; \
 	   if [ -f $(BUILDDIR)/test/$(TESTSUITE)/code_under_test/$(1)/attributes.json.in ] ; then \
-		 $(call WARNING,Overriding the global attributes.json with the one from $(1)) ; \
+		 $(call WARNING, Overriding the global attributes.json with the one from $(1)) ; \
 		 sed -e 's?@TEST_IMAGE@?$(TOPOLOGY_TEST_IMAGE):latest?' \
 		   $(BUILDDIR)/test/$(TESTSUITE)/code_under_test/$(1)/attributes.json.in \
-		   > $(BUILDDIR)/test/$(TESTSUITE)/attributes.json ; \
+		   > $$output_attr_json ; \
+		 sed -i 's?@TEST_COV_DIR@?$(TOPOLOGY_TEST_COV_DIR)?g' $$output_attr_json ; \
 	   else \
 		 sed -e 's?@TEST_IMAGE@?$(TOPOLOGY_TEST_IMAGE):latest?' \
-		   tools/topology/attributes.json.in \
-		   > $(BUILDDIR)/test/$(TESTSUITE)/attributes.json ; \
+		   tools/topology/attributes.json.in > $$output_attr_json ; \
+		 sed -i 's?@TEST_COV_DIR@?$(TOPOLOGY_TEST_COV_DIR)?g' $$output_attr_json ; \
 	   fi ; \
 	 fi
 
@@ -730,6 +737,7 @@ _testenv_rerun:
 	  if [ "$(TESTSUITE)" == "legacy" ] ; then \
 	    export VSI_IMAGE_NAME=$(TOPOLOGY_TEST_IMAGE) ;\
             $(ECHO) "\nIterating the tests $(TESTENV_ITERATIONS) times\n" ; \
+	    export VSI_COV_DATA_DIR=$(TOPOLOGY_TEST_COV_DIR) ;\
 	    for iteration in $$(seq 1 $(TESTENV_ITERATIONS)) ; do \
 	      $(ECHO) "\nRunning the testsuite on iteration $$iteration" ; \
 	      $(MAKE) devenv_ct_test PY_TEST_ARGS="$(TESTENV_EXTRA_PARAMETERS) --exitfirst --junitxml=$(BUILDDIR)/test/$(TESTSUITE)/test-results.xml $(BUILDDIR)/test/$(TESTSUITE)/code_under_test" || exit 1 ; \

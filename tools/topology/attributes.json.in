@@ -5,7 +5,8 @@
             {
                 "nodes": ["type=openswitch"],
                 "attributes": {
-                    "image": "@TEST_IMAGE@"
+                    "image": "@TEST_IMAGE@",
+                    "binds": "@TEST_COV_DIR@:@TEST_COV_DIR@"
                 }
             }
         ]
