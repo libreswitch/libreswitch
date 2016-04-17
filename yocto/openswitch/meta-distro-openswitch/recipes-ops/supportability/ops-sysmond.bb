@@ -2,13 +2,11 @@ SUMMARY = "OpenSwitch System Monitoring Daemon"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
-DEPENDS = ""
+DEPENDS = "ops-cli ops-supportability"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-sysmond;protocol=http "
 
-SRCREV="eea44ff282c207bbac030db895e17b396a34fa95"
-
-DEPENDS = ""
+SRCREV="a8664b129d41020783bec8ad4bd50c004069f2d4"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
@@ -27,4 +25,5 @@ do_install() {
       install -d ${D}"${DIR_${PN}}"
 }
 
-inherit openswitch
+FILES_${PN} += "/usr/lib/cli/plugins/"
+inherit openswitch cmake
