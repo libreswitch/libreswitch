@@ -1,3 +1,30 @@
+#!/usr/bin/env bash
+#
+# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+# All Rights Reserved.
+#
+# The contents of this software are proprietary and confidential
+# to the Hewlett Packard Enterprise Development LP. No part of
+# this program  may be photocopied, reproduced, or translated
+# into another programming language without prior written consent
+# of the Hewlett Packard Enterprise Development LP.
+# Code Coverage Generation Tool
+#
+#  This tool uses lcov to produce HTML coverage reports for components
+#  that can be compiled with gcov coverage files.
+#
+# Usage:
+#  $ ./generate_coverage_report.sh ops-component
+#  - ops-component: The name of the OPS component/module under test.
+#
+# What the tool does:
+#  1. Enables gcov coverage flags on modules added to the devenv
+#  2. Compiles the moduler under test to produce the gcno files
+#  3. Creates a baseline with the gcno files prior to running tests
+#  4. Run tests using the testenv_run target
+#  5. Reads a code coverage configuration file and applies the settings
+#  6. Analyzes the coverage results and generates an HTML report
+
 COV_MODULE=$1
 COV_CONF_FILE="src/$COV_MODULE/ft_ct_coverage"        # Configuration file. If it exists then CT/FT coverage will be performed.
                                                       # example: http://git.openswitch.net/cgit/openswitch/ops-lacpd/tree/ft_ct_coverage
@@ -10,12 +37,15 @@ if [ -f $COV_CONF_FILE ]
 then
   # Makes the build system compile repos added to the devenv with gcov flags
   touch build/devenv-coverage-enable
-  export VSI_COV_DATA_DIR=$PWD/$COV_DATA_DIR
-  # Create coverage data baseline
+  # Compile the moduler under test, which causes the gcno files to be generated.
+  # The gcno files are needed prior to running the tests so that a baseline can be created
+  make $COV_MODULE-build
   mkdir -p $COV_REPORT_DIR
+  # Clear any previous coverage data
   rm -rf $COV_REPORT_DIR/*
   # Clear all coverage counters before running the tests
   lcov --zerocounters --directory $COV_DATA_DIR
+  # Create coverage data baseline
   lcov --initial --capture --directory $COV_DATA_DIR --output-file $COV_REPORT_DIR/app_base.info
   # Run the Feature Tests
   make testenv_run feature $COV_MODULE
@@ -76,7 +106,7 @@ then
   echo "The configured coverage threshold is: $COV_MINIMUM"
   echo "The configured FT/CT code coverage exclude pattern is: $COV_EXCLUDE_PATTERN"
   echo "The actual reported coverage is: $COV_REPORTED"
-  echo ""
+  echo "The location of the report is: $COV_REPORT_DIR/html"
   if [ "$COV_MINIMUM" -gt "$COV_REPORTED" ]
   then
     echo "The code does not have enough coverage"
@@ -84,5 +114,5 @@ then
     exit 0
   fi
 else
-  echo "Code coverage not enabled or unsupported platform, skipping..."
+  echo "Code coverage not enabled, skipping..."
 fi
