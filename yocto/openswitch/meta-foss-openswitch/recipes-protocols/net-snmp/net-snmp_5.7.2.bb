@@ -34,6 +34,10 @@ EXTRA_OECONF = "--disable-embedded-perl \
                 --enable-shared \
                 --disable-manuals \
                 --with-defaults \
+                --with-out-mib-modules="ucd_snmp target agent_mibs \
+                  disman/event disman/schedule utilities host mibII \
+                  notification notification-log-mib snmpv3mibs" \
+                --with-mib-modules="mibII/system_mib agentx" \
                 ${@base_conditional('SITEINFO_ENDIANNESS', 'le', '--with-endianness=little', '--with-endianness=big', d)}"
 
 do_install_append() {

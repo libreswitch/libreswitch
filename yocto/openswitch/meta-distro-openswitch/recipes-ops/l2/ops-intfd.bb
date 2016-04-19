@@ -2,7 +2,7 @@ SUMMARY = "OpenSwitch Interface Daemon"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
-DEPENDS = "ops-utils ops-hw-config ops-ovsdb ops-cli ops-supportability"
+DEPENDS = "ops-utils ops-hw-config ops-ovsdb ops-cli ops-supportability ops-snmpd"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-intfd;protocol=http\
            file://ops-intfd.service"
@@ -20,7 +20,7 @@ do_install_append() {
      install -m 0644 ${WORKDIR}/ops-intfd.service ${D}${systemd_unitdir}/system/
 }
 
-FILES_${PN} += "/usr/lib/cli/plugins/"
+FILES_${PN} += "/usr/lib/cli/plugins/ /usr/lib/snmp/plugins/"
 SYSTEMD_PACKAGES = "${PN}"
 SYSTEMD_SERVICE_${PN} = "ops-intfd.service"
 
