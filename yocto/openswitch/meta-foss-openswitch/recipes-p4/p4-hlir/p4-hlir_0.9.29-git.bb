@@ -13,10 +13,10 @@ SECTION = "devel"
 # upstream. Why not point it to git and set SRV_REV? As a reminder that
 # we really don't want to be using Git.
 
-SRC_COMMIT = "a0c233be8258ca3fbccd01313400df2b6400adeb"
+SRC_COMMIT = "b825fd54931868f3748de91b6491780b82847cb5"
 SRC_URI = "https://github.com/p4lang/p4-hlir/archive/${SRC_COMMIT}.tar.gz"
-SRC_URI[md5sum] = "f64460688df9eb6837ece6d31b238658"
-SRC_URI[sha256sum] = "c9f2bb9df98cdf5df9da2c06e0f4861b96d709501628fa98e9d9b693d441b88b"
+SRC_URI[md5sum] = "4ef990ab0888d0ef8a8454b9dae951d7"
+SRC_URI[sha256sum] = "68bfe5c6f222481ab82a880283cb755e055f56e08ddd0975e578cda7d347a0ab"
 
 DEPENDS = "python-ply"
 DEPENDS_class-native = "python-ply-native"
