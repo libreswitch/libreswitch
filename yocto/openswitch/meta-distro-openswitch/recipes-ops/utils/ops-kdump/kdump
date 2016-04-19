@@ -24,6 +24,10 @@ KEXEC=$(which kexec);
 VMCORE_DMESG=/usr/sbin/vmcore-dmesg
 KDUMP_KERNEL=""
 KDUMP_INITRD=""
+# Diag partition provides space to store coredumps
+DIAG_PARTITION_PATH="/var/diagnostics/coredump/kernel-core"
+# All the members of ops_coredump group have read permission of corefile.
+CORE_DUMP_GROUP="ops_coredump"
 ############################
 
 
@@ -68,8 +72,12 @@ function check_core_compress()
         if [ $? -eq 0 ]; then
             rm -f ${coredir}/vmcore  ${coredir}/vmcore-dmesg.txt
 
+            if [ ! -d "${DIAG_PARTITION_PATH}" ]; then
+                mkdir -p ${DIAG_PARTITION_PATH}
+            fi
+
             #Compressed core file name
-            vmcore_file_tar="${coredir}/vmcore.${time_stamp_fmt}.tar.gz"
+            vmcore_file_tar="${DIAG_PARTITION_PATH}/vmcore.${time_stamp_fmt}.tar.gz"
 
             mv ${coredir}/vmcore_incomplete.tar.gz ${vmcore_file_tar}
             if [[ $? -eq 0 ]]; then
@@ -80,9 +88,9 @@ function check_core_compress()
                 # ownership to it . netop user use tftp/sftp client to copy
                 # corefile from switch to external server.
 
-                chown root:ops_coredump  ${vmcore_file_tar}
+                chown root:${CORE_DUMP_GROUP} ${vmcore_file_tar}
                 if [[ $? -ne 0 ]]; then
-                    $LOGGER "failed to change ownership to ops_coredump group"
+                    $LOGGER "failed to change ownership to ${CORE_DUMP_GROUP} group"
                 fi
             else
                 $LOGGER "failed to archive and compress vmcore"
@@ -192,7 +200,7 @@ function save_core()
     if [ $? -eq 0 ]; then
         mv ${coredir}/vmcore-incomplete ${coredir}/vmcore
         $LOGGER "saved a vmcore to $coredir"
-        rm -f  ${coredir}/vmcore.*
+        rm -f ${DIAG_PARTITION_PATH}/vmcore.*
     else
         $LOGGER "failed to save a vmcore to $coredir"
     fi

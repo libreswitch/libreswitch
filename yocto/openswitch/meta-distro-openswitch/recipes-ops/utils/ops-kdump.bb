@@ -18,16 +18,19 @@ do_install() {
     install -d          ${D}${bindir}
     install -d          ${D}${sysconfdir}
     install -d          ${D}${sysconfdir}/systemd/system/kdump.target.wants
+    install -d          ${D}/var/lib/systemd
 
-
-    install -c -m 0644  ${WORKDIR}/kdump.conf             ${D}${sysconfdir}/kdump.conf
-    install -c -m 755   ${WORKDIR}/kdump                  ${D}${bindir}/kdump
-    install -c -m 0644  ${WORKDIR}/kdump.service          ${D}${systemd_unitdir}/system/kdump.service
-    install -c -m 0644  ${WORKDIR}/kdump.target           ${D}${systemd_unitdir}/system/kdump.target
-    ln -sf ${systemd_unitdir}/system/kdump.service        ${D}${sysconfdir}/systemd/system/kdump.target.wants/kdump.service
+    install -c -m 0644  ${S}/kdump.conf             ${D}${sysconfdir}/kdump.conf
+    install -c -m 755   ${S}/kdump                  ${D}${bindir}/kdump
+    install -c -m 0644  ${S}/kdump.service          ${D}${systemd_unitdir}/system/kdump.service
+    install -c -m 0644  ${S}/kdump.target           ${D}${systemd_unitdir}/system/kdump.target
+    ln -sf ${systemd_unitdir}/system/kdump.service  ${D}${sysconfdir}/systemd/system/kdump.target.wants/kdump.service
+    ln -sf  /var/diagnostics/coredump               ${D}/var/lib/systemd
 }
 
 SYSTEMD_PACKAGES = "${PN}"
 SYSTEMD_SERVICE_${PN} = "kdump.service"
 inherit openswitch systemd
-FILES_${PN} += "${systemd_unitdir}/system ${bindir} ${sysconfdir}"
+FILES_${PN} += "${systemd_unitdir}/system ${bindir} ${sysconfdir} \
+                /var/lib/systemd \
+               "

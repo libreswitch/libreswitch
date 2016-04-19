@@ -41,17 +41,20 @@ do_install_append(){
    install -d   ${D}/usr/bin
    install -d   ${D}${systemd_unitdir}/system
    install -d   ${D}${libdir}/sysusers.d
+   install -d   ${D}${sysconfdir}/tmpfiles.d
 
    install -c -m 0644 ${WORKDIR}/ops-supportability.service ${D}${systemd_unitdir}/system/
    install -c -m 0644 ${S}/conf/*.yaml ${D}/etc/openswitch/supportability/
    install -c -m 0444 ${S}/conf/ops_showtech.yaml ${D}/etc/openswitch/supportability/ops_showtech.defaults.yaml
    install -c -m 0644 ${S}/conf/ops_coredump.conf ${D}${libdir}/sysusers.d/ops_coredump.conf
+   install -c -m 0644 ${S}/conf/ops_supportability_dir.conf  ${D}${sysconfdir}/tmpfiles.d/ops_supportability_dir.conf
    install -c -m 755 ${S}/scripts/*   ${D}/usr/bin/
 }
 
 FILES_${PN} += "/usr/lib/cli/plugins/ \
                 /etc/openswitch/supportability \
                 ${libdir}/sysusers.d \
+                ${sysconfdir}/tmpfiles.d \
                "
 
 SYSTEMD_PACKAGES = "${PN}"
