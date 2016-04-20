@@ -2,7 +2,7 @@
 # Debugging
 ##########################
 
-ipdb
+ipdb==0.9.0
 
 
 ##########################
@@ -30,14 +30,17 @@ pyyaml==3.11
 ##########################
 
 # Docker
-topology_docker==1.5.0
+# topology_docker==1.5.0
+-e git+https://github.com/saenzpa/topology_docker.git@master#egg=topology_docker
+
 
 ##########################
 # Support nodes
 ##########################
 
 # OpenSwitch support node
--e git+https://github.com/HPENetworking/topology_docker_openswitch.git@7e237e1181f98930bb40ee703f3af167d3afec29#egg=topology_docker_openswitch
+-e git+https://github.com/saenzpa/topology_docker_openswitch.git@master#egg=topology_docker_openswitch
+-e git+https://github.com/saenzpa/topology_docker_oobmhost.git@master#egg=topology_docker_oobmhost
 -e git+https://github.com/HPENetworking/topology_docker_openvswitch.git@master#egg=topology_docker_openvswitch
 -e git+https://github.com/HPENetworking/topology_docker_p4switch.git@master#egg=topology_docker_p4switch
 
