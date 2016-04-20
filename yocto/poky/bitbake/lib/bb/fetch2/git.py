@@ -273,15 +273,6 @@ class Git(FetchMethod):
 
         runfetchcmd("%s clone %s %s/ %s" % (ud.basecmd, cloneflags, clonedir, destdir), d)
         os.chdir(destdir)
-
-        # FIXME: the following two lines remove the alternate that gets
-        # configured during cloning above. The alternate is removed
-        # elsewhere at a later stage, but sticks around for repositories
-        # cloned into a subdirectory of another repo. For now,
-        # workaround the issue by killing the alternate here.
-        runfetchcmd("%s repack -a -d" % (ud.basecmd), d)
-        os.unlink(os.path.join('.git', 'objects', 'info', 'alternates'))
-
         repourl = self._get_repo_url(ud)
         runfetchcmd("%s remote set-url origin %s" % (ud.basecmd, repourl), d)
         if not ud.nocheckout:
