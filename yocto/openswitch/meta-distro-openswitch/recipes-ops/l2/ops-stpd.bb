@@ -8,7 +8,7 @@ FILES_${PN} += "/usr/lib/cli/plugins/"
 SRC_URI = "git://git.openswitch.net/openswitch/ops-stpd;protocol=http\
            file://ops-stpd.service"
 
-SRCREV = "31db32c83c10ee5fbb3e49e8d23fdb4a710b26d2"
+SRCREV = "14c7a0d7e7a742c8d8033f0d2472cb364fbef78f"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
