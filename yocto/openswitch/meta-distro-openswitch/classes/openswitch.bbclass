@@ -41,7 +41,8 @@ DEBUG_FLAGS += "${@enable_devenv_profiling(d)}"
 inherit python-dir
 
 #-Dcom.fortify.sca.compilers.${HOST_PREFIX}gcc=com.fortify.sca.util.compilers.GccCompiler -Dcom.fortify.sca.compilers.${HOST_PREFIX}g++=com.fortify.sca.util.compilers.GppCompiler
-FORTIFY_PARAMETERS = "-b ${PN} -python-path ${STAGING_DIR_TARGET}${PYTHON_SITEPACKAGES_DIR}  "
+FORTIFY_PARAMETERS="-b ${PN} "
+FORTIFY_PARAMETERS_FOR_PYTHON="-b ${PN} -python-path ${STAGING_DIR_TARGET}${PYTHON_SITEPACKAGES_DIR} "
 
 do_generate_sca_wrappers() {
     if which sourceanalyzer > /dev/null && [ -f "${TOPDIR}/devenv-sca-enabled" ] ; then
@@ -57,16 +58,20 @@ do_generate_sca_wrappers() {
         fi
     fi
 
-    for c in gcc g++ ar ld; do
+    for c in gcc g++; do
+        case $c in
+            gcc) lang=c ;;
+            g++) lang=c++ ;;
+        esac
         dir=${WORKDIR}/bin/${HOST_PREFIX}
         mkdir -p ${dir}
         ln -f -s ${STAGING_BINDIR_TOOLCHAIN}/${HOST_PREFIX}${c} ${dir}/${c}
         cat > ${WORKDIR}/fortify-${c} << EOF
-#!/bin/bash
+#!/bin/bash -x
 if [ "\${!#}" = '--version' ] || [ "\${!#}" = '-v' ]; then
     ${dir}/${c} \${!#}
 else
-    inc_flags="\$(${dir}/${c} -E --sysroot=${STAGING_DIR_TARGET} -x c /dev/null -o /dev/null -v 2>&1 |
+    inc_flags="\$(${dir}/${c} -E --sysroot=${STAGING_DIR_TARGET} -x ${lang} /dev/null -o /dev/null -v 2>&1 |
         sed -n '/search starts here/,/End of search list./p' |
         sed -n 's/^ / -I/p')"
     sourceanalyzer ${FORTIFY_PARAMETERS} ${dir}/${c} -nostdinc \${inc_flags} "\$@"
