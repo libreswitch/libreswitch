@@ -8,7 +8,7 @@ Type=forking
 ExecStartPre=/bin/mkdir -p /var/local/openvswitch
 ExecStartPre=/bin/sh -c '/usr/bin/test -f /var/run/openvswitch/ovsdb.db || /usr/bin/ovsdb-tool create /var/run/openvswitch/ovsdb.db /usr/share/openvswitch/vswitch.ovsschema'
 ExecStartPre=/bin/sh -c '/usr/bin/test -f /var/local/openvswitch/config.db || /usr/bin/ovsdb-tool create /var/local/openvswitch/config.db /usr/share/openvswitch/configdb.ovsschema'
-ExecStartPre=/bin/sh -c '/usr/bin/test -f /var/local/openvswitch/dhcp_leases.db || /usr/bin/ovsdb-tool create /var/local/openvswitch/dhcp_leases.db /usr/share/openvswitch/dhcp_leases.ovsschema'
+ExecStartPre=/bin/sh -c '(/usr/bin/test -f /var/local/openvswitch/dhcp_leases.db && /usr/bin/ovsdb-tool convert /var/local/openvswitch/dhcp_leases.db /usr/share/openvswitch/dhcp_leases.ovsschema) || (/usr/bin/ovsdb-tool create /var/local/openvswitch/dhcp_leases.db /usr/share/openvswitch/dhcp_leases.ovsschema)'
 ExecStartPre=/bin/sh -c '/usr/bin/test -f /var/local/openvswitch/vtep.db || /usr/bin/ovsdb-tool create /var/local/openvswitch/vtep.db /usr/share/openvswitch/vtep.ovsschema'
 ExecStart=/usr/sbin/ovsdb-server --remote=punix:/var/run/openvswitch/db.sock --detach --no-chdir --pidfile -vSYSLOG:INFO /var/run/openvswitch/ovsdb.db /var/local/openvswitch/config.db /var/local/openvswitch/dhcp_leases.db /var/local/openvswitch/vtep.db
 WorkingDirectory=/var/run/openvswitch
