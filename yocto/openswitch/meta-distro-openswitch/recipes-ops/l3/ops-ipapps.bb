@@ -7,7 +7,7 @@ DEPENDS = "ops-utils ops-ovsdb ops-cli"
 SRC_URI = "git://git.openswitch.net/openswitch/ops-ipapps;protocol=http\
            file://ops-udpfwd.service"
 
-SRCREV = "367b514ec4f09e967ada36f93407fbd3bac62dcf"
+SRCREV = "35428adbcf8b5f87c2ec93fdff34a0199d8a2614"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
