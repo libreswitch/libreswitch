@@ -1,0 +1,38 @@
+--- linux-3.9.11.orig/kernel/audit.c	2016-04-21 17:46:54.235510239 -0700
++++ linux-3.9.11/kernel/audit.c	2016-04-21 17:50:19.460445282 -0700
+@@ -573,10 +573,19 @@
+ {
+ 	int err = 0;
+ 
+-	/* Only support the initial namespaces for now. */
+-	if ((current_user_ns() != &init_user_ns) ||
+-	    (task_active_pid_ns(current) != &init_pid_ns))
+-		return -EPERM;
++    /* Only support initial user namespace for now. */
++    /*
++     * We return ECONNREFUSED because it tricks userspace into thinking
++     * that audit was not configured into the kernel.  Lots of users
++     * configure their PAM stack (because that's what the distro does)
++     * to reject login if unable to send messages to audit.  If we return
++     * ECONNREFUSED the PAM stack thinks the kernel does not have audit
++     * configured in and will let login proceed.  If we return EPERM
++     * userspace will reject all logins.  This should be removed when we
++     * support non init namespaces!!
++     */
++    if (current_user_ns() != &init_user_ns)
++        return -ECONNREFUSED;
+ 
+ 	switch (msg_type) {
+ 	case AUDIT_GET:
+@@ -592,6 +601,11 @@
+ 	case AUDIT_TTY_SET:
+ 	case AUDIT_TRIM:
+ 	case AUDIT_MAKE_EQUIV:
++        /* Only support auditd and auditctl in initial pid namespace
++         * for now. */
++        if ((task_active_pid_ns(current) != &init_pid_ns))
++            return -EPERM;
++
+ 		if (!capable(CAP_AUDIT_CONTROL))
+ 			err = -EPERM;
+ 		break;
