@@ -1,5 +1,5 @@
 diff --git a/lib/automake.mk b/lib/automake.mk
-index 22da774..3c12e79 100644
+index e0a981d..41944a8 100644
 --- a/lib/automake.mk
 +++ b/lib/automake.mk
 @@ -106,6 +106,7 @@ ovslibinclude_HEADERS = \
@@ -10,7 +10,7 @@ index 22da774..3c12e79 100644
  	lib/ovsdb-parser.h \
  	lib/ovsdb-types.h \
  	lib/ovs-lldp.h \
-@@ -345,6 +346,8 @@ lib_libovscommon_la_SOURCES = \
+@@ -343,6 +344,8 @@ lib_libovscommon_la_SOURCES = \
          lib/ovsdb-error.c \
          lib/ovsdb-error.h \
          lib/ovsdb-idl-provider.h \
@@ -19,7 +19,7 @@ index 22da774..3c12e79 100644
          lib/ovsdb-types.c \
          lib/ovsdb-types.h \
          lib/table.c \
-@@ -767,4 +770,3 @@ lib-install-data-local:
+@@ -785,4 +788,3 @@ lib-install-data-local:
  	$(MKDIR_P) $(DESTDIR)$(PKIDIR)
  	$(MKDIR_P) $(DESTDIR)$(LOGDIR)
  	$(MKDIR_P) $(DESTDIR)$(DBDIR)
@@ -47,7 +47,7 @@ index dd35e5a..399343e 100644
      unsigned int insert_seqno;
      unsigned int modify_seqno;
 diff --git a/lib/ovsdb-idl.c b/lib/ovsdb-idl.c
-index ccbb449..c1f98f3 100644
+index ccbb449..b3225f6 100644
 --- a/lib/ovsdb-idl.c
 +++ b/lib/ovsdb-idl.c
 @@ -159,6 +159,7 @@ static struct ovsdb_idl_row *ovsdb_idl_row_create(struct ovsdb_idl_table *,
@@ -118,7 +118,7 @@ index ccbb449..c1f98f3 100644
          if (row->old) {
              if (row->written) {
                  ovsdb_idl_row_unparse(row);
-@@ -1887,6 +1918,115 @@ ovsdb_idl_txn_disassemble(struct ovsdb_idl_txn *txn)
+@@ -1887,6 +1918,116 @@ ovsdb_idl_txn_disassemble(struct ovsdb_idl_txn *txn)
      hmap_init(&txn->txn_rows);
  }
  
@@ -133,6 +133,7 @@ index ccbb449..c1f98f3 100644
 +    BITMAP_FOR_EACH_1(idx, class->n_columns, row->map_op_written) {
 +        struct map_op_list *map_op_list;
 +        const struct ovsdb_idl_column *column;
++        struct ovsdb_datum *old_datum;
 +        enum ovsdb_atomic_type key_type, value_type;
 +        struct json *mutation, *map, *col_name, *mutator;
 +        struct json *del_set, *ins_map;
@@ -142,6 +143,7 @@ index ccbb449..c1f98f3 100644
 +        column = &class->columns[idx];
 +        key_type = column->type.key.type;
 +        value_type = column->type.value.type;
++        old_datum = ovsdb_idl_read(row, column);
 +
 +        del_set = json_array_create_empty();
 +        ins_map = json_array_create_empty();
@@ -153,9 +155,8 @@ index ccbb449..c1f98f3 100644
 +
 +            if (map_op_type(map_op) == MAP_OP_UPDATE) {
 +                /* Find out if value really changed */
-+                struct ovsdb_datum *old_datum, *new_datum;
++                struct ovsdb_datum *new_datum;
 +                unsigned int pos;
-+                old_datum = &row->old[idx];
 +                new_datum = map_op_datum(map_op);
 +                pos = ovsdb_datum_find_key(old_datum,
 +                                           &new_datum->keys[0],
@@ -169,7 +170,7 @@ index ccbb449..c1f98f3 100644
 +            } else if (map_op_type(map_op) == MAP_OP_DELETE){
 +                /* Verify that there is a key to delete */
 +                unsigned int pos;
-+                pos = ovsdb_datum_find_key(&row->old[idx],
++                pos = ovsdb_datum_find_key(old_datum,
 +                                           &map_op_datum(map_op)->keys[0],
 +                                           key_type);
 +                if (pos == UINT_MAX) {
@@ -234,7 +235,7 @@ index ccbb449..c1f98f3 100644
  /* Attempts to commit 'txn'.  Returns the status of the commit operation, one
   * of the following TXN_* constants:
   *
-@@ -2073,6 +2213,27 @@ ovsdb_idl_txn_commit(struct ovsdb_idl_txn *txn)
+@@ -2073,6 +2214,28 @@ ovsdb_idl_txn_commit(struct ovsdb_idl_txn *txn)
                  json_destroy(op);
              }
          }
@@ -253,6 +254,7 @@ index ccbb449..c1f98f3 100644
 +            json_object_put(op, "mutations", mutations);
 +
 +            if (any_mutations) {
++                op = substitute_uuids(op, txn);
 +                json_array_add(operations, op);
 +                any_updates = true;
 +            } else {
@@ -262,7 +264,7 @@ index ccbb449..c1f98f3 100644
      }
  
      /* Add increment. */
-@@ -2880,6 +3041,128 @@ ovsdb_idl_parse_lock_notify(struct ovsdb_idl *idl,
+@@ -2880,6 +3043,128 @@ ovsdb_idl_parse_lock_notify(struct ovsdb_idl *idl,
      }
  }
  
@@ -338,7 +340,7 @@ index ccbb449..c1f98f3 100644
 +
 +    /* Find out if this is an insert or an update */
 +    key_type = column->type.key.type;
-+    old_datum = &row->old[column_idx];
++    old_datum = ovsdb_idl_read(row, column);
 +    pos = ovsdb_datum_find_key(old_datum, &datum->keys[0], key_type);
 +    if (pos == UINT_MAX) {
 +        /* Insert operation */
@@ -645,7 +647,7 @@ index 0000000..d70748b
 +
 +#endif /* ovsdb-map-op.h */
 diff --git a/ovsdb/ovsdb-idlc.in b/ovsdb/ovsdb-idlc.in
-index 9feb691..9694c8b 100755
+index 6f52c40..88b1ec3 100755
 --- a/ovsdb/ovsdb-idlc.in
 +++ b/ovsdb/ovsdb-idlc.in
 @@ -297,6 +297,13 @@ struct %(s)s *%(s)s_insert(struct ovsdb_idl_txn *);
