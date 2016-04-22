@@ -4,4 +4,4 @@ PR_append = "_openswitch"
 
 FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 
-hostname = "ops-${MACHINE}"
+hostname = "${DISTRO_SHORTNAME}-${MACHINE}"
