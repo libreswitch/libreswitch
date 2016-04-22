@@ -34,6 +34,11 @@ do_install_append () {
       install -d ${D}/etc/ssl/certs
       cp ${S}/server.crt ${D}/etc/ssl/certs
       cp ${S}/server-private.key ${D}/etc/ssl/certs
+
+      install -d ${D}/usr/share/opsplugins
+      for plugin in $(find ${S}/opsplugins -name "*.py"); do \
+        install -m 0644 ${plugin} ${D}/usr/share/opsplugins
+      done
 }
 
 
@@ -44,4 +49,5 @@ inherit openswitch setuptools systemd pythonnative
 
 FILES_${PN} += "/srv/www/api/ops-restapi.json \
                 /etc/ssl/certs \
+                /usr/share/opsplugins \
 "
