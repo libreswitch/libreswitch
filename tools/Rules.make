@@ -411,17 +411,19 @@ _setup-git-review:: $(addprefix .git/hooks/,$(notdir $(wildcard $(BUILD_ROOT)/to
 	$(V) cp $(BUILD_ROOT)/tools/bin/hooks/$* $@
 
 .PHONY: devenv_init devenv_clean devenv_add devenv_rm devenv_status devenv_cscope devenv_list_all
-.PHONY: devenv_import dev_header devenv_refresh _devenv_refresh
+.PHONY: check_devenv devenv_import dev_header devenv_refresh _devenv_refresh
 
 -include src/Rules.make
 
-dev_header: header
-	$(V) flock -n $(BUILDDIR)/bitbake.lock echo -n || \
-	   { echo "Bitbake is currently running... can't proceed further, aborting" ; \
-             exit 255 ; }
+check_devenv:
 	$(V) if ! [ -f .devenv ] ; then \
 	  $(call FATAL_ERROR, devenv is not initialized, use 'devenv_init') ; \
 	fi
+
+dev_header: header check_devenv
+	$(V) flock -n $(BUILDDIR)/bitbake.lock echo -n || \
+	   { echo "Bitbake is currently running... can't proceed further, aborting" ; \
+             exit 255 ; }
 
 devenv_init: header
 	$(V) $(ECHO) "$(BLUE)Configuring development enviroment...$(GRAY)\n"
@@ -507,11 +509,11 @@ ifneq ($(findstring query_recipe,$(MAKECMDGOALS)),)
   endif
   PACKAGE?=$(EXTRA_ARGS)
   ifeq ($(PACKAGE),)
-   $(error ====== PACKAGE variable is empty, please specify which package(s) you want  =====)
+   $(error ====== Please specify which package(s) you want to query =====)
   endif
 endif
 
-query_recipe:
+query_recipe: check_devenv
 	@$(foreach P, $(PACKAGE), $(call QUERY_RECIPE,$(VAR),$(P)))
 
 ifeq (devenv_import,$(firstword $(MAKECMDGOALS)))
