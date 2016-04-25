@@ -42,7 +42,13 @@ do_install_append() {
    elif ${@bb.utils.contains('MACHINE_FEATURES','ops-container','true','false',d)}; then
       install -m 0644 ${WORKDIR}/switchd_sim.service ${D}${systemd_unitdir}/system/switchd.service
    fi
+
+   install -d ${D}/usr/share/opsplugins
+   for plugin in $(find ${S}/opsplugins -name "*.py"); do \
+      install -m 0644 ${plugin} ${D}/usr/share/opsplugins
+   done
 }
+FILES_${PN} += "/usr/share/opsplugins"
 
 SYSTEMD_PACKAGES = "${PN}"
 SYSTEMD_SERVICE_${PN} = "switchd.service"
