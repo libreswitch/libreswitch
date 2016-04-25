@@ -2,7 +2,7 @@ SUMMARY = "OpenSwitch Switch Daemon"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
-DEPENDS = "ops ops-openvswitch ops-ovsdb ops-utils systemd libyaml jemalloc"
+DEPENDS = "ops ops-openvswitch ops-ovsdb ops-utils systemd libyaml jemalloc ops-cli"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-switchd;protocol=http \
    file://switchd_bcm.service \
@@ -29,6 +29,7 @@ RDEPENDS_${PN} = "openssl procps util-linux-uuidgen util-linux-libuuid coreutils
 RDEPENDS_${PN}_remove := "${@bb.utils.contains("IMAGE_FEATURES", "ops-p4", "openvswitch-sim-switch", "",d)}"
 
 FILES_${PN} = "${sbindir}/ops-switchd ${libdir}/libswitchd_plugins.so.1* ${libdir}/openvswitch/plugins/"
+FILES_${PN} += "/usr/lib/cli/plugins/"
 
 do_install_append() {
    install -d ${D}${systemd_unitdir}/system
