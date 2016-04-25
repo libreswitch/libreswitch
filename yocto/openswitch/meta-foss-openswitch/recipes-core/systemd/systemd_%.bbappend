@@ -34,12 +34,16 @@ do_install_append() {
     install -m 755 ${WORKDIR}/systemctl-alias.sh ${D}${sysconfdir}/profile.d/systemctl-alias.sh
     ln -s /dev/null ${D}/etc/udev/rules.d/80-net-setup-link.rules
     install -m 644 ${WORKDIR}/system.conf ${D}${sysconfdir}/systemd/
+    echo "L+ /var/log/journal 0666 root root - /var/diagnostics/logs" >> ${D}${sysconfdir}/tmpfiles.d/00-create-volatile.conf
+    sed -i -e 's/.*Storage.*/Storage=persistent/' ${D}${sysconfdir}/systemd/journald.conf
+    sed -i -e 's/.*SyncIntervalSec.*/SyncIntervalSec=1440m/' ${D}${sysconfdir}/systemd/journald.conf
 }
 
 # We use systemd core dump
 EXTRA_OECONF_remove = "--disable-coredump"
 EXTRA_OECONF += "--with-dns-servers=" ""
-FILES_${PN} += "${bindir}/coredumpctl"
+FILES_${PN} += "${bindir}/coredumpctl \
+                 /var/log/journal"
 EXTRA_OECONF_remove = "--without-python"
 EXTRA_OECONF += "with-python"
 
