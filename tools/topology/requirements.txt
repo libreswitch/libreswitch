@@ -21,6 +21,7 @@ pytest==2.8.4
 pytest-random
 pytest-xdist
 pytest-timeout
+pytest-logging
 pyyaml==3.11
 # pytest-benchmark
 

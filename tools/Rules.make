@@ -598,7 +598,10 @@ _testenv_header: header
 testenv_init: dev_header
 	$(V) if ! which tox > /dev/null ; then \
 		$(call FATAL_ERROR,Python's tox is not installed. Please use your package manager to install it:\n\n  Hint: on Debian/Ubuntu systems you can install it with: 'sudo apt-get install python-tox') ; \
-	 fi
+	 fi ; \
+	 if ! which python3-config > /dev/null ; then \
+	        $(call FATAL_ERROR,Python's 3 development package is not installed and is required.\n  Hint: on Debian/Ubuntu systems you can install it with: 'sudo apt-get install python3-dev') ; \
+	 fi ;
 	$(V) if ! [ -f /etc/sudoers.d/topology ] ; then \
 	     $(ECHO) "$(BLUE) Setting up sudoer permissions for the topology framework... $(GRAY)\n" ; \
 		 echo "$(USER) ALL = (root) NOPASSWD: /sbin/ip, /bin/mkdir -p /var/run/netns, /bin/rm /var/run/netns/*, /bin/ln -s /proc/*/ns/net /var/run/netns/*" | \
@@ -723,7 +726,9 @@ endef
 ifneq ($(TESTENV_STRESS),)
 # If not specified, run at least 3 iterations and max 13
 TESTENV_ITERATIONS?=$(shell echo $$(expr $$RANDOM % 10 + 3))
-TESTENV_EXTRA_PARAMETERS=-k '$(TESTENV_STRESS)'
+TESTENV_EXTRA_PARAMETERS=$(if $(VERBOSE),-vv,) -k '$(TESTENV_STRESS)'
+else
+TESTENV_EXTRA_PARAMETERS=$(if $(VERBOSE),-vv,)
 endif
 TESTENV_ITERATIONS?=1
 
@@ -743,6 +748,9 @@ _testenv_rerun:
 	      $(MAKE) devenv_ct_test PY_TEST_ARGS="$(TESTENV_EXTRA_PARAMETERS) --exitfirst --junitxml=$(BUILDDIR)/test/$(TESTSUITE)/test-results.xml $(BUILDDIR)/test/$(TESTSUITE)/code_under_test" || exit 1 ; \
 	    done ; \
 	  else \
+	    if [[ tools/topology/requirements.txt -nt $(BUILDDIR)/test/$(TESTSUITE)/.tox ]] ; then \
+	      rm -Rf $(BUILDDIR)/test/$(TESTSUITE)/.tox ; \
+	    fi ; \
             $(ECHO) "\nIterating the tests $(TESTENV_ITERATIONS) times\n" ; \
 	    for iteration in $$(seq 1 $(TESTENV_ITERATIONS)) ; do \
 	      $(ECHO) "\nRunning the testsuite on iteration $$iteration" ; \
