@@ -8,11 +8,11 @@ RDEPENDS_${PN} = "python-pyinotify python-xattr python-argparse python-json pyth
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-supportability;protocol=https  file://ops-supportability.service"
 
-SRCREV = "f4f1fa6210514d3b796db0c9fe72c7235f042fc3"
+SRCREV = "691dc9745dd3b6d5d5928ca9ce5d1d523b090c90"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
-#PV = "git${SRCPV}"
+PV = "git${SRCPV}"
 
 S = "${WORKDIR}/git"
 
@@ -45,6 +45,7 @@ do_install_append(){
 
    install -c -m 0644 ${WORKDIR}/ops-supportability.service ${D}${systemd_unitdir}/system/
    install -c -m 0644 ${S}/conf/*.yaml ${D}/etc/openswitch/supportability/
+   install -c -m 0644 ${S}/conf/ops_journal.conf ${D}/etc/openswitch/supportability/ops_journal.conf
    install -c -m 0444 ${S}/conf/ops_showtech.yaml ${D}/etc/openswitch/supportability/ops_showtech.defaults.yaml
    install -c -m 0644 ${S}/conf/ops_coredump.conf ${D}${libdir}/sysusers.d/ops_coredump.conf
    install -c -m 0644 ${S}/conf/ops_supportability_dir.conf  ${D}${sysconfdir}/tmpfiles.d/ops_supportability_dir.conf
