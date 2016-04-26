@@ -9,17 +9,8 @@
   </DiskSection>
   <NetworkSection>
     <Info>The list of logical networks</Info>
-    <Network ovf:name="Management">
-      <Description>The management network</Description>
-    </Network>
-    <Network ovf:name="Port 1">
-      <Description>Network to connect the switch's port 1</Description>
-    </Network>
-    <Network ovf:name="Port 2">
-      <Description>Network to connect the switch's port 2</Description>
-    </Network>
-    <Network ovf:name="Port 3">
-      <Description>Network to connect the switch's port 3</Description>
+    <Network ovf:name="Null">
+      <Description>Logical network used by this appliance.</Description>
     </Network>
   </NetworkSection>
   <VirtualSystem ovf:id="@@DISTRO_NAME@@ Appliance">
@@ -82,7 +73,7 @@
       <Item>
         <rasd:AddressOnParent>2</rasd:AddressOnParent>
         <rasd:AutomaticAllocation>true</rasd:AutomaticAllocation>
-        <rasd:Connection>Management</rasd:Connection>
+        <rasd:Connection>Null</rasd:Connection>
         <rasd:Description>Management Port</rasd:Description>
         <rasd:ElementName>ethernet0</rasd:ElementName>
         <rasd:InstanceID>6</rasd:InstanceID>
@@ -93,7 +84,7 @@
       <Item>
         <rasd:AddressOnParent>3</rasd:AddressOnParent>
         <rasd:AutomaticAllocation>true</rasd:AutomaticAllocation>
-        <rasd:Connection>Port 1</rasd:Connection>
+        <rasd:Connection>Null</rasd:Connection>
         <rasd:Description>Port 1</rasd:Description>
         <rasd:ElementName>ethernet1</rasd:ElementName>
         <rasd:InstanceID>7</rasd:InstanceID>
@@ -104,7 +95,7 @@
       <Item>
         <rasd:AddressOnParent>4</rasd:AddressOnParent>
         <rasd:AutomaticAllocation>true</rasd:AutomaticAllocation>
-        <rasd:Connection>Port 2</rasd:Connection>
+        <rasd:Connection>Null</rasd:Connection>
         <rasd:Description>Port 2</rasd:Description>
         <rasd:ElementName>ethernet2</rasd:ElementName>
         <rasd:InstanceID>8</rasd:InstanceID>
@@ -115,7 +106,7 @@
       <Item>
         <rasd:AddressOnParent>5</rasd:AddressOnParent>
         <rasd:AutomaticAllocation>true</rasd:AutomaticAllocation>
-        <rasd:Connection>Port 3</rasd:Connection>
+        <rasd:Connection>Null</rasd:Connection>
         <rasd:Description>Port 3</rasd:Description>
         <rasd:ElementName>ethernet3</rasd:ElementName>
         <rasd:InstanceID>9</rasd:InstanceID>
@@ -123,10 +114,54 @@
         <rasd:ResourceType>10</rasd:ResourceType>
         <vmw:Config ovf:required="false" vmw:key="wakeOnLanEnabled" vmw:value="false"/>
       </Item>
+      <Item>
+        <rasd:AddressOnParent>6</rasd:AddressOnParent>
+        <rasd:AutomaticAllocation>true</rasd:AutomaticAllocation>
+        <rasd:Connection>Null</rasd:Connection>
+        <rasd:Description>Port 4</rasd:Description>
+        <rasd:ElementName>ethernet4</rasd:ElementName>
+        <rasd:InstanceID>10</rasd:InstanceID>
+        <rasd:ResourceSubType>PCNet32</rasd:ResourceSubType>
+        <rasd:ResourceType>10</rasd:ResourceType>
+        <vmw:Config ovf:required="false" vmw:key="wakeOnLanEnabled" vmw:value="false"/>
+      </Item>
+      <Item>
+        <rasd:AddressOnParent>7</rasd:AddressOnParent>
+        <rasd:AutomaticAllocation>true</rasd:AutomaticAllocation>
+        <rasd:Connection>Null</rasd:Connection>
+        <rasd:Description>Port 5</rasd:Description>
+        <rasd:ElementName>ethernet5</rasd:ElementName>
+        <rasd:InstanceID>11</rasd:InstanceID>
+        <rasd:ResourceSubType>PCNet32</rasd:ResourceSubType>
+        <rasd:ResourceType>10</rasd:ResourceType>
+        <vmw:Config ovf:required="false" vmw:key="wakeOnLanEnabled" vmw:value="false"/>
+      </Item>
+      <Item>
+        <rasd:AddressOnParent>8</rasd:AddressOnParent>
+        <rasd:AutomaticAllocation>true</rasd:AutomaticAllocation>
+        <rasd:Connection>Null</rasd:Connection>
+        <rasd:Description>Port 6</rasd:Description>
+        <rasd:ElementName>ethernet6</rasd:ElementName>
+        <rasd:InstanceID>12</rasd:InstanceID>
+        <rasd:ResourceSubType>PCNet32</rasd:ResourceSubType>
+        <rasd:ResourceType>10</rasd:ResourceType>
+        <vmw:Config ovf:required="false" vmw:key="wakeOnLanEnabled" vmw:value="false"/>
+      </Item>
+      <Item>
+        <rasd:AddressOnParent>8</rasd:AddressOnParent>
+        <rasd:AutomaticAllocation>true</rasd:AutomaticAllocation>
+        <rasd:Connection>Null</rasd:Connection>
+        <rasd:Description>Port 7</rasd:Description>
+        <rasd:ElementName>ethernet7</rasd:ElementName>
+        <rasd:InstanceID>13</rasd:InstanceID>
+        <rasd:ResourceSubType>PCNet32</rasd:ResourceSubType>
+        <rasd:ResourceType>10</rasd:ResourceType>
+        <vmw:Config ovf:required="false" vmw:key="wakeOnLanEnabled" vmw:value="false"/>
+      </Item>
       <Item ovf:required="false">
         <rasd:AutomaticAllocation>false</rasd:AutomaticAllocation>
         <rasd:ElementName>video</rasd:ElementName>
-        <rasd:InstanceID>10</rasd:InstanceID>
+        <rasd:InstanceID>14</rasd:InstanceID>
         <rasd:ResourceType>24</rasd:ResourceType>
         <vmw:Config ovf:required="false" vmw:key="enable3DSupport" vmw:value="false" />
         <vmw:Config ovf:required="false" vmw:key="use3dRenderer" vmw:value="automatic" />
