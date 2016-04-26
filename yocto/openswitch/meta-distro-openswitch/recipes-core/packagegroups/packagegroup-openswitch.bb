@@ -88,6 +88,9 @@ RDEPENDS_packagegroup-ops-base_append_arm = "\
 RDEPENDS_packagegroup-ops-min = "\
     python \
     python-pyroute2 \
+    python-paramiko \
+    python-netclient \
+    python-netserver \
     yaml-cpp \
     libevent \
     util-linux \
