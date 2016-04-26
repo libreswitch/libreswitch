@@ -14,7 +14,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-openvswitch;protocol=http \
    file://json.py.patch \
 "
 
-SRCREV = "fcb18a6b3bfad203bda42f9f0b7bc58c7aa7dd56"
+SRCREV = "d542b8a5d660a9c67bb8107279ab1e7cdf8ade1b"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
