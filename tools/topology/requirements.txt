@@ -65,5 +65,8 @@ pyyaml==3.11
 # sflowtool command Communication Library
 -e git+https://github.com/HPENetworking/topology_lib_sflowtool.git@master#egg=topology_lib_sflowtool
 
-# iperf command Communcation Library
+# iperf command Communication Library
 -e git+https://github.com/HPENetworking/topology_lib_iperf.git@master#egg=topology_lib_iperf
+
+# topology common library
+-e git+https://git.openswitch.net/openswitch/ops-topology-common@master#egg=topology_common
