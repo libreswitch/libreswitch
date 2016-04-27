@@ -79,6 +79,7 @@ RDEPENDS_packagegroup-ops-base = "\
     ${@bb.utils.contains("MACHINE_FEATURES", "ops-kdump", "ops-kdump", "", d)} \
     ops-snmpd \
     ops-l2macd \
+    ops-rbac \
 "
 
 RDEPENDS_packagegroup-ops-base_append_arm = "\
