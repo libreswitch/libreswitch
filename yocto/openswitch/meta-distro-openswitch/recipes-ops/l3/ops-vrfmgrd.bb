@@ -10,7 +10,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-vrfmgrd;protocol=${OPS_REPO_PROTOCOL};branch
            file://ops-vrfmgrd.service \
            "
 
-SRCREV = "176f8e48d76cb46d095839796fd1683670354089"
+SRCREV = "295c38cf8afdda7f4b7680e21401142ff8e01913"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
@@ -19,12 +19,12 @@ PV = "git${SRCPV}"
 S = "${WORKDIR}/git"
 
 do_install_append() {
-#     install -d ${D}${systemd_unitdir}/system
-#     install -m 0644 ${WORKDIR}/ops-vrfmgrd.service ${D}${systemd_unitdir}/system/
+     install -d ${D}${systemd_unitdir}/system
+     install -m 0644 ${WORKDIR}/ops-vrfmgrd.service ${D}${systemd_unitdir}/system/
 }
 
 FILES_${PN} += "/usr/lib/cli/plugins/"
-#SYSTEMD_PACKAGES = "${PN}"
-#SYSTEMD_SERVICE_${PN} = "ops-vrfmgrd.service"
+SYSTEMD_PACKAGES = "${PN}"
+SYSTEMD_SERVICE_${PN} = "ops-vrfmgrd.service"
 
-inherit openswitch systemd
+inherit openswitch cmake systemd
