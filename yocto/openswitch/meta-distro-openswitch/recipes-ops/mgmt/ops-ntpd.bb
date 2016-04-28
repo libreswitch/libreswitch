@@ -5,7 +5,9 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 DEPENDS = "ops-utils ops-ovsdb ops-cli ops-supportability"
 
 RDEPENDS_${PN} = "ntp"
-SRC_URI = "git://git.openswitch.net/openswitch/ops-ntpd;protocol=http \
+BRANCH ?= "${OPS_REPO_BRANCH}"
+
+SRC_URI = "${OPS_REPO_BASE_URL}/ops-ntpd;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
            file://ops-ntpd.service \
 "
 

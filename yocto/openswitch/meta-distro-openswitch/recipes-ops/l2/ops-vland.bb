@@ -4,7 +4,9 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 
 DEPENDS = "ops-ovsdb ops-cli"
 
-SRC_URI = "git://git.openswitch.net/openswitch/ops-vland;protocol=http \
+BRANCH ?= "${OPS_REPO_BRANCH}"
+
+SRC_URI = "${OPS_REPO_BASE_URL}/ops-vland;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
            file://ops-vland.service \
 "
 

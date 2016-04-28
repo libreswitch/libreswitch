@@ -4,7 +4,9 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 
 DEPENDS = "yaml-cpp gtest i2c-tools"
 
-SRC_URI = "git://git.openswitch.net/openswitch/ops-hw-config;protocol=http \
+BRANCH ?= "${OPS_REPO_BRANCH}"
+
+SRC_URI = "${OPS_REPO_BASE_URL}/ops-hw-config;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
 "
 
 SRCREV = "70ee815804232bed82c1bb5815d9a208a8d60f2e"

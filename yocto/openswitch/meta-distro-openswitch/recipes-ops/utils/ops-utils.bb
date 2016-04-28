@@ -4,7 +4,9 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 
 DEPENDS = "ops-openvswitch"
 
-SRC_URI = "git://git.openswitch.net/openswitch/ops-utils;protocol=https"
+BRANCH ?= "${OPS_REPO_BRANCH}"
+
+SRC_URI = "${OPS_REPO_BASE_URL}/ops-utils;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH}"
 
 SRCREV = "04d1b9fab6d8a897ad21fc1444ff75cf2d37e2d6"
 

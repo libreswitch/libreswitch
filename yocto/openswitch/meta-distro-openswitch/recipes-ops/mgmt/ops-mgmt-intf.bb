@@ -7,7 +7,9 @@ DEPENDS = "ops-utils ops-ovsdb ops-cli"
 
 RDEPENDS_${PN} = "python-argparse python-json python-ops-ovsdb python-distribute"
 
-SRC_URI = "git://git.openswitch.net/openswitch/ops-mgmt-intf;protocol=http \
+BRANCH ?= "${OPS_REPO_BRANCH}"
+
+SRC_URI = "${OPS_REPO_BASE_URL}/ops-mgmt-intf;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
            file://mgmt-intf.service \
          "
 

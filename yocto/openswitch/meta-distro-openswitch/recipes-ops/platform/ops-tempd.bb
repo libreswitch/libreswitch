@@ -4,7 +4,9 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 
 DEPENDS = "ops-hw-config ops-ovsdb ops-cli ops-supportability"
 
-SRC_URI = "git://git.openswitch.net/openswitch/ops-tempd;protocol=http \
+BRANCH ?= "${OPS_REPO_BRANCH}"
+
+SRC_URI = "${OPS_REPO_BASE_URL}/ops-tempd;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
            file://ops-tempd.service \
 "
 
