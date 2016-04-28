@@ -4,8 +4,9 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 
 DEPENDS = "ops-utils ops-hw-config ops-ovsdb ops-cli ops-supportability ops-snmpd"
 
-SRC_URI = "git://git.openswitch.net/openswitch/ops-intfd;protocol=http\
-           file://ops-intfd.service"
+SRC_URI = "git://git.openswitch.net/openswitch/ops-intfd;protocol=http;branch=rel/dill \
+           file://ops-intfd.service \
+           "
 
 SRCREV = "7f2380638c8aa8de651193ce9f24e7368c34f81a"
 

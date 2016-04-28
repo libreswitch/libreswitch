@@ -5,7 +5,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 DEPENDS = "ops-utils ops-hw-config ops-ovsdb ops-cli ops-supportability"
 RDEPENDS_${PN} = "dmidecode"
 
-SRC_URI = "git://git.openswitch.net/openswitch/ops-sysd;protocol=https \
+SRC_URI = "git://git.openswitch.net/openswitch/ops-sysd;protocol=https;branch=rel/dill \
            file://ops-sysd.service \
 "
 

@@ -7,7 +7,7 @@ DEPENDS = "ops-ovsdb virtual/opennsl ops-switchd ops-supportability ops-classifi
 PROVIDES += "virtual/ops-switchd-switch-api-plugin"
 RPROVIDES_${PN} += "virtual/ops-switchd-switch-api-plugin"
 
-SRC_URI = "git://git.openswitch.net/openswitch/ops-switchd-opennsl-plugin;protocol=http"
+SRC_URI = "git://git.openswitch.net/openswitch/ops-switchd-opennsl-plugin;protocol=http;branch=rel/dill"
 
 FILES_${PN} = "${libdir}/openvswitch/plugins"
 

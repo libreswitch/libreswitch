@@ -6,7 +6,7 @@ DEPENDS = "ops-ovsdb"
 
 RDEPENDS_${PN} = "python-argparse python-json python-ops-ovsdb python-distribute python-pyyaml"
 
-SRC_URI = "git://git.openswitch.net/openswitch/ops-bufmond;protocol=https \
+SRC_URI = "git://git.openswitch.net/openswitch/ops-bufmond;protocol=https;branch=rel/dill \
     file://bufmond.service \
 "
 

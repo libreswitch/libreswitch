@@ -8,7 +8,7 @@ DEPENDS = "ops-utils ops-ovsdb ncurses perl-native openssl ops-supportability"
 # the "ip" command from busybox is not sufficient (flush by protocol flushes all routes)
 RDEPENDS_${PN} += "iproute2"
 
-SRC_URI = "git://git.openswitch.net/openswitch/ops-quagga;protocol=http \
+SRC_URI = "git://git.openswitch.net/openswitch/ops-quagga;protocol=http;branch=rel/dill \
     file://ops-zebra.service file://ops-bgpd.service file://ops-ospfd.service \
 "
 

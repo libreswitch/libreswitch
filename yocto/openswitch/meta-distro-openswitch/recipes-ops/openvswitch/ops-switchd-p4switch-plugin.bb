@@ -7,7 +7,7 @@ RPROVIDES_${PN} += "virtual/ops-switchd-switch-api-plugin"
 
 PV = "git${SRCPV}"
 
-SRC_URI = "gitsm://git.openswitch.net/openswitch/ops-switchd-p4switch-plugin;protocol=http"
+SRC_URI = "gitsm://git.openswitch.net/openswitch/ops-switchd-p4switch-plugin;protocol=http;branch=rel/dill"
 
 SRCREV = "299a07a69a28708229e5d615a727714af602c46e"
 

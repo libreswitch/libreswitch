@@ -4,7 +4,7 @@ LIC_FILES_CHKSUM = "file://setup.py;beginline=1;endline=15;md5=718b8f9952f79dfe2
 
 RDEPENDS_${PN} = "python-argparse python-json python-ops-ovsdb python-distribute"
 
-SRC_URI = "git://git.openswitch.net/openswitch/ops-cfgd;protocol=http \
+SRC_URI = "git://git.openswitch.net/openswitch/ops-cfgd;protocol=http;branch=rel/dill \
            file://cfgd.service \
 "
 

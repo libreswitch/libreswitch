@@ -4,7 +4,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 
 DEPENDS = "ops ops-openvswitch ops-ovsdb ops-utils systemd libyaml jemalloc ops-cli"
 
-SRC_URI = "git://git.openswitch.net/openswitch/ops-switchd;protocol=http \
+SRC_URI = "git://git.openswitch.net/openswitch/ops-switchd;protocol=http;branch=rel/dill \
    file://switchd_bcm.service \
    file://switchd_sim.service \
    file://switchd_p4sim.service \

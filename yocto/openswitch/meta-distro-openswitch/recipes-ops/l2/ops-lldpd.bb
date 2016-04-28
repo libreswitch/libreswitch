@@ -4,7 +4,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 
 DEPENDS = "ops-utils ops-hw-config ops-ovsdb libevent openssl ops-supportability ops-cli ops-snmpd"
 
-SRC_URI = "git://git.openswitch.net/openswitch/ops-lldpd;protocol=http \
+SRC_URI = "git://git.openswitch.net/openswitch/ops-lldpd;protocol=http;branch=rel/dill \
           file://ops-lldpd.service \
 "
 

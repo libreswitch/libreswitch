@@ -5,8 +5,9 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 DEPENDS = "ops-utils ops-ovsdb ops-cli ops-switchd"
 FILES_${PN} += "/usr/lib/cli/plugins/"
 
-SRC_URI = "git://git.openswitch.net/openswitch/ops-stpd;protocol=http\
-           file://ops-stpd.service"
+SRC_URI = "git://git.openswitch.net/openswitch/ops-stpd;protocol=http;branch=rel/dill \
+           file://ops-stpd.service \
+           "
 
 SRCREV = "20d5da0cc37941c3b76c3220789eac7506194be7"
 

@@ -4,7 +4,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 
 DEPENDS = "ops-cli ops-supportability"
 
-SRC_URI = "git://git.openswitch.net/openswitch/ops-sysmond;protocol=http "
+SRC_URI = "git://git.openswitch.net/openswitch/ops-sysmond;protocol=http;branch=rel/dill "
 
 SRCREV="a8664b129d41020783bec8ad4bd50c004069f2d4"
 
