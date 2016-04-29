@@ -7,7 +7,7 @@ DEPENDS = "ops-utils ops-ovsdb ops-cli"
 BRANCH ?= "${OPS_REPO_BRANCH}"
 
 SRC_URI = "${OPS_REPO_BASE_URL}/ops-ipapps;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
-           file://ops-udpfwd.service \
+           file://ops-relay.service \
            "
 
 SRCREV = "58f2a60c3b392552ff5420da114846de0a90fb44"
@@ -20,11 +20,11 @@ S = "${WORKDIR}/git"
 
 do_install_append() {
      install -d ${D}${systemd_unitdir}/system
-     install -m 0644 ${WORKDIR}/ops-udpfwd.service ${D}${systemd_unitdir}/system/
+     install -m 0644 ${WORKDIR}/ops-relay.service ${D}${systemd_unitdir}/system/
 }
 
 FILES_${PN} += "/usr/lib/cli/plugins/"
 SYSTEMD_PACKAGES = "${PN}"
-SYSTEMD_SERVICE_${PN} = "ops-udpfwd.service"
+SYSTEMD_SERVICE_${PN} = "ops-relay.service"
 
 inherit openswitch cmake systemd
