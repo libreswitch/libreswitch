@@ -1,5 +1,5 @@
 --- firejail-0.9.38.orig/src/firejail/firejail.h	2016-02-05 04:52:41.000000000 -0800
-+++ firejail-0.9.38/src/firejail/firejail.h	2016-04-11 17:15:29.346008518 -0700
++++ firejail-0.9.38/src/firejail/firejail.h	2016-04-29 14:26:49.665780837 -0700
 @@ -64,6 +64,12 @@
  #define DEFAULT_ROOT_PROFILE	"server"
  #define MAX_INCLUDE_LEVEL 6		// include levels in profile files
@@ -13,3 +13,20 @@
  // main.c
  typedef struct bridge_t {
  	// on the host
+@@ -231,6 +237,16 @@
+ extern int arg_join_network;	// join only the network namespace
+ extern int arg_join_filesystem;	// join only the mount namespace
+ 
++extern int arg_users_keep_all; // keeps all the users
++extern int arg_users_keep;     // defines if user keep option has been used     
++extern ug_list_t arg_users_list;   // optional user list
++
++extern int arg_groups_keep_all; // keeps all the groups
++extern int arg_groups_keep;     // defines if group keep option has been used
++extern ug_list_t arg_groups_list;   // optional group list
++
++extern int arg_default_var_log; // Keeps /var/log as the normal system directory
++
+ extern int parent_to_child_fds[2];
+ extern int child_to_parent_fds[2];
+ extern pid_t sandbox_pid;

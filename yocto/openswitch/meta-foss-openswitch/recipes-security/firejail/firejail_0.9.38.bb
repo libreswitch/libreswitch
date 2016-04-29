@@ -14,6 +14,7 @@ SRC_URI="https://github.com/netblue30/firejail/archive/${PV}.tar.gz;name=tar \
          file://main.c.patch \
          file://restrict_users.c.patch \
          file://firejail.h.patch \
+         file://fs_var.c.patch \
         "
 
 SRC_URI[tar.md5sum] = "eca8c30edd7c278960f0a422e5bda0d4"

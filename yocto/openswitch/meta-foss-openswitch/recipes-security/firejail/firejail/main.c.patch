@@ -1,5 +1,5 @@
 --- firejail-0.9.38.orig/src/firejail/main.c	2016-02-05 04:52:41.000000000 -0800
-+++ firejail-0.9.38/src/firejail/main.c	2016-04-11 17:33:13.034048947 -0700
++++ firejail-0.9.38/src/firejail/main.c	2016-04-29 14:26:45.829780968 -0700
 @@ -35,6 +35,7 @@
  #include <signal.h>
  #include <time.h>
@@ -8,22 +8,23 @@
  
  #if 0
  #include <sys/times.h>
-@@ -68,6 +69,14 @@
- int arg_caps_keep = 0;			// keep list
- char *arg_caps_list = NULL;			// optional caps list
+@@ -93,6 +94,15 @@
+ int arg_join_network = 0;			// join only the network namespace
+ int arg_join_filesystem = 0;			// join only the mount namespace
  
-+int arg_users_keep_all = 0;
-+int arg_users_keep = 0;
-+ug_list_t arg_users_list;
++int arg_users_keep_all = 0; // keeps all the users
++int arg_users_keep = 0;     // defines if user keep option has been used     
++ug_list_t arg_users_list;   // optional user list
 +
-+int arg_groups_keep_all = 0;
-+int arg_groups_keep = 0;
-+ug_list_t arg_groups_list;
++int arg_groups_keep_all = 0; // keeps all the groups
++int arg_groups_keep = 0;     // defines if group keep option has been used
++ug_list_t arg_groups_list;   // optional group list
 +
- int arg_trace = 0;				// syscall tracing support
- int arg_tracelog = 0;				// blacklist tracing support
- int arg_rlimit_nofile = 0;			// rlimit nofile
-@@ -450,6 +459,68 @@
++int arg_default_var_log = 0; // Keeps /var/log as the normal system directory
+ 
+ int parent_to_child_fds[2];
+ int child_to_parent_fds[2];
+@@ -450,6 +460,68 @@
  
  }
  
@@ -48,7 +49,7 @@
 +        }
 +    }
 +
-+    ug_keep->ug_id_list = malloc(sizeof(uint32_t) * (count + 1));
++    ug_keep->ug_id_list = malloc(sizeof(uint32_t) * count);
 +
 +    i = 0;
 +    token = strtok(ug_keep_list, ",");
@@ -92,7 +93,7 @@
  //*******************************************
  // Main program
  //*******************************************
-@@ -466,6 +537,9 @@
+@@ -466,6 +538,9 @@
  	int highest_errno = errno_highest_nr();
  #endif
  
@@ -102,7 +103,7 @@
  	// check argv[0] symlink wrapper if this is not a login shell
  	if (*argv[0] != '-')
  		run_symlink(argc, argv);
-@@ -690,6 +764,29 @@
+@@ -690,6 +765,33 @@
  				errExit("strdup");
  			set_cgroup(cfg.cgroup);
  		}
@@ -129,10 +130,14 @@
 +			parse_ug_list(tmp_groups_list, &arg_groups_list, 1);
 +                        free(tmp_groups_list);
 +		}
++                
++		else if (strncmp(argv[i], "--defaultvarlog", 15) == 0) {
++			arg_default_var_log = 1;
++		}
  		
  		//*************************************
  		// filesystem
-@@ -1582,6 +1679,16 @@
+@@ -1582,6 +1684,16 @@
  		free(cfg.seccomp_list_errno);
  	}
  #endif

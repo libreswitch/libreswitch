@@ -1,14 +1,9 @@
 --- firejail-0.9.38.orig/src/firejail/restrict_users.c	2016-02-05 04:52:41.000000000 -0800
-+++ firejail-0.9.38/src/firejail/restrict_users.c	2016-04-11 17:23:19.170026375 -0700
-@@ -29,6 +29,26 @@
++++ firejail-0.9.38/src/firejail/restrict_users.c	2016-04-20 10:38:23.201966087 -0700
+@@ -29,6 +29,21 @@
  
  #define MAXBUF 1024
  
-+extern ug_list_t arg_users_list;
-+extern ug_list_t arg_groups_list;
-+extern int arg_users_keep_all;
-+extern int arg_groups_keep_all;
-+
 +static int find_ug_inlist(ug_list_t* ug_lookup, uint32_t guid)
 +{
 +    int i = 0;
@@ -27,7 +22,7 @@
  // linked list of users
  typedef struct user_list {
  	struct user_list *next;
-@@ -170,6 +190,11 @@
+@@ -170,6 +185,11 @@
  			fprintf(fpout, "%s", buf);
  			continue;
  		}
@@ -39,7 +34,7 @@
  		if ((uid_t) uid != myuid) {
  			// store user name - necessary to process /etc/group
  			*ptr1 = '\0';
-@@ -307,6 +332,12 @@
+@@ -307,6 +327,12 @@
  				goto errout;
  			continue;
  		}
