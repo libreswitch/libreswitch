@@ -5,8 +5,9 @@ Description=OpenSwitch snmpd Module Daemon
 After=ovsdb-server.service ops-init.service snmpd.service
 
 [Service]
+Type=forking
 ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-snmpd.pid
-ExecStart=/usr/bin/ops-snmpd --detach --pidfile
+ExecStart=/usr/bin/ops-snmpd --detach --pidfile -vSYSLOG:INFO
 PIDFile=/var/run/openvswitch/ops-snmpd.pid
 Restart=on-abort
 
