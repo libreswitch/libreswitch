@@ -22,6 +22,7 @@ import logging
 import shutil
 import sys
 import os
+import re
 from os import system
 from re import search
 from os import walk
@@ -141,13 +142,17 @@ def generate_manifest_data(repositories):
             str1 = line.strip().find(" ")
             project_name = line[0:str1]
             if project_name in listprojects:
-                gitN = line [(line.find("gitAUTOINC+") + 11):len(line)].strip()
-                str3 = gitN.find("-")
+                #gitN = line [(line.find("gitAUTOINC+") + 11):len(line)].strip()
+                #str3 = gitN.find("-")
                 #git Reference number
-                gitNumber = gitN[0:str3]
-                m.write(project_name + ';' + gitNumber+ ';' + repositories[project_name] +'\n')
+                #gitNumber = gitN[0:str3]
+                #im.write(project_name + ';' + gitNumber+ ';' + repositories[project_name] +'\n')
+                matched = re.search('.*\+([0-9a-z]{10})-.*', line)
+                if matched:
+                    gitNumber = matched.group(1)
+                    m.write(project_name + ';' + gitNumber + ';' + 'http://git.openswitch.net/openswitch/' + project_name +'\n')
         m.close()
-    os.remove("build/changelog_tmp.txt")
+    #os.remove("build/changelog_tmp.txt")
 
 def main():
     """
