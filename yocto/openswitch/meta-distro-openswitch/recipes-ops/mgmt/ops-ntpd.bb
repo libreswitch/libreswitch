@@ -9,7 +9,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-ntpd;protocol=http;branch=rel
            file://ops-ntpd.service \
 "
 
-SRCREV = "ec71e8bc28c47cd065958767f64b127a922ebaa4"
+SRCREV = "1caed5a0e796d3fae503c073c6646797b9236857"
 
 # Mixing of two classes, the build happens on the source directory.
 inherit openswitch cmake setuptools systemd
