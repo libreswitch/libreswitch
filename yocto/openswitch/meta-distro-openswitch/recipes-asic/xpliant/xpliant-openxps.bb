@@ -1,6 +1,9 @@
 SUMMARY = "Cavium Open APIs to program XPliant Switch"
-LICENSE = "Apache-2.0"
-LIC_FILES_CHKSUM = "file://LICENSE.md;md5=e3fc50a88d0a364313df4b21ef20c29e"
+LICENSE = "Proprietary & Apache-2.0 & GPLv2"
+LIC_FILES_CHKSUM = "file://bin/serdes/OPS%20license%20file%20(2016-04-08)%20(Avago%20Rom).md;md5=ceb5984773b3b86852933a7745152e77 \
+                    file://LICENSE.md;md5=e3fc50a88d0a364313df4b21ef20c29e \
+                    file://xpnet/LICENSE-GPLv2.md;md5=9038119dce34e83b70c78c88bb0a3f23 \
+                   "
 
 DEPENDS = "libxml2 libpcap lmsensors"
 
@@ -8,13 +11,14 @@ DEPENDS_${PN} += "systemd"
 
 SRC_URI = "git://github.com/xpliant/OpenXPS;protocol=http"
 
-SRCREV = "a33a307f667ad0e81893d41d023b68a6fd2240c0"
+SRCREV = "ced9c1dac6589e84d68beff2167c197287b3fbb1"
 
 # When using AUTOREV, we need to force the package version
 # to the revision of git in order to avoid stale shared states.
 PV = "git${SRCPV}"
 
 S = "${WORKDIR}/git"
+EXTERNALSRC_BUILD??="${S}/output"
 
 # Avoid running make clean during configuration stage
 CLEANBROKEN = "1"
