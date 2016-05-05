@@ -11,7 +11,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-ntpd;protocol=${OPS_REPO_PROTOCOL};branch=${
            file://ops-ntpd.service \
 "
 
-SRCREV = "576a6250960333ee9469fb92397a3f411a82eef4"
+SRCREV = "839ef3bc2ec58ab4a1643ff246617fb008f25f79"
 
 # Mixing of two classes, the build happens on the source directory.
 inherit openswitch cmake setuptools systemd
