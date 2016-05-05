@@ -14,3 +14,4 @@ EXTRA_USERS_PARAMS = "\
 IMAGE_FEATURES += "ssh-server-openssh"
 
 IMAGE_GEN_DEBUGFS = "1"
+IMAGE_FSTYPES += "dbg.tar.gz"
