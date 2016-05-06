@@ -53,11 +53,11 @@ python debian_package_name_hook () {
         return (s[stat.ST_MODE] & stat.S_IEXEC)
 
     def add_rprovides(pkg, d):
-        newpkg = d.getVar('PKG_' + pkg)
+        newpkg = d.getVar('PKG_' + pkg, True)
         if newpkg and newpkg != pkg:
             provs = (d.getVar('RPROVIDES_' + pkg, True) or "").split()
             if pkg not in provs:
-                d.appendVar('RPROVIDES_' + pkg, " " + pkg)
+                d.appendVar('RPROVIDES_' + pkg, " " + pkg + " (=" + d.getVar("PKGV", True) + ")")
 
     def auto_libname(packages, orig_pkg):
         sonames = []
@@ -105,10 +105,10 @@ python debian_package_name_hook () {
             if soname_result:
                 (pkgname, devname) = soname_result
                 for pkg in packages.split():
-                    if (d.getVar('PKG_' + pkg) or d.getVar('DEBIAN_NOAUTONAME_' + pkg)):
+                    if (d.getVar('PKG_' + pkg, False) or d.getVar('DEBIAN_NOAUTONAME_' + pkg, False)):
                         add_rprovides(pkg, d)
                         continue
-                    debian_pn = d.getVar('DEBIANNAME_' + pkg)
+                    debian_pn = d.getVar('DEBIANNAME_' + pkg, False)
                     if debian_pn:
                         newpkg = debian_pn
                     elif pkg == orig_pkg:

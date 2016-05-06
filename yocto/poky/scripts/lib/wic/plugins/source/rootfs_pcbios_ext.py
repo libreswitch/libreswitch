@@ -19,7 +19,6 @@
 #
 
 import os
-from wic import kickstart
 from wic import msger
 from wic.utils import syslinux
 from wic.utils import runner
@@ -59,11 +58,7 @@ class RootfsPlugin(SourcePlugin):
         if os.path.isdir(rootfs_dir):
             return rootfs_dir
 
-        bitbake_env_lines = misc.find_bitbake_env_lines(rootfs_dir)
-        if not bitbake_env_lines:
-            msger.error("Couldn't get bitbake environment, exiting.")
-
-        image_rootfs_dir = misc.find_artifact(bitbake_env_lines, "IMAGE_ROOTFS")
+        image_rootfs_dir = misc.get_bitbake_var("IMAGE_ROOTFS", rootfs_dir)
         if not os.path.isdir(image_rootfs_dir):
             msg = "No valid artifact IMAGE_ROOTFS from image named"
             msg += " %s has been found at %s, exiting.\n" % \
@@ -82,16 +77,12 @@ class RootfsPlugin(SourcePlugin):
 
         Called before do_prepare_partition()
         """
-        rootdev = image_creator._get_boot_config()[0]
-        options = image_creator.ks.handler.bootloader.appendLine
+        bootloader = image_creator.ks.bootloader
 
         syslinux_conf = ""
         syslinux_conf += "PROMPT 0\n"
 
-        timeout = kickstart.get_timeout(image_creator.ks)
-        if not timeout:
-            timeout = 0
-        syslinux_conf += "TIMEOUT " + str(timeout) + "\n"
+        syslinux_conf += "TIMEOUT " + str(bootloader.timeout) + "\n"
         syslinux_conf += "ALLOWOPTIONS 1\n"
 
         # Derive SERIAL... line from from kernel boot parameters
@@ -101,12 +92,8 @@ class RootfsPlugin(SourcePlugin):
         syslinux_conf += "LABEL linux\n"
         syslinux_conf += "  KERNEL /boot/bzImage\n"
 
-        if image_creator._ptable_format == 'msdos':
-            rootstr = rootdev
-        else:
-            raise ImageError("Unsupported partition table format found")
-
-        syslinux_conf += "  APPEND label=boot root=%s %s\n" % (rootstr, options)
+        syslinux_conf += "  APPEND label=boot root=%s %s\n" % \
+                             (image_creator.rootdev, bootloader.append)
 
         syslinux_cfg = os.path.join(image_creator.rootfs_dir['ROOTFS_DIR'], "boot", "syslinux.cfg")
         msger.debug("Writing syslinux config %s" % syslinux_cfg)
@@ -153,7 +140,7 @@ class RootfsPlugin(SourcePlugin):
 
         real_rootfs_dir = cls._get_rootfs_dir(rootfs_dir)
 
-        part.set_rootfs(real_rootfs_dir)
+        part.rootfs_dir = real_rootfs_dir
         part.prepare_rootfs(image_creator_workdir, oe_builddir, real_rootfs_dir, native_sysroot)
 
         # install syslinux into rootfs partition
@@ -169,7 +156,15 @@ class RootfsPlugin(SourcePlugin):
         Called after all partitions have been prepared and assembled into a
         disk image. In this case, we install the MBR.
         """
-        mbrfile = os.path.join(native_sysroot, "usr/share/syslinux/mbr.bin")
+        mbrfile = os.path.join(native_sysroot, "usr/share/syslinux/")
+        if image_creator.ptable_format == 'msdos':
+            mbrfile += "mbr.bin"
+        elif image_creator.ptable_format == 'gpt':
+            mbrfile += "gptmbr.bin"
+        else:
+            msger.error("Unsupported partition table: %s" % \
+                        image_creator.ptable_format)
+
         if not os.path.exists(mbrfile):
             msger.error("Couldn't find %s. Has syslinux-native been baked?" % mbrfile)
 

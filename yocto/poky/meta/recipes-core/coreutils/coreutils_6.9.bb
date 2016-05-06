@@ -9,6 +9,7 @@ LICENSE = "GPLv2+"
 LIC_FILES_CHKSUM = "file://COPYING;md5=751419260aa954499f7abaabaa882bbe \
                     file://src/ls.c;beginline=4;endline=16;md5=15ed60f67b1db5fedd5dbc37cf8a9543"
 PR = "r5"
+DEPENDS = "virtual/libiconv"
 
 inherit autotools gettext texinfo
 
@@ -22,9 +23,9 @@ SRC_URI = "${GNU_MIRROR}/coreutils/${BP}.tar.bz2 \
            file://coreutils-fix-install.patch \
            file://man-touch.patch \
            file://coreutils_fix_for_automake-1.12.patch \
-           file://coreutils-build-with-acl.patch \
            file://coreutils-fix-texinfo.patch \
            file://fix_for_manpage_building.patch \
+           file://loadavg.patch \
            "
 
 SRC_URI[md5sum] = "c9607d8495f16e98906e7ed2d9751a06"
@@ -39,7 +40,7 @@ PACKAGECONFIG ??= "${@bb.utils.contains('DISTRO_FEATURES', 'acl', 'acl', '', d)}
 
 # with, without, depends, rdepends
 #
-PACKAGECONFIG[acl] = "ac_cv_header_sys_acl_h=yes,ac_cv_header_sys_acl_h=no,acl,"
+PACKAGECONFIG[acl] = "ac_cv_header_sys_acl_h=yes ac_cv_header_acl_libacl_h=yes ac_cv_search_acl_get_file=-lacl,ac_cv_header_sys_acl_h=no ac_cv_header_acl_libacl_h=no ac_cv_search_acl_get_file=,acl,"
 
 
 # [ gets a special treatment and is not included in this

@@ -21,9 +21,7 @@ SRC_URI = "${GNU_MIRROR}/gettext/gettext-${PV}.tar.gz \
            file://hardcode_macro_version.patch \
           "
 
-
-SRC_URI_append_linux-uclibc = " file://gettext-error_print_progname.patch"
-SRC_URI_append_linux-uclibceabi = " file://gettext-error_print_progname.patch"
+LDFLAGS_prepend_libc-uclibc = " -lrt -lpthread "
 
 SRC_URI[md5sum] = "3d9ad24301c6d6b17ec30704a13fe127"
 SRC_URI[sha256sum] = "0bf850d1a079fb5a61f0a47b1a9efd35eb44032255375e1cedb0253bc27b376d"
@@ -39,6 +37,11 @@ acpaths = '-I ${S}/autoconf-lib-link/m4/ \
 
 do_configure_prepend() {
 	rm -f ${S}/config/m4/libtool.m4
+}
+
+do_install_append_libc-musl () {
+	rm -f ${D}${libdir}/charset.alias
+	rm -f ${D}${includedir}/libintl.h
 }
 
 # these lack the .x behind the .so, but shouldn't be in the -dev package

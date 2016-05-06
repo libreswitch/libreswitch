@@ -64,7 +64,6 @@ DESCRIPTION_localedef = "glibc: compile locale definition files"
 # FILES_glibc-gconv will not be automatically extended in multilib.
 # Explicitly add ${MLPREFIX} for FILES_glibc-gconv.
 FILES_${MLPREFIX}glibc-gconv = "${libdir}/gconv/*"
-FILES_${PN}-dbg += "${libdir}/gconv/.debug/*"
 FILES_localedef = "${bindir}/localedef"
 
 LOCALETREESRC = "${STAGING_INCDIR}/glibc-locale-internal-${MULTIMACH_TARGET_SYS}"
@@ -87,7 +86,7 @@ do_install () {
 	if [ -e ${LOCALETREESRC}/${datadir}/locale ]; then
 		cp -fpPR ${LOCALETREESRC}/${datadir}/locale ${D}${datadir}
 	fi
-	chown root.root -R ${D}
+	chown root:root -R ${D}
 	cp -fpPR ${LOCALETREESRC}/SUPPORTED ${WORKDIR}
 }
 

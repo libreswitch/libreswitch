@@ -81,6 +81,9 @@ EXTRA_OECONF = "--disable-ldap \
                 ac_cv_sys_symbol_underscore=no \
 		"
 
+# Force gcc's traditional handling of inline to avoid issues with gcc 5
+CFLAGS += "-fgnu89-inline"
+
 do_install () {
 	autotools_do_install
 	install -d ${D}${docdir}/${BPN}
@@ -95,7 +98,6 @@ FILES_gpgv = "${bindir}/gpgv"
 
 # Exclude debug files from the main packages
 FILES_${PN} = "${bindir}/* ${datadir}/${BPN} ${libexecdir}/${BPN}/*"
-FILES_${PN}-dbg += "${libexecdir}/${BPN}/.debug"
 
 PACKAGECONFIG ??= ""
 PACKAGECONFIG[curl] = "--with-libcurl=${STAGING_LIBDIR},--without-libcurl,curl"

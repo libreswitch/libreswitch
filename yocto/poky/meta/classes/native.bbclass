@@ -42,7 +42,7 @@ HOST_AS_ARCH = "${BUILD_AS_ARCH}"
 
 CPPFLAGS = "${BUILD_CPPFLAGS}"
 CFLAGS = "${BUILD_CFLAGS}"
-CXXFLAGS = "${BUILD_CFLAGS}"
+CXXFLAGS = "${BUILD_CXXFLAGS}"
 LDFLAGS = "${BUILD_LDFLAGS}"
 LDFLAGS_build-darwin = "-L${STAGING_LIBDIR_NATIVE} "
 
@@ -106,6 +106,8 @@ PKG_CONFIG_DIR = "${libdir}/pkgconfig"
 EXTRA_NATIVE_PKGCONFIG_PATH ?= ""
 PKG_CONFIG_PATH .= "${EXTRA_NATIVE_PKGCONFIG_PATH}"
 PKG_CONFIG_SYSROOT_DIR = ""
+PKG_CONFIG_SYSTEM_LIBRARY_PATH[unexport] = "1"
+PKG_CONFIG_SYSTEM_INCLUDE_PATH[unexport] = "1"
 
 # we dont want libc-uclibc or libc-glibc to kick in for native recipes
 LIBCOVERRIDE = ""
@@ -142,6 +144,8 @@ python native_virtclass_handler () {
                 newdeps.append(dep)
         d.setVar(varname, " ".join(newdeps))
 
+    e.data.setVar("OVERRIDES", e.data.getVar("OVERRIDES", False) + ":virtclass-native")
+
     map_dependencies("DEPENDS", e.data)
     for pkg in [e.data.getVar("PN", True), "", "${PN}"]:
         map_dependencies("RDEPENDS", e.data, pkg)
@@ -161,19 +165,13 @@ python native_virtclass_handler () {
             nprovides.append(prov)
     e.data.setVar("PROVIDES", ' '.join(nprovides))
 
-    e.data.setVar("OVERRIDES", e.data.getVar("OVERRIDES", False) + ":virtclass-native")
+
 }
 
 addhandler native_virtclass_handler
 native_virtclass_handler[eventmask] = "bb.event.RecipePreFinalise"
 
-deltask package
-deltask packagedata
-deltask package_qa
-deltask package_write_ipk
-deltask package_write_deb
-deltask package_write_rpm
-deltask package_write
+inherit nopackages
 
 do_packagedata[stamp-extra-info] = ""
 do_populate_sysroot[stamp-extra-info] = ""

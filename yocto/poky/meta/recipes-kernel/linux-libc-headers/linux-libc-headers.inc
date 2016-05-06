@@ -35,17 +35,22 @@ python __anonymous () {
     major = d.getVar("PV",True).split('.')[0]
     if major == "3":
         d.setVar("HEADER_FETCH_VER", "3.0")
+    elif major == "4":
+        d.setVar("HEADER_FETCH_VER", "4.x")
     else:
         d.setVar("HEADER_FETCH_VER", "2.6")
 }
 
 inherit kernel-arch
 
-KORG_ARCHIVE_COMPRESSION ?= "bz2"
+KORG_ARCHIVE_COMPRESSION ?= "xz"
 
 SRC_URI = "${KERNELORG_MIRROR}/linux/kernel/v${HEADER_FETCH_VER}/linux-${PV}.tar.${KORG_ARCHIVE_COMPRESSION}"
 
 S = "${WORKDIR}/linux-${PV}"
+
+# For the kernel, we don't want the '-e MAKEFLAGS=' in EXTRA_OEMAKE.
+EXTRA_OEMAKE = ""
 
 do_configure() {
 	oe_runmake allnoconfig

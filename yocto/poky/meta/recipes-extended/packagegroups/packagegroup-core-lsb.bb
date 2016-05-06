@@ -55,7 +55,6 @@ RDEPENDS_packagegroup-core-lsb = "\
 RDEPENDS_packagegroup-core-sys-extended = "\
     curl \
     dhcp-client \
-    gamin \
     hdparm \
     lighttpd \
     libaio \
@@ -70,7 +69,6 @@ RDEPENDS_packagegroup-core-sys-extended = "\
     minicom \
     neon \
     parted \
-    ${PTH} \
     quota \
     screen \
     setserial \
@@ -204,12 +202,12 @@ RDEPENDS_packagegroup-core-lsb-python = "\
 "
 
 def get_libqt3(d):
-    if 'linuxstdbase' in d.getVar('DISTROOVERRIDES') or "":
-        if 'qt3' in d.getVar('BBFILE_COLLECTIONS') or "":
+    if 'linuxstdbase' in d.getVar('DISTROOVERRIDES', False) or "":
+        if 'qt3' in d.getVar('BBFILE_COLLECTIONS', False) or "":
             return 'libqt-mt3'
 
-        bb.warn('The meta-qt3 layer should be added, this layer provides Qt 3.x' \
-                'libraries. Its intended use is for passing LSB tests as Qt3 is' \
+        bb.warn('The meta-qt3 layer should be added, this layer provides Qt 3.x ' \
+                'libraries. Its intended use is for passing LSB tests as Qt3 is ' \
                 'a requirement for LSB.')
     return ''
 
@@ -225,6 +223,16 @@ QT4PKGS = " \
     "
 QT4PKGS_mips64 = ""
 QT4PKGS_mips64n32 = ""
+
+def get_libqt4(d):
+    if 'linuxstdbase' in d.getVar('DISTROOVERRIDES', False) or "":
+        if 'qt4' in d.getVar('BBFILE_COLLECTIONS', False) or "":
+            return d.getVar('QT4PKGS', False)
+
+        bb.warn('The meta-qt4 layer should be added, this layer provides Qt 4.x ' \
+                'libraries. Its intended use is for passing LSB tests as Qt4 is ' \
+                'a requirement for LSB.')
+    return ''
 
 SUMMARY_packagegroup-core-lsb-desktop = "LSB Desktop"
 DESCRIPTION_packagegroup-core-lsb-desktop = "Packages required to support libraries \
@@ -246,7 +254,7 @@ RDEPENDS_packagegroup-core-lsb-desktop = "\
     gtk+ \
     atk \
     libasound \
-    ${QT4PKGS} \
+    ${@get_libqt4(d)} \
     ${@get_libqt3(d)} \
 "
 
@@ -273,7 +281,3 @@ RDEPENDS_packagegroup-core-lsb-runtime-add = "\
     libi18n-collate-perl \
     libpod-plainer-perl \
 "
-
-PTH = "pth"
-PTH_libc-uclibc = ""
-

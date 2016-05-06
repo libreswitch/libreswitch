@@ -26,9 +26,10 @@ File parsers for the BitBake build tools.
 
 handlers = []
 
+import errno
+import logging
 import os
 import stat
-import logging
 import bb
 import bb.utils
 import bb.siggen
@@ -70,7 +71,12 @@ def cached_mtime_noerror(f):
     return __mtime_cache[f]
 
 def update_mtime(f):
-    __mtime_cache[f] = os.stat(f)[stat.ST_MTIME]
+    try:
+        __mtime_cache[f] = os.stat(f)[stat.ST_MTIME]
+    except OSError:
+        if f in __mtime_cache:
+            del __mtime_cache[f]
+        return 0
     return __mtime_cache[f]
 
 def update_cache(f):
@@ -81,7 +87,7 @@ def update_cache(f):
 def mark_dependency(d, f):
     if f.startswith('./'):
         f = "%s/%s" % (os.getcwd(), f[2:])
-    deps = (d.getVar('__depends') or [])
+    deps = (d.getVar('__depends', False) or [])
     s = (f, cached_mtime_noerror(f))
     if s not in deps:
         deps.append(s)
@@ -89,7 +95,7 @@ def mark_dependency(d, f):
 
 def check_dependency(d, f):
     s = (f, cached_mtime_noerror(f))
-    deps = (d.getVar('__depends') or [])
+    deps = (d.getVar('__depends', False) or [])
     return s in deps
    
 def supports(fn, data):
@@ -122,12 +128,12 @@ def resolve_file(fn, d):
         for af in attempts:
             mark_dependency(d, af)
         if not newfn:
-            raise IOError("file %s not found in %s" % (fn, bbpath))
+            raise IOError(errno.ENOENT, "file %s not found in %s" % (fn, bbpath))
         fn = newfn
 
     mark_dependency(d, fn)
     if not os.path.isfile(fn):
-        raise IOError("file %s not found" % fn)
+        raise IOError(errno.ENOENT, "file %s not found" % fn)
 
     return fn
 
@@ -155,8 +161,8 @@ def vars_from_file(mypkg, d):
 def get_file_depends(d):
     '''Return the dependent files'''
     dep_files = []
-    depends = d.getVar('__base_depends', True) or []
-    depends = depends + (d.getVar('__depends', True) or [])
+    depends = d.getVar('__base_depends', False) or []
+    depends = depends + (d.getVar('__depends', False) or [])
     for (fn, _) in depends:
         dep_files.append(os.path.abspath(fn))
     return " ".join(dep_files)

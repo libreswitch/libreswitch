@@ -15,6 +15,16 @@ sqlversion = sqlite3.sqlite_version_info
 if sqlversion[0] < 3 or (sqlversion[0] == 3 and sqlversion[1] < 3):
     raise Exception("sqlite3 version 3.3.0 or later is required.")
 
+#
+# "No History" mode - for a given query tuple (version, pkgarch, checksum),
+# the returned value will be the largest among all the values of the same
+# (version, pkgarch). This means the PR value returned can NOT be decremented.
+#
+# "History" mode - Return a new higher value for previously unseen query
+# tuple (version, pkgarch, checksum), otherwise return historical value.
+# Value can decrement if returning to a previous build.
+#
+
 class PRTable(object):
     def __init__(self, conn, table, nohist):
         self.conn = conn
@@ -221,6 +231,14 @@ class PRTable(object):
                 datainfo.append(col)
         return (metainfo, datainfo)
 
+    def dump_db(self, fd):
+        writeCount = 0
+        for line in self.conn.iterdump():
+            writeCount = writeCount + len(line) + 1
+            fd.write(line)
+            fd.write('\n')
+        return writeCount
+
 class PRData(object):
     """Object representing the PR database"""
     def __init__(self, filename, nohist=True):
@@ -238,7 +256,7 @@ class PRData(object):
         self.connection.execute("PRAGMA journal_mode = WAL;")
         self._tables={}
 
-    def __del__(self):
+    def disconnect(self):
         self.connection.close()
 
     def __getitem__(self,tblname):

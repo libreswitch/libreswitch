@@ -5,9 +5,10 @@ SECTION = "optional"
 LICENSE = "GPLv3"
 LIC_FILES_CHKSUM = "file://COPYING;md5=d32239bcb673463ab874e80d47fae504"
 
+DEPENDS += "virtual/libiconv"
 
-RDEPENDS_${PN} = "glibc-gconv-ibm850"
-RRECOMMENDS_${PN} = "\
+RDEPENDS_${PN}_libc-glibc = "glibc-gconv-ibm850"
+RRECOMMENDS_${PN}_libc-glibc = "\
 	glibc-gconv-ibm437 \
 	glibc-gconv-ibm737 \
 	glibc-gconv-ibm775 \
@@ -35,7 +36,12 @@ inherit autotools texinfo
 
 EXTRA_OECONF = "--without-x"
 
+LDFLAGS_append_libc-uclibc = " -liconv "
+
 BBCLASSEXTEND = "native nativesdk"
+
+PACKAGECONFIG ??= ""
+PACKAGECONFIG[libbsd] = "ac_cv_lib_bsd_main=yes,ac_cv_lib_bsd_main=no,libbsd"
 
 do_install_prepend () {
     # Create bindir to fix parallel installation issues

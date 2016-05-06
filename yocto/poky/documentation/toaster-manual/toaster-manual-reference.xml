@@ -133,6 +133,11 @@
                         browser by entering the URL of your Toaster instance and
                         adding "<filename>/admin</filename>" to the end of the
                         URL.
+                        As an example, if you are running Toaster locally, use
+                        the following URL:
+                        <literallayout class='monospaced'>
+     http://127.0.0.1:8000/admin
+                        </literallayout>
                     </para>
 
                     <para>
@@ -154,25 +159,24 @@
                     </para>
 
                     <para>
-                        When you set up Toaster in Build Mode, you are prompted
-                        to select a Toaster configuration file.
+                        The Toaster startup script in
+                        <filename>/bitbake/bin/toaster</filename> specifies
+                        the location of a Toaster configuration file
+                        <filename>toasterconf.json</filename> as the value of
+                        the <filename>TOASTER_CONF</filename> variable.
                         This configuration file is used to set up the initial
                         configuration values within the Toaster database
                         including the layer sources.
-                        Three versions of the configuration file exist:
+                        Two versions of the configuration file exist:
                         <itemizedlist>
                             <listitem><para>
                                 The first version of the file is found in the
                                 <filename>conf</filename> directory of the
-                                <filename>meta-yocto</filename> layer
+                                <filename>meta-poky</filename> layer
                                 (i.e.
-                                <filename>meta-yocto/conf/toasterconf.json</filename>).
+                                <filename>meta-poky/conf/toasterconf.json</filename>).
                                 This version contains the default Yocto Project
                                 configuration for Toaster.
-                                You are prompted to select this file during the
-                                Toaster set up process if you had cloned the
-                                <filename>poky</filename> repository (i.e.
-                                <filename>git://git.yoctoproject.org/poky</filename>).
                                 </para></listitem>
                             <listitem><para>
                                 The second version of the file is in the
@@ -181,19 +185,6 @@
                                 (i.e. <filename>meta/conf/toasterconf.json</filename>).
                                 This version contains the default OpenEmbedded
                                 configuration for Toaster.
-                                You are prompted to select this file during the
-                                Toaster set up process if you had cloned the
-                                <filename>openembedded-core</filename> repository
-                                (i.e.
-                                <filename>git://git.openembedded.org/openembedded-core</filename>).
-                                </para></listitem>
-                            <listitem><para>
-                                The third version is a sample configuration
-                                useful for when you want to set up a hosted
-                                service in Build Mode.
-                                You can find this version on the
-                                <ulink url='https://wiki.yoctoproject.org/wiki/File:Toasterconf.json.txt.patch'>File:Toasterconf.json.txt.patch</ulink>
-                                wiki page.
                                 </para></listitem>
                         </itemizedlist>
                     </para>
@@ -209,48 +200,48 @@
                         In the file, you will find a section for layer sources
                         such as the following:
                         <literallayout class='monospaced'>
-     "layersources": [
-         {
-             "name": "Local Yocto Project",
-             "sourcetype": "local",
-             "apiurl": "../../",
-             "branches": ["HEAD", "master", "fido", "dizzy"],
-             "layers": [
-                 {
-                     "name": "openembedded-core",
-                     "local_path": "meta",
-                     "vcs_url": "remote:origin",
-                     "dirpath": "meta"
-                 },
-                 {
-                     "name": "meta-yocto",
-                     "local_path": "meta-yocto",
-                     "vcs_url": "remote:origin",
-                     "dirpath": "meta-yocto"
-                 },
-                 {
-                     "name": "meta-yocto-bsp",
-                     "local_path": "meta-yocto-bsp",
-                     "vcs_url": "remote:origin",
-                     "dirpath": "meta-yocto-bsp"
-                 }
+    "layersources": [
+        {
+            "name": "Local Yocto Project",
+            "sourcetype": "local",
+            "apiurl": "../../",
+            "branches": ["HEAD" ],
+            "layers": [
+                {
+                    "name": "openembedded-core",
+                    "local_path": "meta",
+                    "vcs_url": "remote:origin",
+                    "dirpath": "meta"
+                },
+                {
+                    "name": "meta-poky",
+                    "local_path": "meta-poky",
+                    "vcs_url": "remote:origin",
+                    "dirpath": "meta-poky"
+                },
+                {
+                    "name": "meta-yocto-bsp",
+                    "local_path": "meta-yocto-bsp",
+                    "vcs_url": "remote:origin",
+                    "dirpath": "meta-yocto-bsp"
+                }
 
-             ]
-         },
-         {
-             "name": "OpenEmbedded",
-             "sourcetype": "layerindex",
-             "apiurl": "http://layers.openembedded.org/layerindex/api/",
-             "branches": ["master", "fido", "dizzy"]
-         },
-         {
-             "name": "Imported layers",
-             "sourcetype": "imported",
-             "apiurl": "",
-             "branches": ["master", "fido", "dizzy", "HEAD"]
+            ]
+        },
+        {
+            "name": "OpenEmbedded",
+            "sourcetype": "layerindex",
+            "apiurl": "http://layers.openembedded.org/layerindex/api/",
+            "branches": ["master", "jethro" ,"fido"]
+        },
+        {
+            "name": "Imported layers",
+            "sourcetype": "imported",
+            "apiurl": "",
+            "branches": ["master", "jethro","fido", "HEAD"]
 
-         }
-     ],
+        }
+    ],
                         </literallayout>
                         You should add your own layer source to this section by
                         following the same format used for the "OpenEmbedded"
@@ -263,7 +254,7 @@
                         indicate which branches from your layer source you want
                         to make available through Toaster.
                         For example, the OpenEmbedded layer source makes
-                        available only its "master", "fido", and "dizzy"
+                        available only its "master", "fido", and "jethro"
                         branches.
                     </para>
 
@@ -302,10 +293,10 @@
                         <filename>toasterconf.json</filename> file you just edited.
                         For example, if you cloned the
                         <filename>poky</filename> repository and you edited the
-                        <filename>meta-yocto/conf/toasterconf.json</filename> file,
+                        <filename>meta-poky/conf/toasterconf.json</filename> file,
                         you would type something like the following:
                         <literallayout class='monospaced'>
-     $ bitbake/lib/toaster/manage.py loadconf /home/scottrif/poky/meta-yocto/conf/toasterconf.json
+     $ bitbake/lib/toaster/manage.py loadconf /home/scottrif/poky/meta-poky/conf/toasterconf.json
                         </literallayout>
                         After entering this command, you need to update the
                         Toaster database with the information coming from your
@@ -368,12 +359,12 @@
                 As shipped, Toaster is configured to work with the following
                 releases:
                 <itemizedlist>
-                    <listitem><para><emphasis>Yocto Project 1.7 "Dizzy" or OpenEmbedded "Dizzy":</emphasis>
+                    <listitem><para><emphasis>Yocto Project 2.0 "Jethro" or OpenEmbedded "Jethro":</emphasis>
                         This release causes your Toaster projects to
-                        build against the head of the dizzy branch at
-                        <ulink url='&YOCTO_GIT_URL;/cgit/cgit.cgi/poky/log/?h=dizzy'></ulink>
+                        build against the head of the jethro branch at
+                        <ulink url='&YOCTO_GIT_URL;/cgit/cgit.cgi/poky/log/?h=jethro'></ulink>
                         or
-                        <ulink url='http://git.openembedded.org/openembedded-core/commit/?h=dizzy'></ulink>.
+                        <ulink url='http://git.openembedded.org/openembedded-core/commit/?h=jethro'></ulink>.
                         </para></listitem>
                     <listitem><para><emphasis>Yocto Project 1.8 "Fido" or OpenEmbedded "Fido":</emphasis>
                         This release causes your Toaster projects to
@@ -484,7 +475,7 @@
                         The branch for the layer source
                         (<filename>branch</filename>) used with the release.
                         For example, for the OpenEmbedded layer source, the
-                        "master", "fido", and "dizzy" branches are available.
+                        "master", "fido", and "jethro" branches are available.
                         </para></listitem>
                     <listitem><para><emphasis>Default Layers:</emphasis>
                         The set of default layers
@@ -533,7 +524,7 @@
              "branch": "master",
              "defaultlayers": [ "openembedded-core" ],
              "layersourcepriority": { "Imported layers": 99, "Local OpenEmbedded" : 10, "OpenEmbedded" :  0 },
-             "helptext": "Toaster will run your builds using the OpenEmbedded master branch, where active development takes place. This is not a stable branch, so your builds might not work as expected."
+             "helptext": "Toaster will run your builds using the tip of the &lt;a href=\"http://git.yoctoproject.org/cgit/cgit.cgi/poky/log/\"&gt;Yocto Project master branch&lt;/a&gt;, where active development takes place. This is not a stable branch, so your builds might not work as expected."
          }
      ]
                 </literallayout>
@@ -545,8 +536,7 @@
         <title>JSON Files</title>
 
         <para>
-            If you are going to be using Toaster in Build Mode, it must
-            be initially configured before use.
+            You must configure Toaster before using it.
             Configuration customizes layer source settings and Toaster defaults
             for all users and is performed by the person responsible for
             Toaster Configuration (i.e  the Toaster Administrator).
@@ -572,23 +562,22 @@
             <filename>toasterconf.json</filename>.
             The Toaster Administrator can customize the file prior to loading
             it into Toaster.
-            When you set up Toaster locally to run in Build Mode, the system
-            startup script actively looks for compatible configuration files
-            and prompts you to select a file to load if it detects that the
-            database has not been configured.
+            The <filename>TOASTER_CONF</filename> variable in the
+            Toaster startup script at <filename>bitbake/bin/toaster</filename>
+            specifies the location of the <filename>toasterconf.json</filename> file.
         </para>
 
         <section id='json-file-choices'>
             <title>Configuration File Choices</title>
 
             <para>
-                Three versions of the configuration file exist:
+                Two versions of the configuration file exist:
                 <itemizedlist>
                     <listitem><para>
                         The
-                        <filename>meta-yocto/conf/toasterconf.json</filename>
+                        <filename>meta-poky/conf/toasterconf.json</filename>
                         in the <filename>conf</filename> directory of the
-                        Yocto Project's <filename>meta-yocto</filename> layer.
+                        Yocto Project's <filename>meta-poky</filename> layer.
                         This version contains the default Yocto Project
                         configuration for Toaster.
                         You are prompted to select this file during the Toaster
@@ -607,15 +596,6 @@
                         set up process if you had cloned the
                         <filename>openembedded-core</filename> repository (i.e.
                         <filename>git://git.openembedded.org/openembedded-core</filename>).
-                        </para></listitem>
-                    <listitem><para>
-                        The <filename>Toasterconf.json.txt.patch</filename>
-                        located on the
-                        <ulink url='https://wiki.yoctoproject.org/wiki/File:Toasterconf.json.txt.patch'>File:Toasterconf.json.txt.patch</ulink>
-                        wiki page.
-                        This version of the file is useful as a sample
-                        configuration for when you want to set up Toaster as a
-                        hosted service in Build Mode.
                         </para></listitem>
                 </itemizedlist>
             </para>
@@ -657,7 +637,6 @@
          "IMAGE_FSTYPES": "ext3 jffs2 tar.bz2",
          "IMAGE_INSTALL_append": "",
          "PACKAGE_CLASSES": "package_rpm",
-         "SDKMACHINE"   : "x86_64"
      },
                     </literallayout>
                 </para>
@@ -705,48 +684,48 @@
                 <para>
                     Here is the default <filename>layersources</filename> area:
                     <literallayout class='monospaced'>
-     "layersources": [
-         {
-             "name": "Local Yocto Project",
-             "sourcetype": "local",
-             "apiurl": "../../",
-             "branches": ["HEAD", "master", "fido", "dizzy"],
-             "layers": [
-                 {
-                     "name": "openembedded-core",
-                     "local_path": "meta",
-                     "vcs_url": "remote:origin",
-                     "dirpath": "meta"
-                 },
-                 {
-                     "name": "meta-yocto",
-                     "local_path": "meta-yocto",
-                     "vcs_url": "remote:origin",
-                     "dirpath": "meta-yocto"
-                 },
-                 {
-                     "name": "meta-yocto-bsp",
-                     "local_path": "meta-yocto-bsp",
-                     "vcs_url": "remote:origin",
-                     "dirpath": "meta-yocto-bsp"
-                 }
+    "layersources": [
+        {
+            "name": "Local Yocto Project",
+            "sourcetype": "local",
+            "apiurl": "../../",
+            "branches": ["HEAD" ],
+            "layers": [
+                {
+                    "name": "openembedded-core",
+                    "local_path": "meta",
+                    "vcs_url": "remote:origin",
+                    "dirpath": "meta"
+                },
+                {
+                    "name": "meta-poky",
+                    "local_path": "meta-poky",
+                    "vcs_url": "remote:origin",
+                    "dirpath": "meta-poky"
+                },
+                {
+                    "name": "meta-yocto-bsp",
+                    "local_path": "meta-yocto-bsp",
+                    "vcs_url": "remote:origin",
+                    "dirpath": "meta-yocto-bsp"
+                }
 
-             ]
-         },
-         {
-             "name": "OpenEmbedded",
-             "sourcetype": "layerindex",
-             "apiurl": "http://layers.openembedded.org/layerindex/api/",
-             "branches": ["master", "fido", "dizzy"]
-         },
-         {
-             "name": "Imported layers",
-             "sourcetype": "imported",
-             "apiurl": "",
-             "branches": ["master", "fido", "dizzy", "HEAD"]
+            ]
+        },
+        {
+            "name": "OpenEmbedded",
+            "sourcetype": "layerindex",
+            "apiurl": "http://layers.openembedded.org/layerindex/api/",
+            "branches": ["master", "jethro" ,"fido"]
+        },
+        {
+            "name": "Imported layers",
+            "sourcetype": "imported",
+            "apiurl": "",
+            "branches": ["master", "jethro","fido", "HEAD"]
 
-         }
-     ],
+        }
+    ],
                     </literallayout>
                 </para>
             </section>
@@ -758,7 +737,7 @@
                     This area of the JSON file defines the version of
                     BitBake Toaster uses.
                     As shipped, Toaster is configured to recognize four
-                    versions of BitBake: master, fido, dizzy, and HEAD.
+                    versions of BitBake: master, fido, jethro, and HEAD.
                     <note>
                         HEAD is a special option that builds whatever is
                         available on disk, without checking out any remote
@@ -776,18 +755,18 @@
              "branch": "master",
              "dirpath": "bitbake"
          },
+        {
+             "name": "jethro",
+             "giturl": "remote:origin",
+             "branch": "jethro",
+             "dirpath": "bitbake"
+         },
          {
              "name": "fido",
              "giturl": "remote:origin",
              "branch": "fido",
             "dirpath": "bitbake"
         },
-        {
-             "name": "dizzy",
-             "giturl": "remote:origin",
-             "branch": "dizzy",
-             "dirpath": "bitbake"
-         },
          {
              "name": "HEAD",
              "giturl": "remote:origin",
@@ -838,34 +817,34 @@
              "description": "Yocto Project master",
              "bitbake": "master",
              "branch": "master",
-             "defaultlayers": [ "openembedded-core", "meta-yocto", "meta-yocto-bsp"],
+             "defaultlayers": [ "openembedded-core", "meta-poky", "meta-yocto-bsp"],
              "layersourcepriority": { "Imported layers": 99, "Local Yocto Project" : 10, "OpenEmbedded" :  0 },
              "helptext": "Toaster will run your builds using the tip of the &lt;a href=\"http://git.yoctoproject.org/cgit/cgit.cgi/poky/log/\"&gt;Yocto Project master branch&lt;/a&gt;, where active development takes place. This is not a stable branch, so your builds might not work as expected."
+         },
+         {
+             "name": "jethro",
+             "description": "Yocto Project 2.0 Jethro",
+             "bitbake": "jethro",
+             "branch": "jethro",
+             "defaultlayers": [ "openembedded-core", "meta-poky", "meta-yocto-bsp"],
+             "layersourcepriority": { "Imported layers": 99, "Local Yocto Project" : 10, "OpenEmbedded" :  0 },
+             "helptext": "Toaster will run your builds with the tip of the &lt;a href=\"http://git.yoctoproject.org/cgit/cgit.cgi/poky/log/?h=jethro\"&gt;Yocto Project 2.0 \"Jethro\"&lt;/a&gt; branch."
          },
          {
              "name": "fido",
              "description": "Yocto Project 1.8 Fido",
              "bitbake": "fido",
              "branch": "fido",
-             "defaultlayers": [ "openembedded-core", "meta-yocto", "meta-yocto-bsp"],
+             "defaultlayers": [ "openembedded-core", "meta-poky", "meta-yocto-bsp"],
              "layersourcepriority": { "Imported layers": 99, "Local Yocto Project" : 10, "OpenEmbedded" :  0 },
              "helptext": "Toaster will run your builds with the tip of the &lt;a href=\"http://git.yoctoproject.org/cgit/cgit.cgi/poky/log/?h=fido\"&gt;Yocto Project 1.8 \"Fido\"&lt;/a&gt; branch."
-         },
-         {
-             "name": "dizzy",
-             "description": "Yocto Project 1.7 Dizzy",
-             "bitbake": "dizzy",
-             "branch": "dizzy",
-             "defaultlayers": [ "openembedded-core", "meta-yocto", "meta-yocto-bsp"],
-             "layersourcepriority": { "Imported layers": 99, "Local Yocto Project" : 10, "OpenEmbedded" :  0 },
-             "helptext": "Toaster will run your builds with the tip of the &lt;a href=\"http://git.yoctoproject.org/cgit/cgit.cgi/poky/log/?h=dizzy\"&gt;Yocto Project 1.7 \"Dizzy\"&lt;/a&gt; branch."
          },
          {
              "name": "local",
              "description": "Local Yocto Project",
              "bitbake": "HEAD",
              "branch": "HEAD",
-             "defaultlayers": [ "openembedded-core", "meta-yocto", "meta-yocto-bsp"],
+             "defaultlayers": [ "openembedded-core", "meta-poky", "meta-yocto-bsp"],
              "layersourcepriority": { "Imported layers": 99, "Local Yocto Project" : 10, "OpenEmbedded" :  0 },
              "helptext": "Toaster will run your builds with the version of the Yocto Project you have cloned or downloaded to your computer."
          }
@@ -1004,7 +983,7 @@
                 <literallayout class='monospaced'>
      $ bitbake/lib/toaster/manage.py checksettings
                 </literallayout>
-                In Build Mode, Toaster uses settings that are based on the
+                Toaster uses settings that are based on the
                 database to configure the building tasks.
                 The <filename>checksettings</filename> command verifies that
                 the database settings are valid in the sense that they have

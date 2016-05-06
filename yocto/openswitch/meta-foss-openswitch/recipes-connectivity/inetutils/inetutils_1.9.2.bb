@@ -60,9 +60,9 @@ do_install_append () {
     mv ${D}${libexecdir}/talkd ${D}${sbindir}/in.talkd
     mv ${D}${libexecdir}/uucpd ${D}${sbindir}/in.uucpd
     mv ${D}${libexecdir}/* ${D}${bindir}/
-    rm -rf ${D}${libexecdir}/
+    rm -rf ${D}/${prefix}/libexec
     # remove usr/lib if empty
-    rmdir ${D}${libdir}
+    rmdir ${D}${libdir} || true
 }
 
 PACKAGES =+ "${PN}-ping ${PN}-ping6 ${PN}-hostname ${PN}-ifconfig \

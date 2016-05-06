@@ -14,9 +14,11 @@ IMAGE_ROOTFS_SIZE = "1048576"
 IMAGE_ROOTFS_ALIGNMENT = "64"
 
 # Do a quiet boot with limited console messages
-APPEND += "quiet rootfstype=ext4"
-SYSLINUX_PROMPT ?= "0"
-SYSLINUX_TIMEOUT ?= "0"
+APPEND += "quiet"
+AUTO_SYSLINUXMENU = "0"
+SYSLINUX_PROMPT = "0"
+SYSLINUX_TIMEOUT = "0"
+ROOT_VM = "root=PARTUUID=${DISK_SIGNATURE}-02 rootfstype=ext4 "
 
 DEPENDS = "tar-native qemu-native"
 IMAGE_FSTYPES = "vmdk tar.gz"

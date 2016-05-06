@@ -6,7 +6,7 @@ def process_file_linux(cmd, fpath, rootdir, baseprefix, tmpdir, d):
 
     p = sub.Popen([cmd, '-l', fpath],stdout=sub.PIPE,stderr=sub.PIPE)
     err, out = p.communicate()
-    # If returned succesfully, process stderr for results
+    # If returned successfully, process stderr for results
     if p.returncode != 0:
         return
 
@@ -45,7 +45,7 @@ def process_file_darwin(cmd, fpath, rootdir, baseprefix, tmpdir, d):
 
     p = sub.Popen([d.expand("${HOST_PREFIX}otool"), '-L', fpath],stdout=sub.PIPE,stderr=sub.PIPE)
     err, out = p.communicate()
-    # If returned succesfully, process stderr for results
+    # If returned successfully, process stderr for results
     if p.returncode != 0:
         return
     for l in err.split("\n"):
@@ -64,7 +64,7 @@ def process_dir (rootdir, directory, d):
 
     rootdir = os.path.normpath(rootdir)
     cmd = d.expand('${CHRPATH_BIN}')
-    tmpdir = os.path.normpath(d.getVar('TMPDIR'))
+    tmpdir = os.path.normpath(d.getVar('TMPDIR', False))
     baseprefix = os.path.normpath(d.expand('${base_prefix}'))
     hostos = d.getVar("HOST_OS", True)
 

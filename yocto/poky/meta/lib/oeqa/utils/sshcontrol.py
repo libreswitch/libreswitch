@@ -31,12 +31,18 @@ class SSHProcess(object):
         self.starttime = None
         self.logfile = None
 
+        # Unset DISPLAY which means we won't trigger SSH_ASKPASS
+        env = os.environ.copy()
+        if "DISPLAY" in env:
+            del env['DISPLAY']
+        self.options['env'] = env
+
     def log(self, msg):
         if self.logfile:
             with open(self.logfile, "a") as f:
                f.write("%s" % msg)
 
-    def run(self, command, timeout=None, logfile=None):
+    def _run(self, command, timeout=None, logfile=None):
         self.logfile = logfile
         self.starttime = time.time()
         output = ''
@@ -73,8 +79,18 @@ class SSHProcess(object):
 
         self.status = self.process.wait()
         self.output = output.rstrip()
-        return (self.status, self.output)
 
+    def run(self, command, timeout=None, logfile=None):
+        try:
+            self._run(command, timeout, logfile)
+        except:
+            # Need to guard against a SystemExit or other exception occuring whilst running
+            # and ensure we don't leave a process behind.
+            if self.process.poll() is None:
+                self.process.kill()
+                self.status = self.process.wait()
+            raise
+        return (self.status, self.output)
 
 class SSHControl(object):
     def __init__(self, ip, logfile=None, timeout=300, user='root', port=None):
@@ -120,8 +136,7 @@ class SSHControl(object):
         timeout=0 - no timeout, let command run until it returns
         """
 
-        # We need to source /etc/profile for a proper PATH on the target
-        command = self.ssh + [self.ip, ' . /etc/profile; ' + command]
+        command = self.ssh + [self.ip, 'export PATH=/usr/sbin:/sbin:/usr/bin:/bin; ' + command]
 
         if timeout is None:
             return self._internal_run(command, self.defaulttimeout, self.ignore_status)

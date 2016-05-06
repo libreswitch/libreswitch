@@ -13,6 +13,12 @@ LICENSE = "GPLv3"
 
 DEPENDS = "flex-native bison-native zlib-native gnu-config-native autoconf-native"
 
+#
+# we need chrpath > 0.14 and some distros like centos 7 still have older chrpath
+#
+DEPENDS_append_class-target = " chrpath-replacement-native"
+EXTRANATIVEPATH_append_class-target = " chrpath-native"
+
 inherit autotools gettext multilib_header texinfo
 
 FILES_${PN} = " \
@@ -51,6 +57,7 @@ USE_ALTERNATIVES_FOR = " \
 	strings \
 	strip \
 "
+USE_ALTERNATIVES_FOR_remove_mips = "ld.gold dwp"
 
 python do_package_prepend() {
     make_alts = d.getVar("USE_ALTERNATIVES_FOR", True) or ""
@@ -61,12 +68,11 @@ python do_package_prepend() {
         d.setVarFlag('ALTERNATIVE_LINK_NAME', alt, bindir + "/" + alt)
 }
 
-# FILES_${PN}-dbg = "${prefix}/${TARGET_SYS}/bin/.debug ${prefix}/${libdir}/.debug"
-
 B = "${S}/build.${HOST_SYS}.${TARGET_SYS}"
 
 EXTRA_OECONF = "--program-prefix=${TARGET_PREFIX} \
                 --disable-werror \
+                --enable-deterministic-archives \
                 --enable-plugins \
                 ${LDGOLD} \
                 ${@bb.utils.contains('DISTRO_FEATURES', 'multiarch', '--enable-64-bit-bfd', '', d)}"
@@ -113,6 +119,10 @@ do_configure () {
 	done
 }
 
+do_compile_append_class-target() {
+	chrpath -d ${B}/binutils/elfedit
+	chrpath -d ${B}/binutils/readelf
+}
 do_install () {
 	autotools_do_install
 

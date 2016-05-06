@@ -9,15 +9,16 @@ import oeqa.utils.ftools as ftools
 from oeqa.selftest.base import oeSelfTest
 from oeqa.utils.commands import runCmd, bitbake, get_bb_var
 from oeqa.utils.decorators import testcase
+from oeqa.utils.network import get_free_port
 
 class BitbakePrTests(oeSelfTest):
-
+ 
     def get_pr_version(self, package_name):
         pkgdata_dir = get_bb_var('PKGDATA_DIR')
         package_data_file = os.path.join(pkgdata_dir, 'runtime', package_name)
         package_data = ftools.read_file(package_data_file)
         find_pr = re.search("PKGR: r[0-9]+\.([0-9]+)", package_data)
-        self.assertTrue(find_pr)
+        self.assertTrue(find_pr, "No PKG revision found in %s" % package_data_file)
         return int(find_pr.group(1))
 
     def get_task_stamp(self, package_name, recipe_task):
@@ -26,7 +27,7 @@ class BitbakePrTests(oeSelfTest):
         package_stamps_path = "/".join(stampdata[:-1])
         stamps = []
         for stamp in os.listdir(package_stamps_path):
-            find_stamp = re.match("%s\.%s\.([a-z0-9]{32})" % (prefix, recipe_task), stamp)
+            find_stamp = re.match("%s\.%s\.([a-z0-9]{32})" % (re.escape(prefix), recipe_task), stamp)
             if find_stamp:
                 stamps.append(find_stamp.group(1))
         self.assertFalse(len(stamps) == 0, msg="Cound not find stamp for task %s for recipe %s" % (recipe_task, package_name))
@@ -34,7 +35,7 @@ class BitbakePrTests(oeSelfTest):
         return str(stamps[0])
 
     def increment_package_pr(self, package_name):
-        inc_data = "do_package_append() {\nbb.build.exec_func('do_test_prserv', d)\n}\ndo_test_prserv() {\necho \"The current date is: %s\"\n}" % datetime.datetime.now()
+        inc_data = "do_package_append() {\n    bb.build.exec_func('do_test_prserv', d)\n}\ndo_test_prserv() {\necho \"The current date is: %s\"\n}" % datetime.datetime.now()
         self.write_recipeinc(package_name, inc_data)
         bitbake("-ccleansstate %s" % package_name)
         res = bitbake(package_name, ignore_status=True)
@@ -60,8 +61,8 @@ class BitbakePrTests(oeSelfTest):
         stamp_2 = self.get_task_stamp(package_name, track_task)
 
         bitbake("-ccleansstate %s" % package_name)
-        self.assertTrue(pr_2 - pr_1 == 1)
-        self.assertTrue(stamp_1 != stamp_2)
+        self.assertTrue(pr_2 - pr_1 == 1, "Step between same pkg. revision is greater than 1")
+        self.assertTrue(stamp_1 != stamp_2, "Different pkg rev. but same stamp: %s" % stamp_1)
 
     def run_test_pr_export_import(self, package_name, replace_current_db=True):
         self.config_pr_tests(package_name)
@@ -86,7 +87,7 @@ class BitbakePrTests(oeSelfTest):
         pr_2 = self.get_pr_version(package_name)
 
         bitbake("-ccleansstate %s" % package_name)
-        self.assertTrue(pr_2 - pr_1 == 1)
+        self.assertTrue(pr_2 - pr_1 == 1, "Step between same pkg. revision is greater than 1")
 
     @testcase(930)
     def test_import_export_replace_db(self):
@@ -119,3 +120,13 @@ class BitbakePrTests(oeSelfTest):
     @testcase(936)
     def test_pr_service_ipk_arch_indep(self):
         self.run_test_pr_service('xcursor-transparent-theme', 'ipk', 'do_package')
+
+    @testcase(1419)
+    def test_stopping_prservice_message(self):
+        port = get_free_port()
+
+        runCmd('bitbake-prserv --host localhost --port %s --loglevel=DEBUG --start' % port)
+        ret = runCmd('bitbake-prserv --host localhost --port %s --loglevel=DEBUG --stop' % port)
+
+        self.assertEqual(ret.status, 0)
+

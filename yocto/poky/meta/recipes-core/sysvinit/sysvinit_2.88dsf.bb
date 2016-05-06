@@ -13,6 +13,8 @@ SRC_URI = "${SAVANNAH_GNU_MIRROR}/sysvinit/sysvinit-${PV}.tar.bz2 \
            file://install.patch \
            file://crypt-lib.patch \
            file://pidof-add-m-option.patch \
+           file://0001-This-fixes-an-issue-that-clang-reports-about-mutlipl.patch \
+           file://realpath.patch \
            file://rcS-default \
            file://rc \
            file://rcS \
@@ -37,6 +39,8 @@ ALTERNATIVE_LINK_NAME[init] = "${base_sbindir}/init"
 ALTERNATIVE_PRIORITY[init] = "50"
 
 ALTERNATIVE_LINK_NAME[mountpoint] = "${base_bindir}/mountpoint"
+ALTERNATIVE_PRIORITY[mountpoint] = "20"
+
 ALTERNATIVE_LINK_NAME[halt] = "${base_sbindir}/halt"
 ALTERNATIVE_LINK_NAME[reboot] = "${base_sbindir}/reboot"
 ALTERNATIVE_LINK_NAME[runlevel] = "${base_sbindir}/runlevel"
@@ -49,9 +53,10 @@ ALTERNATIVE_LINK_NAME[pidof] = "${base_bindir}/pidof"
 ALTERNATIVE_${PN}-sulogin = "sulogin"
 ALTERNATIVE_LINK_NAME[sulogin] = "${base_sbindir}/sulogin"
 
-ALTERNATIVE_${PN}-doc = "mountpoint.1 last.1 mesg.1 wall.1 sulogin.8 utmpdump.1"
+ALTERNATIVE_${PN}-doc = "mountpoint.1 last.1 lastb.1 mesg.1 wall.1 sulogin.8 utmpdump.1"
 
 ALTERNATIVE_LINK_NAME[last.1] = "${mandir}/man1/last.1"
+ALTERNATIVE_LINK_NAME[lastb.1] = "${mandir}/man1/lastb.1"
 ALTERNATIVE_LINK_NAME[mesg.1] = "${mandir}/man1/mesg.1"
 ALTERNATIVE_LINK_NAME[mountpoint.1] = "${mandir}/man1/mountpoint.1"
 ALTERNATIVE_LINK_NAME[sulogin.8] = "${mandir}/man8/sulogin.8"
@@ -99,4 +104,9 @@ do_install () {
 
 	chown root.shutdown ${D}${base_sbindir}/halt ${D}${base_sbindir}/shutdown
 	chmod o-x,u+s ${D}${base_sbindir}/halt ${D}${base_sbindir}/shutdown
+}
+
+python () {
+    if not bb.utils.contains('DISTRO_FEATURES', 'sysvinit', True, False, d):
+        raise bb.parse.SkipPackage("'sysvinit' not in DISTRO_FEATURES")
 }

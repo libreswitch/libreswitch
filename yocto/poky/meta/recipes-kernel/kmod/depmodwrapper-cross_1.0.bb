@@ -2,6 +2,8 @@ SUMMARY = "Wrapper script for the Linux kernel module dependency indexer"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COREBASE}/meta/COPYING.MIT;md5=3da9cfbcb788c80a0384361b4de20420"
 
+S = "${WORKDIR}"
+
 INHIBIT_DEFAULT_DEPS = "1"
 # The kernel and the staging dir for it is machine specific
 PACKAGE_ARCH = "${MACHINE_ARCH}"
@@ -44,3 +46,5 @@ SYSROOT_PREPROCESS_FUNCS += "depmodwrapper_sysroot_preprocess"
 depmodwrapper_sysroot_preprocess () {
 	sysroot_stage_dir ${D}${bindir_crossscripts} ${SYSROOT_DESTDIR}${bindir_crossscripts}
 }
+
+inherit nopackages

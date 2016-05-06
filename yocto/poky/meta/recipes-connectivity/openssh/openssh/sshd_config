@@ -119,7 +119,8 @@ ClientAliveCountMax 4
 #ChrootDirectory none
 #VersionAddendum none
 
-Banner /etc/issue.net
+# no default banner path
+#Banner none
 
 # override default of no subsystems
 Subsystem	sftp	/usr/libexec/sftp-server

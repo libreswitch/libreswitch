@@ -208,6 +208,28 @@ def squashspaces(string):
     import re
     return re.sub("\s+", " ", string).strip()
 
+def format_pkg_list(pkg_dict, ret_format=None):
+    output = []
+
+    if ret_format == "arch":
+        for pkg in sorted(pkg_dict):
+            output.append("%s %s" % (pkg, pkg_dict[pkg]["arch"]))
+    elif ret_format == "file":
+        for pkg in sorted(pkg_dict):
+            output.append("%s %s %s" % (pkg, pkg_dict[pkg]["filename"], pkg_dict[pkg]["arch"]))
+    elif ret_format == "ver":
+        for pkg in sorted(pkg_dict):
+            output.append("%s %s %s" % (pkg, pkg_dict[pkg]["arch"], pkg_dict[pkg]["ver"]))
+    elif ret_format == "deps":
+        for pkg in sorted(pkg_dict):
+            for dep in pkg_dict[pkg]["deps"]:
+                output.append("%s|%s" % (pkg, dep))
+    else:
+        for pkg in sorted(pkg_dict):
+            output.append(pkg)
+
+    return '\n'.join(output)
+
 #
 # Python 2.7 doesn't have threaded pools (just multiprocessing)
 # so implement a version here
@@ -218,17 +240,30 @@ from threading import Thread
 
 class ThreadedWorker(Thread):
     """Thread executing tasks from a given tasks queue"""
-    def __init__(self, tasks):
+    def __init__(self, tasks, worker_init, worker_end):
         Thread.__init__(self)
         self.tasks = tasks
         self.daemon = True
-        self.start()
+
+        self.worker_init = worker_init
+        self.worker_end = worker_end
 
     def run(self):
+        from Queue import Empty
+
+        if self.worker_init is not None:
+            self.worker_init(self)
+
         while True:
-            func, args, kargs = self.tasks.get()
             try:
-                func(*args, **kargs)
+                func, args, kargs = self.tasks.get(block=False)
+            except Empty:
+                if self.worker_end is not None:
+                    self.worker_end(self)
+                break
+
+            try:
+                func(self, *args, **kargs)
             except Exception, e:
                 print e
             finally:
@@ -236,9 +271,18 @@ class ThreadedWorker(Thread):
 
 class ThreadedPool:
     """Pool of threads consuming tasks from a queue"""
-    def __init__(self, num_threads):
-        self.tasks = Queue(num_threads)
-        for _ in range(num_threads): ThreadedWorker(self.tasks)
+    def __init__(self, num_workers, num_tasks, worker_init=None,
+            worker_end=None):
+        self.tasks = Queue(num_tasks)
+        self.workers = []
+
+        for _ in range(num_workers):
+            worker = ThreadedWorker(self.tasks, worker_init, worker_end)
+            self.workers.append(worker)
+
+    def start(self):
+        for worker in self.workers:
+            worker.start()
 
     def add_task(self, func, *args, **kargs):
         """Add a task to the queue"""
@@ -247,4 +291,16 @@ class ThreadedPool:
     def wait_completion(self):
         """Wait for completion of all the tasks in the queue"""
         self.tasks.join()
+        for worker in self.workers:
+            worker.join()
 
+def write_ld_so_conf(d):
+    # Some utils like prelink may not have the correct target library paths
+    # so write an ld.so.conf to help them
+    ldsoconf = d.expand("${STAGING_DIR_TARGET}${sysconfdir}/ld.so.conf")
+    if os.path.exists(ldsoconf):
+        bb.utils.remove(ldsoconf)
+    bb.utils.mkdirhier(os.path.dirname(ldsoconf))
+    with open(ldsoconf, "w") as f:
+        f.write(d.getVar("base_libdir", True) + '\n')
+        f.write(d.getVar("libdir", True) + '\n')

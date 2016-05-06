@@ -73,7 +73,7 @@
                 </para></listitem>
             <listitem><para><emphasis>Packages:</emphasis>  The OpenEmbedded build system
                 requires that certain packages exist on your development system (e.g. Python 2.7).
-                See "<ulink url='&YOCTO_DOCS_QS_URL;#packages'>The Packages</ulink>"
+                See "<ulink url='&YOCTO_DOCS_QS_URL;#packages'>The Build Host Packages</ulink>"
                 section in the Yocto Project Quick Start and the
                 "<ulink url='&YOCTO_DOCS_REF_URL;#required-packages-for-the-host-development-system'>Required Packages for the Host Development System</ulink>"
                 section in the Yocto Project Reference Manual for the exact
@@ -125,6 +125,20 @@
                 wiki page</ulink>, which describes how to create local
                 Git repositories for both
                 <filename>poky</filename> and <filename>meta-intel</filename>.
+                </para>
+                <para>
+                You can also get the Yocto Project Files by downloading
+                Yocto Project releases from the
+                <ulink url="&YOCTO_HOME_URL;">Yocto Project website</ulink>.
+                From the website, you just click "Downloads" in the navigation
+                pane to the left to display all Yocto Project downloads.
+                Current and archived releases are available for download.
+                Nightly and developmental builds are also maintained at
+                <ulink url="&YOCTO_AB_NIGHTLY_URL;"></ulink>.
+                One final site you can visit for information on Yocto Project
+                releases is the
+                <ulink url='&YOCTO_WIKI_URL;/wiki/Releases'>Releases</ulink>
+                wiki.
                 </para></listitem>
             <listitem id='local-kernel-files'><para><emphasis>Yocto Project Kernel:</emphasis>
                 If you are going to be making modifications to a supported Yocto Project kernel, you
@@ -207,10 +221,8 @@
                 </literallayout>
                 where <replaceable>bsp_name</replaceable> is the recognized
                 BSP name.
-                Here are some examples:
+                Here is an example:
                 <literallayout class='monospaced'>
-     meta-crownbay
-     meta-emenlow
      meta-raspberrypi
                 </literallayout>
                 See the
@@ -249,11 +261,12 @@
      $ cd ~/poky
      $ git clone git://git.yoctoproject.org/meta-intel.git
      Cloning into 'meta-intel'...
-     remote: Counting objects: 8844, done.
-     remote: Compressing objects: 100% (2864/2864), done.
-     remote: Total 8844 (delta 4931), reused 8780 (delta 4867)
-     Receiving objects: 100% (8844/8844), 2.48 MiB | 264 KiB/s, done.
-     Resolving deltas: 100% (4931/4931), done.
+     remote: Counting objects: 11917, done.
+     remote: Compressing objects: 100% (3842/3842), done.
+     remote: Total 11917 (delta 6840), reused 11699 (delta 6622)
+     Receiving objects: 100% (11917/11917), 2.92 MiB | 2.88 MiB/s, done.
+     Resolving deltas: 100% (6840/6840), done.
+     Checking connectivity... done.
                 </literallayout></para>
 
                 <para>The same
@@ -265,8 +278,9 @@
                 applications using the Eclipse Integrated Development Environment (IDE),
                 you will need this plug-in.
                 See the
-                "<link linkend='setting-up-the-eclipse-ide'>Setting up the Eclipse IDE</link>"
-                section for more information.</para></listitem>
+                "<ulink url='&YOCTO_DOCS_SDK_URL;#setting-up-the-eclipse-ide'>Setting up the Eclipse IDE</ulink>"
+                section in the Yocto Project Software Development Kit (SDK)
+                Developer's Guide for more information.</para></listitem>
         </itemizedlist>
     </para>
 </section>
@@ -277,7 +291,7 @@
     <para>
         The build process creates an entire Linux distribution, including the toolchain, from source.
         For more information on this topic, see the
-        "<ulink url='&YOCTO_DOCS_QS_URL;#building-image'>Building an Image</ulink>"
+        "<ulink url='&YOCTO_DOCS_QS_URL;#qs-building-images'>Building Images</ulink>"
         section in the Yocto Project Quick Start.
     </para>
 
@@ -327,14 +341,17 @@
     </para>
 
     <para>
-        Using a pre-built binary is ideal for developing software applications to run on your
-        target hardware.
-        To do this, you need to be able to access the appropriate cross-toolchain tarball for
-        the architecture on which you are developing.
-        If you are using an SDK type image, the image ships with the complete toolchain native to
-        the architecture.
-        If you are not using an SDK type image, you need to separately download and
-        install the stand-alone Yocto Project cross-toolchain tarball.
+        Using a pre-built binary is ideal for developing software
+        applications to run on your target hardware.
+        To do this, you need to be able to access the appropriate
+        cross-toolchain tarball for the architecture on which you are
+        developing.
+        If you are using an SDK type image, the image ships with the complete
+        toolchain native to the architecture (i.e. a toolchain designed to
+        run on the
+        <ulink url='&YOCTO_DOCS_REF_URL;#var-SDKMACHINE'><filename>SDKMACHINE</filename></ulink>).
+        If you are not using an SDK type image, you need to separately download
+        and install the stand-alone Yocto Project cross-toolchain tarball.
     </para>
 
     <para>
@@ -349,8 +366,7 @@
         by sourcing an environment setup script.
         Finally, you start the QEMU emulator.
         You can find details on all these steps in the
-        "<ulink url='&YOCTO_DOCS_QS_URL;#using-pre-built'>Using Pre-Built Binaries and QEMU</ulink>"
-        section of the Yocto Project Quick Start.
+        <ulink url='&YOCTO_DOCS_SDK_URL;#sdk-manual'>Yocto Project Software Development Kit (SDK) Developer's Guide</ulink>.
         You can learn more about using QEMU with the Yocto Project in the
         "<link linkend='dev-manual-qemu'>Using the Quick EMUlator (QEMU)</link>"
         section.

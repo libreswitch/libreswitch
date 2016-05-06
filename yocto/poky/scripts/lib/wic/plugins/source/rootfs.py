@@ -29,9 +29,13 @@ import os
 
 from wic import msger
 from wic.pluginbase import SourcePlugin
-from wic.utils.oe.misc import find_bitbake_env_lines, find_artifact
+from wic.utils.oe.misc import get_bitbake_var
 
 class RootfsPlugin(SourcePlugin):
+    """
+    Populate partition content from a rootfs directory.
+    """
+
     name = 'rootfs'
 
     @staticmethod
@@ -39,12 +43,7 @@ class RootfsPlugin(SourcePlugin):
         if os.path.isdir(rootfs_dir):
             return rootfs_dir
 
-        bitbake_env_lines = find_bitbake_env_lines(rootfs_dir)
-        if not bitbake_env_lines:
-            msg = "Couldn't get bitbake environment, exiting."
-            msger.error(msg)
-
-        image_rootfs_dir = find_artifact(bitbake_env_lines, "IMAGE_ROOTFS")
+        image_rootfs_dir = get_bitbake_var("IMAGE_ROOTFS", rootfs_dir)
         if not os.path.isdir(image_rootfs_dir):
             msg = "No valid artifact IMAGE_ROOTFS from image named"
             msg += " %s has been found at %s, exiting.\n" % \
@@ -54,7 +53,7 @@ class RootfsPlugin(SourcePlugin):
         return image_rootfs_dir
 
     @classmethod
-    def do_prepare_partition(self, part, source_params, cr, cr_workdir,
+    def do_prepare_partition(cls, part, source_params, cr, cr_workdir,
                              oe_builddir, bootimg_dir, kernel_dir,
                              krootfs_dir, native_sysroot):
         """
@@ -62,23 +61,23 @@ class RootfsPlugin(SourcePlugin):
         'prepares' the partition to be incorporated into the image.
         In this case, prepare content for legacy bios boot partition.
         """
-        if part.rootfs is None:
+        if part.rootfs_dir is None:
             if not 'ROOTFS_DIR' in krootfs_dir:
                 msg = "Couldn't find --rootfs-dir, exiting"
                 msger.error(msg)
             rootfs_dir = krootfs_dir['ROOTFS_DIR']
         else:
-            if part.rootfs in krootfs_dir:
-                rootfs_dir = krootfs_dir[part.rootfs]
-            elif part.rootfs:
-                rootfs_dir = part.rootfs
+            if part.rootfs_dir in krootfs_dir:
+                rootfs_dir = krootfs_dir[part.rootfs_dir]
+            elif part.rootfs_dir:
+                rootfs_dir = part.rootfs_dir
             else:
                 msg = "Couldn't find --rootfs-dir=%s connection"
                 msg += " or it is not a valid path, exiting"
-                msger.error(msg % part.rootfs)
+                msger.error(msg % part.rootfs_dir)
 
-        real_rootfs_dir = self.__get_rootfs_dir(rootfs_dir)
+        real_rootfs_dir = cls.__get_rootfs_dir(rootfs_dir)
 
-        part.set_rootfs(real_rootfs_dir)
+        part.rootfs_dir = real_rootfs_dir
         part.prepare_rootfs(cr_workdir, oe_builddir, real_rootfs_dir, native_sysroot)
 

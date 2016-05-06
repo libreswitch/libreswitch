@@ -3,6 +3,8 @@ import signal, time
 from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 import threading
 import Queue
+import socket
+import StringIO
 
 try:
     import sqlite3
@@ -37,7 +39,6 @@ singleton = None
 class PRServer(SimpleXMLRPCServer):
     def __init__(self, dbfile, logfile, interface, daemon=True):
         ''' constructor '''
-        import socket
         try:
             SimpleXMLRPCServer.__init__(self, interface,
                                         logRequests=False, allow_none=True)
@@ -59,11 +60,9 @@ class PRServer(SimpleXMLRPCServer):
         self.register_function(self.quit, "quit")
         self.register_function(self.ping, "ping")
         self.register_function(self.export, "export")
+        self.register_function(self.dump_db, "dump_db")
         self.register_function(self.importone, "importone")
         self.register_introspection_functions()
-
-        self.db = prserv.db.PRData(self.dbfile)
-        self.table = self.db["PRMAIN"]
 
         self.requestqueue = Queue.Queue()
         self.handlerthread = threading.Thread(target = self.process_request_thread)
@@ -78,6 +77,8 @@ class PRServer(SimpleXMLRPCServer):
         iter_count = 1
         # 60 iterations between syncs or sync if dirty every ~30 seconds
         iterations_between_sync = 60
+
+        bb.utils.set_process_name("PRServ Handler")
 
         while not self.quit:
             try:
@@ -97,6 +98,15 @@ class PRServer(SimpleXMLRPCServer):
                 self.table.sync()
             self.table.sync_if_dirty()
 
+    def sigint_handler(self, signum, stack):
+        if self.table:
+            self.table.sync()
+
+    def sigterm_handler(self, signum, stack):
+        if self.table:
+            self.table.sync()
+        self.quit=True
+
     def process_request(self, request, client_address):
         self.requestqueue.put((request, client_address))
 
@@ -106,6 +116,26 @@ class PRServer(SimpleXMLRPCServer):
         except sqlite3.Error as exc:
             logger.error(str(exc))
             return None
+
+    def dump_db(self):
+        """
+        Returns a script (string) that reconstructs the state of the
+        entire database at the time this function is called. The script
+        language is defined by the backing database engine, which is a
+        function of server configuration.
+        Returns None if the database engine does not support dumping to
+        script or if some other error is encountered in processing.
+        """
+        buff = StringIO.StringIO()
+        try:
+            self.table.sync()
+            self.table.dump_db(buff)
+            return buff.getvalue()
+        except Exception as exc:
+            logger.error(str(exc))
+            return None
+        finally:
+            buff.close()
 
     def importone(self, version, pkgarch, checksum, value):
         return self.table.importone(version, pkgarch, checksum, value)
@@ -134,6 +164,12 @@ class PRServer(SimpleXMLRPCServer):
         self.quit = False
         self.timeout = 0.5
 
+        bb.utils.set_process_name("PRServ")
+
+        # DB connection must be created after all forks
+        self.db = prserv.db.PRData(self.dbfile)
+        self.table = self.db["PRMAIN"]
+
         logger.info("Started PRServer with DBfile: %s, IP: %s, PORT: %s, PID: %s" %
                      (self.dbfile, self.host, self.port, str(os.getpid())))
 
@@ -141,13 +177,17 @@ class PRServer(SimpleXMLRPCServer):
         while not self.quit:
             self.handle_request()
         self.handlerthread.join()
-        self.table.sync()
+        self.db.disconnect()
         logger.info("PRServer: stopping...")
         self.server_close()
         return
 
     def start(self):
-        pid = self.daemonize()
+        if self.daemon:
+            pid = self.daemonize()
+        else:
+            pid = self.fork()
+
         # Ensure both the parent sees this and the child from the work_forever log entry above
         logger.info("Started PRServer with DBfile: %s, IP: %s, PORT: %s, PID: %s" %
                      (self.dbfile, self.host, self.port, str(pid)))
@@ -180,7 +220,24 @@ class PRServer(SimpleXMLRPCServer):
         except OSError as e:
             raise Exception("%s [%d]" % (e.strerror, e.errno))
 
-        os.umask(0)
+        self.cleanup_handles()
+        os._exit(0)
+
+    def fork(self):
+        try:
+            pid = os.fork()
+            if pid > 0:
+                return pid
+        except OSError as e:
+            raise Exception("%s [%d]" % (e.strerror, e.errno))
+
+        bb.utils.signal_on_parent_exit("SIGTERM")
+        self.cleanup_handles()
+        os._exit(0)
+
+    def cleanup_handles(self):
+        signal.signal(signal.SIGINT, self.sigint_handler)
+        signal.signal(signal.SIGTERM, self.sigterm_handler)
         os.chdir("/")
 
         sys.stdout.flush()
@@ -212,7 +269,6 @@ class PRServer(SimpleXMLRPCServer):
 
         self.work_forever()
         self.delpid()
-        os._exit(0)
 
 class PRServSingleton(object):
     def __init__(self, dbfile, logfile, interface):
@@ -223,7 +279,7 @@ class PRServSingleton(object):
         self.port = None
 
     def start(self):
-        self.prserv = PRServer(self.dbfile, self.logfile, self.interface)
+        self.prserv = PRServer(self.dbfile, self.logfile, self.interface, daemon=False)
         self.prserv.start()
         self.host, self.port = self.prserv.getinfo()
 
@@ -254,6 +310,9 @@ class PRServerConnection(object):
     def export(self,version=None, pkgarch=None, checksum=None, colinfo=True):
         return self.connection.export(version, pkgarch, checksum, colinfo)
 
+    def dump_db(self):
+        return self.connection.dump_db()
+
     def importone(self, version, pkgarch, checksum, value):
         return self.connection.importone(version, pkgarch, checksum, value)
 
@@ -261,7 +320,8 @@ class PRServerConnection(object):
         return self.host, self.port
 
 def start_daemon(dbfile, host, port, logfile):
-    pidfile = PIDPREFIX % (host, port)
+    ip = socket.gethostbyname(host)
+    pidfile = PIDPREFIX % (ip, port)
     try:
         pf = file(pidfile,'r')
         pid = int(pf.readline().strip())
@@ -274,12 +334,21 @@ def start_daemon(dbfile, host, port, logfile):
                             % pidfile)
         return 1
 
-    server = PRServer(os.path.abspath(dbfile), os.path.abspath(logfile), (host,port))
+    server = PRServer(os.path.abspath(dbfile), os.path.abspath(logfile), (ip,port))
     server.start()
+
+    # Sometimes, the port (i.e. localhost:0) indicated by the user does not match with
+    # the one the server actually is listening, so at least warn the user about it
+    _,rport = server.getinfo()
+    if port != rport:
+        sys.stdout.write("Server is listening at port %s instead of %s\n"
+                         % (rport,port))
     return 0
 
 def stop_daemon(host, port):
-    pidfile = PIDPREFIX % (host, port)
+    import glob
+    ip = socket.gethostbyname(host)
+    pidfile = PIDPREFIX % (ip, port)
     try:
         pf = file(pidfile,'r')
         pid = int(pf.readline().strip())
@@ -288,11 +357,23 @@ def stop_daemon(host, port):
         pid = None
 
     if not pid:
-        sys.stderr.write("pidfile %s does not exist. Daemon not running?\n"
-                        % pidfile)
+        # when server starts at port=0 (i.e. localhost:0), server actually takes another port,
+        # so at least advise the user which ports the corresponding server is listening
+        ports = []
+        portstr = ""
+        for pf in glob.glob(PIDPREFIX % (ip,'*')):
+            bn = os.path.basename(pf)
+            root, _ = os.path.splitext(bn)
+            ports.append(root.split('_')[-1])
+        if len(ports):
+            portstr = "Wrong port? Other ports listening at %s: %s" % (host, ' '.join(ports))
+
+        sys.stderr.write("pidfile %s does not exist. Daemon not running? %s\n"
+                         % (pidfile,portstr))
+        return 1
 
     try:
-        PRServerConnection(host, port).terminate()
+        PRServerConnection(ip, port).terminate()
     except:
         logger.critical("Stop PRService %s:%d failed" % (host,port))
 

@@ -5,8 +5,7 @@ include and create documentation in their releases. They include the \
 xml2po tool which makes it easier to translate and keep up to date \
 translations of documentation."
 LICENSE = "GPLv2 & LGPLv2.1"
-DEPENDS = "libxml2 libxslt libxslt-native gnome-doc-utils-native glib-2.0"
-DEPENDS_class-native = "libxml2-native libxslt-native intltool-native glib-2.0-native"
+DEPENDS = "intltool-native libxml2 libxslt libxslt-native gnome-doc-utils-native glib-2.0"
 
 inherit gnomebase gettext python-dir pythonnative autotools-brokensep
 
@@ -15,9 +14,6 @@ CLEANBROKEN = "1"
 EXTRA_OECONF += "--disable-scrollkeeper"
 
 do_install_append() {
-	mkdir -p  ${D}${datadir}/xml/gnome/xslt/
-	cp -pPr ${S}/xslt/* ${D}${datadir}/xml/gnome/xslt/
-
 	chown -R root:root ${D}
 }
 

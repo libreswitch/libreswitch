@@ -30,6 +30,8 @@ ARCHFLAGS_arm = "${@bb.utils.contains('TUNE_FEATURES', 'callconvention-hard', '-
                     '--with-arm-fpu=vfp', d), d), d)}"
 ARCHFLAGS ?= ""
 
+DISABLE_STATIC = ""
+
 GYP_DEFINES_append_mipsel = " mips_arch_variant='r1' "
 
 PACKAGECONFIG[zlib] = "--shared-zlib,,zlib"

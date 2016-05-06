@@ -1,7 +1,7 @@
-KBRANCH_appliance  = "standard/common-pc-64/base"
+KBRANCH_appliance  = "standard/base"
 KMACHINE_appliance ?= "common-pc-64"
 
-SRCREV_machine_appliance ?= "dbe5b52e93ff114b2c0f5da6f6af91f52c18f2b8"
+SRCREV_machine_appliance ?= "3d2455f9da30f923c6bd69014fad4cc4ea738be6"
 
 COMPATIBLE_MACHINE_appliance = "appliance"
 

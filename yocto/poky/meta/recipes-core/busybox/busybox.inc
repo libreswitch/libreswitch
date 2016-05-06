@@ -17,7 +17,9 @@ BUSYBOX_SPLIT_SUID ?= "1"
 
 export EXTRA_CFLAGS = "${CFLAGS}"
 export EXTRA_LDFLAGS = "${LDFLAGS}"
-export EXTRA_OEMAKE += "'LD=${CCLD}'"
+
+# We don't want '-e MAKEFLAGS=' in EXTRA_OEMAKE
+EXTRA_OEMAKE = "CC='${CC}' LD='${CCLD}' V=1 ARCH=${TARGET_ARCH} CROSS_COMPILE=${TARGET_PREFIX} SKIP_STRIP=y"
 
 PACKAGES =+ "${PN}-httpd ${PN}-udhcpd ${PN}-udhcpc ${PN}-syslog ${PN}-mdev ${PN}-hwclock"
 
@@ -33,9 +35,9 @@ INITSCRIPT_PACKAGES = "${PN}-httpd ${PN}-syslog ${PN}-udhcpd ${PN}-mdev ${PN}-hw
 INITSCRIPT_NAME_${PN}-httpd = "busybox-httpd"
 INITSCRIPT_NAME_${PN}-hwclock = "hwclock.sh"
 INITSCRIPT_NAME_${PN}-mdev = "mdev"
-INITSCRIPT_PARAMS_${PN}-mdev = "start 03 S ."
+INITSCRIPT_PARAMS_${PN}-mdev = "start 04 S ."
 INITSCRIPT_NAME_${PN}-syslog = "syslog"
-INITSCRIPT_NAME_${PN}-udhcpd = "busybox-udhcpd" 
+INITSCRIPT_NAME_${PN}-udhcpd = "busybox-udhcpd"
 
 SYSTEMD_PACKAGES = "${PN}-syslog"
 SYSTEMD_SERVICE_${PN}-syslog = "busybox-syslog.service"
@@ -79,8 +81,7 @@ def features_to_busybox_del(d):
 	cnf, rem = features_to_busybox_settings(d)
 	return rem
 
-configmangle = '/CROSS_COMPILER_PREFIX/d; \
-		/CONFIG_EXTRA_CFLAGS/d; \
+configmangle = '/CONFIG_EXTRA_CFLAGS/d; \
 		'
 OE_FEATURES := "${@features_to_busybox_conf(d)}"
 OE_DEL      := "${@features_to_busybox_del(d)}"
@@ -96,16 +97,14 @@ python () {
                    ("\\n".join((d.expand("${OE_FEATURES}").split("\n")))))
   d.setVar('configmangle_append',
                  "/^### CROSS$/a\\\n%s\n" %
-                  ("\\n".join(["CONFIG_CROSS_COMPILER_PREFIX=\"${TARGET_PREFIX}\"",
-			       "CONFIG_EXTRA_CFLAGS=\"${CFLAGS}\" \"${HOST_CC_ARCH}\""
+                  ("\\n".join(["CONFIG_EXTRA_CFLAGS=\"${CFLAGS} ${HOST_CC_ARCH}\""
                         ])
                   ))
 }
 
 do_prepare_config () {
-	sed -e 's#@DATADIR@#${datadir}#g' \
+	sed -e '/CONFIG_STATIC/d' \
 		< ${WORKDIR}/defconfig > ${S}/.config
-	sed -i -e '/CONFIG_STATIC/d' .config
 	echo "# CONFIG_STATIC is not set" >> .config
 	for i in 'CROSS' 'DISTRO FEATURES'; do echo "### $i"; done >> \
 		${S}/.config
@@ -172,17 +171,20 @@ do_compile() {
 }
 
 do_install () {
-	if [ "${prefix}" != "/usr" ]; then
-		sed -i "s:^/usr/:${prefix}/:" busybox.links*
-	fi
-	if [ "${base_sbindir}" != "/sbin" ]; then
-		sed -i "s:^/sbin/:${base_sbindir}/:" busybox.links*
-	fi
+	sed -i "s:^/bin/:BASE_BINDIR/:" busybox.links*
+	sed -i "s:^/sbin/:BASE_SBINDIR/:" busybox.links*
+	sed -i "s:^/usr/bin/:BINDIR/:" busybox.links*
+	sed -i "s:^/usr/sbin/:SBINDIR/:" busybox.links*
+
+	sed -i "s:^BASE_BINDIR/:${base_bindir}/:" busybox.links*
+	sed -i "s:^BASE_SBINDIR/:${base_sbindir}/:" busybox.links*
+	sed -i "s:^BINDIR/:${bindir}/:" busybox.links*
+	sed -i "s:^SBINDIR/:${sbindir}/:" busybox.links*
 
 	install -d ${D}${sysconfdir}/init.d
 
 	if ! grep -q "CONFIG_FEATURE_INDIVIDUAL=y" ${B}/.config; then
-		# Install /bin/busybox, and the /bin/sh link so the postinst script
+		# Install ${base_bindir}/busybox, and the ${base_bindir}/sh link so the postinst script
 		# can run. Let update-alternatives handle the rest.
 		install -d ${D}${base_bindir}
 		if [ "${BUSYBOX_SPLIT_SUID}" = "1" ]; then
@@ -210,7 +212,7 @@ do_install () {
 			# We make this symlink here to eliminate the error when upgrading together
 			# with busybox-syslog. Without this symlink, the opkg may think of the
 			# busybox.nosuid as obsolete and remove it, resulting in dead links like
-			# /bin/sed -> /bin/busybox.nosuid. This will make upgrading busybox-syslog fail.
+			# ${base_bindir}/sed -> ${base_bindir}/busybox.nosuid. This will make upgrading busybox-syslog fail.
 			# This symlink will be safely deleted in postinst, thus no negative effect.
 			ln -sf busybox ${D}${base_bindir}/busybox.nosuid
 		fi
@@ -256,7 +258,8 @@ do_install () {
 	if grep "CONFIG_UDHCPC=y" ${B}/.config; then
 		install -d ${D}${sysconfdir}/udhcpc.d
 		install -d ${D}${datadir}/udhcpc
-                install -m 0755 ${WORKDIR}/simple.script ${D}${sysconfdir}/udhcpc.d/50default
+		install -m 0755 ${WORKDIR}/simple.script ${D}${sysconfdir}/udhcpc.d/50default
+		sed -i "s:/SBIN_DIR/:${base_sbindir}/:" ${D}${sysconfdir}/udhcpc.d/50default
 		install -m 0755 ${WORKDIR}/default.script ${D}${datadir}/udhcpc/default.script
 	fi
 	if grep "CONFIG_INETD=y" ${B}/.config; then
@@ -273,6 +276,21 @@ do_install () {
                        install -m 0755 ${WORKDIR}/mdev-mount.sh ${D}${sysconfdir}/mdev
                fi
 	fi
+        if grep "CONFIG_INIT=y" ${B}/.config; then
+                install -D -m 0777 ${WORKDIR}/rcS ${D}${sysconfdir}/init.d/rcS
+                install -D -m 0777 ${WORKDIR}/rcK ${D}${sysconfdir}/init.d/rcK
+                install -D -m 0755 ${WORKDIR}/runlevel ${D}${base_sbindir}/runlevel
+                if grep "CONFIG_FEATURE_USE_INITTAB=y" ${B}/.config; then
+                        install -D -m 0777 ${WORKDIR}/inittab ${D}${sysconfdir}/inittab
+                        tmp="${SERIAL_CONSOLES}"
+                        for i in $tmp
+                        do
+                                j=`echo ${i} | sed s/\;/\ /g`
+                                label=`echo ${i} | sed -e 's/tty//' -e 's/^.*;//' -e 's/;.*//'`
+                                echo "tty$label::respawn:${base_sbindir}/getty ${j}" >> ${D}${sysconfdir}/inittab
+                        done
+                fi
+        fi
 
     if ${@bb.utils.contains('DISTRO_FEATURES','systemd','true','false',d)}; then
         if grep -q "CONFIG_SYSLOGD=y" ${B}/.config; then
@@ -296,6 +314,12 @@ do_install () {
     if ${@bb.utils.contains('DISTRO_FEATURES', 'sysvinit', 'false', 'true', d)}; then
 	rm -f ${D}${sysconfdir}/syslog-startup.conf.${BPN}
     fi
+}
+
+do_install_ptest () {
+        cp -r ${B}/testsuite ${D}${PTEST_PATH}/
+        cp ${B}/.config      ${D}${PTEST_PATH}/
+        ln -s /bin/busybox   ${D}${PTEST_PATH}/busybox
 }
 
 inherit update-alternatives
@@ -323,6 +347,8 @@ python do_package_prepend () {
     dvar = d.getVar('D', True)
     pn = d.getVar('PN', True)
     def set_alternative_vars(links, target):
+        links = d.expand(links)
+        target = d.expand(target)
         f = open('%s%s' % (dvar, links), 'r')
         for alt_link_name in f:
             alt_link_name = alt_link_name.strip()
@@ -338,10 +364,10 @@ python do_package_prepend () {
         return
 
     if os.path.exists('%s/etc/busybox.links' % (dvar)):
-        set_alternative_vars("/etc/busybox.links", "/bin/busybox")
+        set_alternative_vars("${sysconfdir}/busybox.links", "${base_bindir}/busybox")
     else:
-        set_alternative_vars("/etc/busybox.links.nosuid", "/bin/busybox.nosuid")
-        set_alternative_vars("/etc/busybox.links.suid", "/bin/busybox.suid")
+        set_alternative_vars("${sysconfdir}/busybox.links.nosuid", "${base_bindir}/busybox.nosuid")
+        set_alternative_vars("${sysconfdir}/busybox.links.suid", "${base_bindir}/busybox.suid")
 }
 
 pkg_postinst_${PN} () {
@@ -353,30 +379,19 @@ pkg_postinst_${PN} () {
 	if test "x$D" = "x"; then
 		# Remove busybox.nosuid if it's a symlink, because this situation indicates
 		# that we're installing or upgrading to a one-binary busybox.
-		if test -h /bin/busybox.nosuid; then
-			rm -f /bin/busybox.nosuid
+		if test -h ${base_bindir}/busybox.nosuid; then
+			rm -f ${base_bindir}/busybox.nosuid
 		fi
 		for suffix in "" ".nosuid" ".suid"; do
-			if test -e /etc/busybox.links$suffix; then
+			if test -e ${sysconfdir}/busybox.links$suffix; then
 				while read link; do
 					if test ! -e "$link"; then
-						case "$link" in
-							/*/*/*)
-								to="../../bin/busybox$suffix"
-								;;
-							/bin/*)
-								to="busybox$suffix"
-								;;
-							/*/*)
-								to="../bin/busybox$suffix"
-								;;
-						esac
 						# we can use busybox here because even if we are using splitted busybox
 						# we've made a symlink from /bin/busybox to /bin/busybox.nosuid.
 						busybox rm -f $link
-						busybox ln -s $to $link
+						busybox ln -s "${base_bindir}/busybox$suffix" $link
 					fi
-				done < /etc/busybox.links$suffix
+				done < ${sysconfdir}/busybox.links$suffix
 			fi
 		done
 	fi
@@ -387,19 +402,20 @@ pkg_prerm_${PN} () {
 	# providing its files, this will make update-alternatives work, but the update-rc.d part
 	# for syslog, httpd and/or udhcpd will fail if there is no other package providing sh
 	tmpdir=`mktemp -d /tmp/busyboxrm-XXXXXX`
-	ln -s /bin/busybox $tmpdir/[
-	ln -s /bin/busybox $tmpdir/test
-	ln -s /bin/busybox $tmpdir/head
-	ln -s /bin/busybox $tmpdir/sh
-	ln -s /bin/busybox $tmpdir/basename
-	ln -s /bin/busybox $tmpdir/echo
-	ln -s /bin/busybox $tmpdir/mv
-	ln -s /bin/busybox $tmpdir/ln
-	ln -s /bin/busybox $tmpdir/dirname
-	ln -s /bin/busybox $tmpdir/rm
-	ln -s /bin/busybox $tmpdir/sed
-	ln -s /bin/busybox $tmpdir/sort
-	ln -s /bin/busybox $tmpdir/grep
+	ln -s ${base_bindir}/busybox $tmpdir/[
+	ln -s ${base_bindir}/busybox $tmpdir/test
+	ln -s ${base_bindir}/busybox $tmpdir/head
+	ln -s ${base_bindir}/busybox $tmpdir/sh
+	ln -s ${base_bindir}/busybox $tmpdir/basename
+	ln -s ${base_bindir}/busybox $tmpdir/echo
+	ln -s ${base_bindir}/busybox $tmpdir/mv
+	ln -s ${base_bindir}/busybox $tmpdir/ln
+	ln -s ${base_bindir}/busybox $tmpdir/dirname
+	ln -s ${base_bindir}/busybox $tmpdir/rm
+	ln -s ${base_bindir}/busybox $tmpdir/sed
+	ln -s ${base_bindir}/busybox $tmpdir/sort
+	ln -s ${base_bindir}/busybox $tmpdir/grep
+	ln -s ${base_bindir}/busybox $tmpdir/tail
 	export PATH=$PATH:$tmpdir
 }
 
@@ -407,7 +423,7 @@ pkg_prerm_${PN}-syslog () {
 	# remove syslog
 	if test "x$D" = "x"; then
 		if test "$1" = "upgrade" -o "$1" = "remove"; then
-			/etc/init.d/syslog stop
+			${sysconfdir}/init.d/syslog stop
 		fi
 	fi
 }

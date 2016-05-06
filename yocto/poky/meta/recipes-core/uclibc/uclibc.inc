@@ -13,7 +13,6 @@ SECTION = "libs"
 LIC_FILES_CHKSUM = "file://COPYING.LIB;md5=a6f89e2100d9b6cdffcea4f398e37343 \
 		    file://COPYING.LIB.boilerplate;md5=aaddeadcddeb918297e0e4afc52ce46f \
 file://${S}/test/regex/testregex.c;beginline=1;endline=31;md5=234efb227d0a40677f895e4a1e26e960"
-PR = "r9"
 
 require uclibc-config.inc
 
@@ -21,7 +20,7 @@ PATH_prepend = "${STAGING_BINDIR_TOOLCHAIN}.${STAGINGCC}:"
 TOOLCHAIN_OPTIONS = " --sysroot=${STAGING_DIR_TCBOOTSTRAP}"
 
 # siteconfig.bbclass runs configure which needs a working compiler
-# For the compiler to work we need a working libc yet libc isn't 
+# For the compiler to work we need a working libc yet libc isn't
 # in the sysroots directory at this point. This means the libc.so
 # linker script won't work as the --sysroot setting isn't correct.
 # Here we create a hacked up libc linker script and pass in the right
@@ -40,6 +39,12 @@ COMPATIBLE_HOST = ".*-uclibc.*"
 
 INHIBIT_DEFAULT_DEPS = "1"
 
+# There appears to be a parallel race in uclibc:
+# GEN /extra/locale/locale_collate.h
+# xargs: ../..//extra/locale/gen_collate: Text file busy
+# make[1]: *** [../..//extra/locale/locale_collate.h] Error 126
+PARALLEL_MAKE = ""
+
 # do_stage barfs on a CC with whitespace, therefore put the 'HOST_CC_ARCH' in
 # the CFLAGS (when building the utils).
 OEMAKE_NO_CC = "'STRIPTOOL=true' 'LD=${LD}'"
@@ -57,14 +62,8 @@ export V="2"
 # -O<n> -fno-omit-frame-pointer ends up with GCC ICE on thumb as reported
 # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=44860
 #
-CFLAGS_arm := "${@oe_filter_out('-fno-omit-frame-pointer', '${CFLAGS}', d)}"
-UCLIBC_EXTRA_CFLAGS  := "${@oe_filter_out('(-I\S+|-i\S+)', '${CFLAGS}', d)}"
-UCLIBC_EXTRA_LDFLAGS := "${@oe_filter_out('(-L\S+|-l\S+)', '${LDFLAGS}', d)}"
-
-do_compile_prepend () {
-  unset CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
-  oe_runmake pregen
-}
+CFLAGS_remove_arm = "-fno-omit-frame-pointer"
+UCLIBC_EXTRA_CFLAGS  = "${@oe_filter_out('(-I\S+|-i\S+)', '${CFLAGS}', d)}"
 
 configmangle = '/^KERNEL_HEADERS/d; \
                 /^RUNTIME_PREFIX/d; \
@@ -72,7 +71,7 @@ configmangle = '/^KERNEL_HEADERS/d; \
                 /^SHARED_LIB_LOADER_PREFIX/d; \
                 /^UCLIBC_EXTRA_CFLAGS/d; \
                 s,.*UCLIBC_HAS_WCHAR.*,UCLIBC_HAS_WCHAR=y,g; \
-                ${@["","s,.*COMPILE_IN_THUMB_MODE.*,COMPILE_IN_THUMB_MODE=y,;"][d.getVar("ARM_INSTRUCTION_SET", True) != "arm"]} \
+                ${@["","s,.*COMPILE_IN_THUMB_MODE.*,COMPILE_IN_THUMB_MODE=y,;"][d.getVar("ARM_INSTRUCTION_SET", True) == "thumb"]} \
                 ${@["","s,.*UCLIBC_HAS_LOCALE.*,UCLIBC_HAS_LOCALE=y,;"][d.getVar("USE_NLS", True) == "yes"]} \
                 ${@["","s,.*LDSO_GNU_HASH_SUPPORT.*,# LDSO_GNU_HASH_SUPPORT is not set,;"][d.getVar("TARGET_ARCH", True) in ['mips', 'mipsel', 'mips64', 'mips64el', 'avr32']]} \
                 /^CROSS/d; \
@@ -83,8 +82,8 @@ configmangle = '/^KERNEL_HEADERS/d; \
                 /HAS_FPU/d; \
                 ${@["","s,.*MULTILIB_DIR.*,MULTILIB_DIR=\"${baselib}\",;"][d.getVar("baselib", True) != "lib"]} \
                '
-OE_FEATURES := "${@features_to_uclibc_conf(d)}"
-OE_DEL      := "${@features_to_uclibc_del(d)}"
+OE_FEATURES = "${@features_to_uclibc_conf(d)}"
+OE_DEL      = "${@features_to_uclibc_del(d)}"
 python () {
     if "${OE_DEL}":
         d.setVar('configmangle_append', "${OE_DEL}" + "\n")
@@ -94,7 +93,9 @@ python () {
     # with conflicting march options to gcc. Here we
     # ask for MIPS32 ISA to match the chosen arch
     tune = d.getVar("DEFAULTTUNE", True)
-    if tune in ['mips32', 'mips32r2']:
+    if tune.startswith('mips32'):
+        import re
+        tune = re.sub('(el)*(-nf)*', '', tune)
         d.setVar('configmangle_append',
                  "/^### MIPS32_CHECK$/a\\\nCONFIG_MIPS_ISA_%s=y\n\n" % (tune.upper()))
     if "${OE_FEATURES}":

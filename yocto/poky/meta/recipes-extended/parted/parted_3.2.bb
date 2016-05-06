@@ -3,7 +3,7 @@ HOMEPAGE = "http://www.gnu.org/software/parted/parted.html"
 LICENSE = "GPLv3+"
 LIC_FILES_CHKSUM = "file://COPYING;md5=2f31b266d3440dd7ee50f92cf67d8e6c"
 SECTION = "console/tools"
-DEPENDS = "ncurses readline util-linux"
+DEPENDS = "ncurses readline util-linux virtual/libiconv"
 PR = "r1"
 
 SRC_URI = "${GNU_MIRROR}/parted/parted-${PV}.tar.xz \
@@ -21,6 +21,7 @@ SRC_URI[md5sum] = "0247b6a7b314f8edeb618159fa95f9cb"
 SRC_URI[sha256sum] = "858b589c22297cacdf437f3baff6f04b333087521ab274f7ab677cb8c6bb78e4"
 
 EXTRA_OECONF = "--disable-device-mapper"
+LDFLAGS_append_libc-uclibc = " -liconv "
 
 inherit autotools pkgconfig gettext texinfo ptest
 
@@ -36,6 +37,7 @@ do_install_ptest() {
 	cp ${S}/build-aux/test-driver $t/build-aux/
 	cp -r ${S}/tests $t
 	cp ${WORKDIR}/Makefile $t/tests/
+	sed -i "s|^VERSION.*|VERSION = ${PV}|g" $t/tests/Makefile
 	for i in print-align print-max dup-clobber duplicate fs-resize; \
 	  do cp ${B}/tests/.libs/$i $t/tests/; \
 	done

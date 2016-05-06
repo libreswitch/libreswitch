@@ -1,14 +1,26 @@
-{% extends "baseprojectpage.html" %}
+{% extends "base.html" %}
 {% load projecttags %}
 {% load humanize %}
 {% load static %}
-{% block localbreadcrumb %}
-<li><a href="{% url 'all-layers' project.id %}">All compatible layers</a></li>
-<li>
-  {{layerversion.layer.name}} ({{layerversion.get_vcs_reference|truncatechars:13}})
-</li>
-{% endblock %}
-{% block projectinfomain %}
+
+{% block title %} {{layerversion.layer.name}} - {{project.name}} - Toaster {% endblock %}
+{% block pagecontent %}
+
+<div class="section">
+  <ul class="breadcrumb">
+    <li>
+      <a href="{% url 'project' project.id %}">{{project.name}}</a>
+      <span class="divider">&rarr;</span>
+    </li>
+    <li><a href="{% url 'projectlayers' project.id %}">Compatible layers</a>
+      <span class="divider">&rarr;</span>
+    </li>
+    <li class="active">
+      {{layerversion.layer.name}} ({{layerversion.get_vcs_reference|truncatechars:13}})
+    </li>
+  </ul>
+</div>
+
 {# If this is not an imported layer then hide the edit ui #}
 {% if not layerversion.layer_source_id or layerversion.layer_source.sourcetype != layerversion.layer_source.TYPE_IMPORTED %}
 <style scoped>
@@ -33,8 +45,6 @@
 
   $(document).ready(function (){
     var ctx = {
-      projectBuildUrl : "{% url 'xhr_build' %}",
-      layerDetailsUrl : "{% url 'base_layerdetails' project.id %}",
       xhrUpdateLayerUrl : "{% url 'xhr_updatelayer' %}",
       layerVersion : {
         name : "{{layerversion.layer.name}}",
@@ -45,7 +55,7 @@
       {% else %}
         inCurrentPrj : false,
       {% endif %}
-        url : "{% url 'layerdetails' project.id layerversion.id  %}",
+        layerdetailurl : "{% url 'layerdetails' project.id layerversion.id  %}",
         sourceId: {{layerversion.layer_source_id|json}},
       }
     };
@@ -96,7 +106,7 @@
       {% else %}
       <button id="add-remove-layer-btn" data-directive="remove" class="btn btn-block btn-large btn-danger">
         <span class="icon-trash"></span>
-        Delete the {{layerversion.layer.name}} layer from your project
+        Remove the {{layerversion.layer.name}} layer from your project
       </button>
       {% endif %}
     </span>
@@ -144,7 +154,7 @@
             </dd>
             <dt>
               <i class="icon-question-sign get-help" title="The Git branch, tag or commit"></i>
-              Revision
+              Git revision
             </dt>
             <dd>
               <span class="current-value">{{layerversion.get_vcs_reference}}</span>

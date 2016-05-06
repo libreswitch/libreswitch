@@ -33,7 +33,7 @@ python do_package_tar () {
         localdata = bb.data.createCopy(d)
         root = "%s/%s" % (pkgdest, pkg)
 
-        overrides = localdata.getVar('OVERRIDES')
+        overrides = localdata.getVar('OVERRIDES', False)
         localdata.setVar('OVERRIDES', '%s:%s' % (overrides, pkg))
         bb.data.update_data(localdata)
 
@@ -53,7 +53,7 @@ python do_package_tar () {
 
 python () {
     if d.getVar('PACKAGES', True) != '':
-        deps = (d.getVarFlag('do_package_write_tar', 'depends') or "").split()
+        deps = (d.getVarFlag('do_package_write_tar', 'depends', True) or "").split()
         deps.append('tar-native:do_populate_sysroot')
         deps.append('virtual/fakeroot-native:do_populate_sysroot')
         d.setVarFlag('do_package_write_tar', 'depends', " ".join(deps))

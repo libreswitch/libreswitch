@@ -21,6 +21,8 @@ STAGING_DIR_HOST = "${STAGING_DIR}/${HOST_ARCH}${HOST_VENDOR}-${HOST_OS}"
 
 PACKAGE_ARCH = "${BUILD_ARCH}"
 
+MULTIMACH_TARGET_SYS = "${PACKAGE_ARCH}${BUILD_VENDOR}-${BUILD_OS}"
+
 export PKG_CONFIG_DIR = "${exec_prefix}/lib/pkgconfig"
 export PKG_CONFIG_SYSROOT_DIR = ""
 
@@ -66,10 +68,4 @@ do_install () {
 
 USE_NLS = "no"
 
-deltask package
-deltask packagedata
-deltask package_write_ipk
-deltask package_write_deb
-deltask package_write_rpm
-deltask package_write
-
+inherit nopackages

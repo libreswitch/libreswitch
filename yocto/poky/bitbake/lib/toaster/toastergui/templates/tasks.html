@@ -1,33 +1,37 @@
 {% extends "basebuildpage.html" %}
+{% load humanize %}
 {% load projecttags %}
 
+{% block title %} {{mainheading}} - {{build.target_set.all|dictsort:"target"|join:", "}} {{build.machine}} - {{build.project.name}} - Toaster{% endblock %}
 {% block localbreadcrumb %}
-<li>{{title}}</li>
+<li>{{mainheading}}</li>
 {% endblock %}
 
 {% block nav-tasks %}
-  {% if 'Tasks' == title %}
+  {% if 'Tasks' == mainheading %}
     <li class="active"><a href="{% url 'tasks' build.pk %}">Tasks</a></li>
   {% else %}
     <li><a href="{% url 'tasks' build.pk %}">Tasks</a></li>
   {% endif %}
 {% endblock %}
 {% block nav-buildtime %}
-  {% if 'Time' == title %}
+  {% if 'Time' == mainheading %}
     <li class="active"><a href="{% url 'buildtime' build.pk %}">Time</a></li>
   {% else %}
     <li><a href="{% url 'buildtime' build.pk %}">Time</a></li>
   {% endif %}
 {% endblock %}
-{% block nav-cpuusage %}
-  {% if 'CPU usage' == title %}
-    <li class="active"><a href="{% url 'cpuusage' build.pk %}">CPU usage</a></li>
+
+{% block nav-cputime %}
+  {% if 'CPU time' == mainheading %}
+    <li class="active"><a href="{% url 'cputime' build.pk %}">CPU time</a></li>
   {% else %}
-    <li><a href="{% url 'cpuusage' build.pk %}">CPU usage</a></li>
+    <li><a href="{% url 'cputime' build.pk %}">CPU time</a></li>
   {% endif %}
 {% endblock %}
+
 {% block nav-diskio %}
-  {% if 'Disk I/O' == title %}
+  {% if 'Disk I/O' == mainheading %}
     <li class="active"><a href="{% url 'diskio' build.pk %}">Disk I/O</a></li>
   {% else %}
     <li><a href="{% url 'diskio' build.pk %}">Disk I/O</a></li>
@@ -39,7 +43,7 @@
 {% if not request.GET.filter and not request.GET.search and not objects.paginator.count %}
   <!-- Empty - no data in database -->
   <div class="page-header">
-  <h1>{{title}}</h1>
+  <h1>{{mainheading}}</h1>
   </div>
   <div class="alert alert-info lead">
   No data was recorded for this build.
@@ -54,7 +58,7 @@
   {%elif request.GET.filter and objects.paginator.count == 0 or request.GET.search and objects.paginator.count == 0 %}
       No tasks found
   {%else%}
-      {{title}}
+      {{mainheading}}
   {%endif%}
   </h1>
   </div>
@@ -93,7 +97,7 @@
             </td>
             <td class="outcome">
                 <a href="{%url "task" build.pk task.pk%}">{{task.get_outcome_display}} </a>
-                {% if MANAGED and build.project and task.outcome = task.OUTCOME_FAILED %}
+                {% if task.outcome = task.OUTCOME_FAILED %}
                     <a href="{% url 'build_artifact' build.pk "tasklogfile" task.pk %}">
                         <i class="icon-download-alt" title="Download task log file"></i>
                     </a>
@@ -106,18 +110,16 @@
             <td class="time_taken">
                 {{task.elapsed_time|format_none_and_zero|floatformat:2}}
             </td>
-            <td class="cpu_used">
-                {{task.cpu_usage|format_none_and_zero|floatformat:2}}{% if task.cpu_usage %}%{% endif %}
+            <td class="cpu_time_system">
+                {{task.cpu_time_system|format_none_and_zero|floatformat:2}}
+            </td>
+            <td class="cpu_time_user">
+                {{task.cpu_time_user|format_none_and_zero|floatformat:2}}
             </td>
             <td class="disk_io">
-                {{task.disk_io|format_none_and_zero}}
+                {{task.disk_io|format_none_and_zero|intcomma}}
             </td>
 
-        {% if not MANAGED or not build.project %}
-            <td class="task_log">
-                {{task.logfile}}
-            </td>
-        {% endif %}
         </tr>
     {% endfor %}
 
@@ -129,7 +131,7 @@
 <script type="text/javascript">
 
     $(document).ready(function() {
-        // enable blue hightlight animation for the order link
+        // highlight heading on the column for the field used for ordering
         if (location.href.search('#') > -1) {
             var task_order = location.href.split('#')[1];
             $("#" + task_order).addClass("highlight");

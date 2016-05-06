@@ -19,6 +19,7 @@ SRC_URI = "${GNU_MIRROR}/libtool/libtool-${PV}.tar.gz \
            file://fix-resolve-lt-sysroot.patch \
            file://nohardcodepaths.patch \
            file://unwind-opt-parsing.patch \
+           file://0001-libtool-Fix-support-for-NIOS2-processor.patch \
           "
 
 SRC_URI[md5sum] = "addf44b646ddb4e3919805aa88fa7c5e"
@@ -34,12 +35,14 @@ do_compile_prepend () {
 inherit autotools texinfo
 EXTRA_AUTORECONF = "--exclude=libtoolize"
 
+CACHED_CONFIGUREVARS += "ac_cv_path_GREP=grep"
+
 DEPENDS = "libtool-native"
 
 PACKAGES =+ "libltdl"
 FILES_${PN} += "${datadir}/aclocal"
 
-#FILES_${PN}-dev := "${@oe_filter_out('${datadir}/aclocal', '${FILES_libtool-dev}', d)}"
+FILES_${PN}-dev_remove = "${datadir}/aclocal"
 FILES_libltdl = "${libdir}/libltdl${SOLIBS}"
 
 export CONFIG_SHELL="/bin/bash"

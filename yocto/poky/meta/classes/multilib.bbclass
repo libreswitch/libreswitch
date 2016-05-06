@@ -26,6 +26,7 @@ python multilib_virtclass_handler () {
     if bb.data.inherits_class('image', e.data):
         e.data.setVar("MLPREFIX", variant + "-")
         e.data.setVar("PN", variant + "-" + e.data.getVar("PN", False))
+        e.data.setVar('SDKTARGETSYSROOT', e.data.getVar('SDKTARGETSYSROOT', True))
         target_vendor = e.data.getVar("TARGET_VENDOR_" + "virtclass-multilib-" + variant, False)
         if target_vendor:
             e.data.setVar("TARGET_VENDOR", target_vendor)
@@ -58,7 +59,7 @@ python multilib_virtclass_handler () {
     e.data.setVar("OVERRIDES", e.data.getVar("OVERRIDES", False) + override)
 
     # Expand the WHITELISTs with multilib prefix
-    for whitelist in ["HOSTTOOLS_WHITELIST_GPL-3.0", "WHITELIST_GPL-3.0", "LGPLv2_WHITELIST_GPL-3.0"]:
+    for whitelist in ["WHITELIST_GPL-3.0", "LGPLv2_WHITELIST_GPL-3.0"]:
         pkgs = e.data.getVar(whitelist, True)
         for pkg in pkgs.split():
             pkgs += " " + variant + "-" + pkg
@@ -92,10 +93,6 @@ python __anonymous () {
         d.setVar("LINGUAS_INSTALL", "")
         # FIXME, we need to map this to something, not delete it!
         d.setVar("PACKAGE_INSTALL_ATTEMPTONLY", "")
-
-    if bb.data.inherits_class('populate_sdk_base', d):
-        clsextend.map_depends_variable("TOOLCHAIN_TARGET_TASK")
-        clsextend.map_depends_variable("TOOLCHAIN_TARGET_TASK_ATTEMPTONLY")
 
     if bb.data.inherits_class('image', d):
         return
@@ -132,8 +129,9 @@ python do_package_qa_multilib() {
                 (not i.startswith("rtld")) and (not i.startswith('kernel-vmlinux')):
                 candidates.append(i)
         if len(candidates) > 0:
-            bb.warn("Multilib QA Issue: %s package %s - suspicious values '%s' in %s" 
-                   % (d.getVar('PN', True), pkg, ' '.join(candidates), var))
+            msg = "%s package %s - suspicious values '%s' in %s" \
+                   % (d.getVar('PN', True), pkg, ' '.join(candidates), var)
+            package_qa_handle_error("multilib", msg, d)
 
     ml = d.getVar('MLPREFIX', True)
     if not ml:

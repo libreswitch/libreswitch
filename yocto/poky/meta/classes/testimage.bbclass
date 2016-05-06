@@ -32,11 +32,32 @@ TEST_LOG_DIR ?= "${WORKDIR}/testimage"
 TEST_EXPORT_DIR ?= "${TMPDIR}/testimage/${PN}"
 TEST_EXPORT_ONLY ?= "0"
 
-DEFAULT_TEST_SUITES = "ping auto"
-DEFAULT_TEST_SUITES_pn-core-image-minimal = "ping"
-DEFAULT_TEST_SUITES_pn-core-image-sato = "ping ssh df connman syslog xorg scp vnc date rpm smart dmesg python parselogs"
-DEFAULT_TEST_SUITES_pn-core-image-sato-sdk = "ping ssh df connman syslog xorg scp vnc date perl ldd gcc rpm smart kernelmodule dmesg python parselogs"
+RPMTESTSUITE = "${@bb.utils.contains('IMAGE_PKGTYPE', 'rpm', 'smart rpm', '', d)}"
+MINTESTSUITE = "ping"
+NETTESTSUITE = "${MINTESTSUITE} ssh df date scp syslog"
+DEVTESTSUITE = "gcc kernelmodule ldd"
+
+DEFAULT_TEST_SUITES = "${MINTESTSUITE} auto"
+DEFAULT_TEST_SUITES_pn-core-image-minimal = "${MINTESTSUITE}"
+DEFAULT_TEST_SUITES_pn-core-image-minimal-dev = "${MINTESTSUITE}"
+DEFAULT_TEST_SUITES_pn-core-image-full-cmdline = "${NETTESTSUITE} perl python logrotate"
+DEFAULT_TEST_SUITES_pn-core-image-x11 = "${MINTESTSUITE}"
+DEFAULT_TEST_SUITES_pn-core-image-lsb = "${NETTESTSUITE} pam parselogs ${RPMTESTSUITE}"
+DEFAULT_TEST_SUITES_pn-core-image-sato = "${NETTESTSUITE} connman xorg parselogs ${RPMTESTSUITE} \
+    ${@bb.utils.contains('IMAGE_PKGTYPE', 'rpm', 'python', '', d)}"
+DEFAULT_TEST_SUITES_pn-core-image-sato-sdk = "${NETTESTSUITE} connman xorg perl python \
+    ${DEVTESTSUITE} parselogs ${RPMTESTSUITE}"
+DEFAULT_TEST_SUITES_pn-core-image-lsb-dev = "${NETTESTSUITE} pam perl python parselogs ${RPMTESTSUITE}"
+DEFAULT_TEST_SUITES_pn-core-image-lsb-sdk = "${NETTESTSUITE} buildcvs buildiptables buildsudoku \
+    connman ${DEVTESTSUITE} pam perl python parselogs ${RPMTESTSUITE}"
 DEFAULT_TEST_SUITES_pn-meta-toolchain = "auto"
+
+# aarch64 has no graphics
+DEFAULT_TEST_SUITES_remove_aarch64 = "xorg"
+
+#qemumips is too slow for buildsudoku
+DEFAULT_TEST_SUITES_remove_qemumips = "buildsudoku"
+
 TEST_SUITES ?= "${DEFAULT_TEST_SUITES}"
 
 TEST_QEMUBOOT_TIMEOUT ?= "1000"
@@ -50,6 +71,35 @@ TESTIMAGEDEPENDS_qemuall = "qemu-native:do_populate_sysroot qemu-helper-native:d
 TESTIMAGELOCK = "${TMPDIR}/testimage.lock"
 TESTIMAGELOCK_qemuall = ""
 
+TESTIMAGE_DUMP_DIR ?= "/tmp/oe-saved-tests/"
+
+testimage_dump_target () {
+    top -bn1
+    ps
+    free
+    df
+    # The next command will export the default gateway IP
+    export DEFAULT_GATEWAY=$(ip route | awk '/default/ { print $3}')
+    ping -c3 $DEFAULT_GATEWAY
+    dmesg
+    netstat -an
+    ip address
+    # Next command will dump logs from /var/log/
+    find /var/log/ -type f 2>/dev/null -exec echo "====================" \; -exec echo {} \; -exec echo "====================" \; -exec cat {} \; -exec echo "" \;
+}
+
+testimage_dump_host () {
+    top -bn1
+    iostat -x -z -N -d -p ALL 20 2
+    ps -ef
+    free
+    df
+    memstat
+    dmesg
+    ip -s link
+    netstat -an
+}
+
 python do_testimage() {
     testimage_main(d)
 }
@@ -58,72 +108,27 @@ do_testimage[nostamp] = "1"
 do_testimage[depends] += "${TESTIMAGEDEPENDS}"
 do_testimage[lockfiles] += "${TESTIMAGELOCK}"
 
-python do_testsdk() {
-    testsdk_main(d)
-}
-addtask testsdk
-do_testsdk[nostamp] = "1"
-do_testsdk[depends] += "${TESTIMAGEDEPENDS}"
-do_testsdk[lockfiles] += "${TESTIMAGELOCK}"
-
-def get_tests_list(d, type="runtime"):
-    testsuites = d.getVar("TEST_SUITES", True).split()
-    if type == "sdk":
-        testsuites = (d.getVar("TEST_SUITES_SDK", True) or "auto").split()
-    bbpath = d.getVar("BBPATH", True).split(':')
-
-    # This relies on lib/ under each directory in BBPATH being added to sys.path
-    # (as done by default in base.bbclass)
-    testslist = []
-    for testname in testsuites:
-        if testname != "auto":
-            found = False
-            for p in bbpath:
-                if os.path.exists(os.path.join(p, 'lib', 'oeqa', type, testname + '.py')):
-                    testslist.append("oeqa." + type + "." + testname)
-                    found = True
-                    break
-            if not found:
-                bb.fatal('Test %s specified in TEST_SUITES could not be found in lib/oeqa/runtime under BBPATH' % testname)
-
-    if "auto" in testsuites:
-        def add_auto_list(path):
-            if not os.path.exists(os.path.join(path, '__init__.py')):
-                bb.fatal('Tests directory %s exists but is missing __init__.py' % path)
-            files = sorted([f for f in os.listdir(path) if f.endswith('.py') and not f.startswith('_')])
-            for f in files:
-                module = 'oeqa.' + type + '.' + f[:-3]
-                if module not in testslist:
-                    testslist.append(module)
-
-        for p in bbpath:
-            testpath = os.path.join(p, 'lib', 'oeqa', type)
-            bb.debug(2, 'Searching for tests in %s' % testpath)
-            if os.path.exists(testpath):
-                add_auto_list(testpath)
-
-    return testslist
-
-
 def exportTests(d,tc):
     import json
     import shutil
     import pkgutil
+    import re
 
     exportpath = d.getVar("TEST_EXPORT_DIR", True)
 
     savedata = {}
     savedata["d"] = {}
     savedata["target"] = {}
+    savedata["host_dumper"] = {}
     for key in tc.__dict__:
         # special cases
-        if key != "d" and key != "target":
+        if key not in ['d', 'target', 'host_dumper', 'suite']:
             savedata[key] = getattr(tc, key)
     savedata["target"]["ip"] = tc.target.ip or d.getVar("TEST_TARGET_IP", True)
     savedata["target"]["server_ip"] = tc.target.server_ip or d.getVar("TEST_SERVER_IP", True)
 
     keys = [ key for key in d.keys() if not key.startswith("_") and not key.startswith("BB") \
-            and not key.startswith("B_pn") and not key.startswith("do_") and not d.getVarFlag(key, "func")]
+            and not key.startswith("B_pn") and not key.startswith("do_") and not d.getVarFlag(key, "func", True)]
     for key in keys:
         try:
             savedata["d"][key] = d.getVar(key, True)
@@ -131,8 +136,20 @@ def exportTests(d,tc):
             # we don't care about those anyway
             pass
 
-    with open(os.path.join(exportpath, "testdata.json"), "w") as f:
+    savedata["host_dumper"]["parent_dir"] = tc.host_dumper.parent_dir
+    savedata["host_dumper"]["cmds"] = tc.host_dumper.cmds
+
+    json_file = os.path.join(exportpath, "testdata.json")
+    with open(json_file, "w") as f:
             json.dump(savedata, f, skipkeys=True, indent=4, sort_keys=True)
+
+    # Replace absolute path with relative in the file
+    exclude_path = os.path.join(d.getVar("COREBASE", True),'meta','lib','oeqa')
+    f1 = open(json_file,'r').read()
+    f2 = open(json_file,'w')
+    m = f1.replace(exclude_path,'oeqa')
+    f2.write(m)
+    f2.close()
 
     # now start copying files
     # we'll basically copy everything under meta/lib/oeqa, with these exceptions
@@ -146,9 +163,23 @@ def exportTests(d,tc):
     bb.utils.mkdirhier(os.path.join(exportpath, "oeqa/runtime/files"))
     bb.utils.mkdirhier(os.path.join(exportpath, "oeqa/utils"))
     # copy test modules, this should cover tests in other layers too
+    bbpath = d.getVar("BBPATH", True).split(':')
     for t in tc.testslist:
+        isfolder = False
+        if re.search("\w+\.\w+\.test_\S+", t):
+            t = '.'.join(t.split('.')[:3])
         mod = pkgutil.get_loader(t)
-        shutil.copy2(mod.filename, os.path.join(exportpath, "oeqa/runtime"))
+        # More depth than usual?
+        if (t.count('.') > 2):
+            for p in bbpath:
+                foldername = os.path.join(p, 'lib',  os.sep.join(t.split('.')).rsplit(os.sep, 1)[0])
+                if os.path.isdir(foldername):
+                    isfolder = True
+                    target_folder = os.path.join(exportpath, "oeqa", "runtime", os.path.basename(foldername))
+                    if not os.path.exists(target_folder):
+                        shutil.copytree(foldername, target_folder)
+        if not isfolder:
+            shutil.copy2(mod.filename, os.path.join(exportpath, "oeqa/runtime"))
     # copy __init__.py files
     oeqadir = pkgutil.get_loader("oeqa").filename
     shutil.copy2(os.path.join(oeqadir, "__init__.py"), os.path.join(exportpath, "oeqa"))
@@ -168,14 +199,15 @@ def exportTests(d,tc):
 
     bb.plain("Exported tests to: %s" % exportpath)
 
-
 def testimage_main(d):
     import unittest
     import os
     import oeqa.runtime
     import time
-    from oeqa.oetest import loadTests, runTests
+    import signal
+    from oeqa.oetest import ImageTestContext
     from oeqa.targetcontrol import get_target_controller
+    from oeqa.utils.dump import get_host_dumper
 
     pn = d.getVar("PN", True)
     export = oe.utils.conditional("TEST_EXPORT_ONLY", "1", True, False, d)
@@ -184,52 +216,34 @@ def testimage_main(d):
         bb.utils.remove(d.getVar("TEST_EXPORT_DIR", True), recurse=True)
         bb.utils.mkdirhier(d.getVar("TEST_EXPORT_DIR", True))
 
-    # tests in TEST_SUITES become required tests
-    # they won't be skipped even if they aren't suitable for a image (like xorg for minimal)
-    # testslist is what we'll actually pass to the unittest loader
-    testslist = get_tests_list(d)
-    testsrequired = [t for t in d.getVar("TEST_SUITES", True).split() if t != "auto"]
+    # we need the host dumper in test context
+    host_dumper = get_host_dumper(d)
 
     # the robot dance
     target = get_target_controller(d)
 
-    class TestContext(object):
-        def __init__(self):
-            self.d = d
-            self.testslist = testslist
-            self.testsrequired = testsrequired
-            self.filesdir = os.path.join(os.path.dirname(os.path.abspath(oeqa.runtime.__file__)),"files")
-            self.target = target
-            self.imagefeatures = d.getVar("IMAGE_FEATURES", True).split()
-            self.distrofeatures = d.getVar("DISTRO_FEATURES", True).split()
-            manifest = os.path.join(d.getVar("DEPLOY_DIR_IMAGE", True), d.getVar("IMAGE_LINK_NAME", True) + ".manifest")
-            try:
-                with open(manifest) as f:
-                    self.pkgmanifest = f.read()
-            except IOError as e:
-                bb.fatal("No package manifest file found. Did you build the image?\n%s" % e)
-
     # test context
-    tc = TestContext()
+    tc = ImageTestContext(d, target, host_dumper)
 
     # this is a dummy load of tests
     # we are doing that to find compile errors in the tests themselves
     # before booting the image
     try:
-        loadTests(tc)
+        tc.loadTests()
     except Exception as e:
         import traceback
         bb.fatal("Loading tests failed:\n%s" % traceback.format_exc())
 
-    target.deploy()
-
-    target.start()
-    try:
-        if export:
-            exportTests(d,tc)
-        else:
+    if export:
+        signal.signal(signal.SIGTERM, tc.origsigtermhandler)
+        tc.origsigtermhandler = None
+        exportTests(d,tc)
+    else:
+        target.deploy()
+        try:
+            target.start()
             starttime = time.time()
-            result = runTests(tc)
+            result = tc.runTests()
             stoptime = time.time()
             if result.wasSuccessful():
                 bb.plain("%s - Ran %d test%s in %.3fs" % (pn, result.testsRun, result.testsRun != 1 and "s" or "", stoptime - starttime))
@@ -240,96 +254,10 @@ def testimage_main(d):
                 bb.plain(msg)
             else:
                 raise bb.build.FuncFailed("%s - FAILED - check the task log and the ssh log" % pn )
-    finally:
-        target.stop()
+        finally:
+            signal.signal(signal.SIGTERM, tc.origsigtermhandler)
+            target.stop()
 
 testimage_main[vardepsexclude] =+ "BB_ORIGENV"
 
-
-def testsdk_main(d):
-    import unittest
-    import os
-    import glob
-    import oeqa.runtime
-    import oeqa.sdk
-    import time
-    import subprocess
-    from oeqa.oetest import loadTests, runTests
-
-    pn = d.getVar("PN", True)
-    bb.utils.mkdirhier(d.getVar("TEST_LOG_DIR", True))
-
-    # tests in TEST_SUITES become required tests
-    # they won't be skipped even if they aren't suitable.
-    # testslist is what we'll actually pass to the unittest loader
-    testslist = get_tests_list(d, "sdk")
-    testsrequired = [t for t in (d.getVar("TEST_SUITES_SDK", True) or "auto").split() if t != "auto"]
-
-    sdktestdir = d.expand("${WORKDIR}/testimage-sdk/")
-    bb.utils.remove(sdktestdir, True)
-    bb.utils.mkdirhier(sdktestdir)
-
-    tcname = d.expand("${SDK_DEPLOY}/${TOOLCHAIN_OUTPUTNAME}.sh")
-    if not os.path.exists(tcname):
-        bb.fatal("The toolchain is not built. Build it before running the tests: 'bitbake meta-toolchain' .")
-    subprocess.call("cd %s; %s <<EOF\n./tc\nY\nEOF" % (sdktestdir, tcname), shell=True)
-
-    targets = glob.glob(d.expand(sdktestdir + "/tc/sysroots/*${TARGET_VENDOR}-linux*"))
-    if len(targets) > 1:
-        bb.fatal("Error, multiple targets within the SDK found and we don't know which to test? %s" % str(targets))
-    sdkenv = sdktestdir + "/tc/environment-setup-" + os.path.basename(targets[0])
-
-    class TestContext(object):
-        def __init__(self):
-            self.d = d
-            self.testslist = testslist
-            self.testsrequired = testsrequired
-            self.filesdir = os.path.join(os.path.dirname(os.path.abspath(oeqa.runtime.__file__)),"files")
-            self.sdktestdir = sdktestdir
-            self.sdkenv = sdkenv
-            self.imagefeatures = d.getVar("IMAGE_FEATURES", True).split()
-            self.distrofeatures = d.getVar("DISTRO_FEATURES", True).split()
-            manifest = d.getVar("SDK_TARGET_MANIFEST", True)
-            try:
-                with open(manifest) as f:
-                    self.pkgmanifest = f.read()
-            except IOError as e:
-                bb.fatal("No package manifest file found. Did you build the sdk image?\n%s" % e)
-            hostmanifest = d.getVar("SDK_HOST_MANIFEST", True)
-            try:
-                with open(hostmanifest) as f:
-                    self.hostpkgmanifest = f.read()
-            except IOError as e:
-                bb.fatal("No host package manifest file found. Did you build the sdk image?\n%s" % e)
-
-    # test context
-    tc = TestContext()
-
-    # this is a dummy load of tests
-    # we are doing that to find compile errors in the tests themselves
-    # before booting the image
-    try:
-        loadTests(tc, "sdk")
-    except Exception as e:
-        import traceback
-        bb.fatal("Loading tests failed:\n%s" % traceback.format_exc())
-
-    try:
-        starttime = time.time()
-        result = runTests(tc, "sdk")
-        stoptime = time.time()
-        if result.wasSuccessful():
-            bb.plain("%s - Ran %d test%s in %.3fs" % (pn, result.testsRun, result.testsRun != 1 and "s" or "", stoptime - starttime))
-            msg = "%s - OK - All required tests passed" % pn
-            skipped = len(result.skipped)
-            if skipped:
-                msg += " (skipped=%d)" % skipped
-            bb.plain(msg)
-        else:
-            raise bb.build.FuncFailed("%s - FAILED - check the task log and the commands log" % pn )
-    finally:
-        pass
-        bb.utils.remove(sdktestdir, True)
-
-testsdk_main[vardepsexclude] =+ "BB_ORIGENV"
-
+inherit testsdk

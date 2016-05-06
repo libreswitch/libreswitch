@@ -24,9 +24,9 @@ def enable_devenv_profiling(d):
         if os.path.isfile(os.path.join(d.getVar('TOPDIR', True), 'devenv-coverage-enabled')):
             d.setVar("INHIBIT_PACKAGE_STRIP", "1")
             d.prependVarFlag('do_compile', 'prefuncs', "profile_compile_prefunc ")
-            return "-fprofile-arcs -ftest-coverage -fdebug-prefix-map=${@d.getVar('S')}=/usr/src/debug/${BPN}/${PV}-${PR} "
+            return "-fprofile-arcs -ftest-coverage -fdebug-prefix-map=${@d.getVar('S',True)}=/usr/src/debug/${BPN}/${PV}-${PR} "
         # Inside the devenv, we need symbol remmaping to get the split debug packages to work properly
-        return "-fdebug-prefix-map=${@d.getVar('S')}=/usr/src/debug/${BPN}/${PV}-${PR}"
+        return "-fdebug-prefix-map=${@d.getVar('S',True)}=/usr/src/debug/${BPN}/${PV}-${PR}"
     return ""
 enable_devenv_profiling[vardepsexclude] = "TOPDIR S"
 

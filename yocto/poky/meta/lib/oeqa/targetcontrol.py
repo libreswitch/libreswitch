@@ -10,9 +10,11 @@ import subprocess
 import bb
 import traceback
 import sys
+import logging
 from oeqa.utils.sshcontrol import SSHControl
 from oeqa.utils.qemurunner import QemuRunner
 from oeqa.utils.qemutinyrunner import QemuTinyRunner
+from oeqa.utils.dump import TargetDumper
 from oeqa.controllers.testtargetloader import TestTargetLoader
 from abc import ABCMeta, abstractmethod
 
@@ -66,7 +68,7 @@ class BaseTarget(object):
         bb.note("SSH log file: %s" %  self.sshlog)
 
     @abstractmethod
-    def start(self, params=None):
+    def start(self, params=None, ssh=True):
         pass
 
     @abstractmethod
@@ -111,7 +113,7 @@ class BaseTarget(object):
 
 class QemuTarget(BaseTarget):
 
-    supported_image_fstypes = ['ext3', 'ext4', 'cpio.gz']
+    supported_image_fstypes = ['ext3', 'ext4', 'cpio.gz', 'wic']
 
     def __init__(self, d):
 
@@ -121,7 +123,20 @@ class QemuTarget(BaseTarget):
         self.qemulog = os.path.join(self.testdir, "qemu_boot_log.%s" % self.datetime)
         self.origrootfs = os.path.join(d.getVar("DEPLOY_DIR_IMAGE", True),  d.getVar("IMAGE_LINK_NAME", True) + '.' + self.image_fstype)
         self.rootfs = os.path.join(self.testdir, d.getVar("IMAGE_LINK_NAME", True) + '-testimage.' + self.image_fstype)
-        self.kernel = os.path.join(d.getVar("DEPLOY_DIR_IMAGE", True), d.getVar("KERNEL_IMAGETYPE") + '-' + d.getVar('MACHINE') + '.bin')
+        self.kernel = os.path.join(d.getVar("DEPLOY_DIR_IMAGE", True), d.getVar("KERNEL_IMAGETYPE", False) + '-' + d.getVar('MACHINE', False) + '.bin')
+        dump_target_cmds = d.getVar("testimage_dump_target", True)
+        dump_host_cmds = d.getVar("testimage_dump_host", True)
+        dump_dir = d.getVar("TESTIMAGE_DUMP_DIR", True)
+
+        # Log QemuRunner log output to a file
+        import oe.path
+        bb.utils.mkdirhier(self.testdir)
+        self.qemurunnerlog = os.path.join(self.testdir, 'qemurunner_log.%s' % self.datetime)
+        logger = logging.getLogger('BitBake.QemuRunner')
+        loggerhandler = logging.FileHandler(self.qemurunnerlog)
+        loggerhandler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+        logger.addHandler(loggerhandler)
+        oe.path.symlink(os.path.basename(self.qemurunnerlog), os.path.join(self.testdir, 'qemurunner_log'), force=True)
 
         if d.getVar("DISTRO", True) == "poky-tiny":
             self.runner = QemuTinyRunner(machine=d.getVar("MACHINE", True),
@@ -139,10 +154,15 @@ class QemuTarget(BaseTarget):
                             deploy_dir_image = d.getVar("DEPLOY_DIR_IMAGE", True),
                             display = d.getVar("BB_ORIGENV", False).getVar("DISPLAY", True),
                             logfile = self.qemulog,
-                            boottime = int(d.getVar("TEST_QEMUBOOT_TIMEOUT", True)))
+                            boottime = int(d.getVar("TEST_QEMUBOOT_TIMEOUT", True)),
+                            dump_dir = dump_dir,
+                            dump_host_cmds = d.getVar("testimage_dump_host", True))
+
+        self.target_dumper = TargetDumper(dump_target_cmds, dump_dir, self.runner)
 
     def deploy(self):
         try:
+            bb.utils.mkdirhier(self.testdir)
             shutil.copyfile(self.origrootfs, self.rootfs)
         except Exception as e:
             bb.fatal("Error copying rootfs: %s" % e)
@@ -156,14 +176,21 @@ class QemuTarget(BaseTarget):
         bb.note("Qemu log file: %s" % self.qemulog)
         super(QemuTarget, self).deploy()
 
-    def start(self, params=None):
-        if self.runner.start(params):
-            self.ip = self.runner.ip
-            self.server_ip = self.runner.server_ip
-            self.connection = SSHControl(ip=self.ip, logfile=self.sshlog)
+    def start(self, params=None, ssh=True):
+        if self.runner.start(params, get_ip=ssh):
+            if ssh:
+                self.ip = self.runner.ip
+                self.server_ip = self.runner.server_ip
+                self.connection = SSHControl(ip=self.ip, logfile=self.sshlog)
         else:
             self.stop()
+            if os.path.exists(self.qemulog):
+                with open(self.qemulog, 'r') as f:
+                    bb.error("Qemu log output from %s:\n%s" % (self.qemulog, f.read()))
             raise bb.build.FuncFailed("%s - FAILED to start qemu - check the task log and the boot log" % self.pn)
+
+    def check(self):
+        return self.runner.is_alive()
 
     def stop(self):
         self.runner.stop()
@@ -205,8 +232,9 @@ class SimpleRemoteTarget(BaseTarget):
     def deploy(self):
         super(SimpleRemoteTarget, self).deploy()
 
-    def start(self, params=None):
-        self.connection = SSHControl(self.ip, logfile=self.sshlog, port=self.port)
+    def start(self, params=None, ssh=True):
+        if ssh:
+            self.connection = SSHControl(self.ip, logfile=self.sshlog, port=self.port)
 
     def stop(self):
         self.connection = None

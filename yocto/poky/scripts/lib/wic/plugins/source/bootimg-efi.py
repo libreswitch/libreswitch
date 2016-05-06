@@ -27,48 +27,53 @@
 import os
 import shutil
 
-from wic.utils.errors import ImageError
-from wic import kickstart, msger
+from wic import msger
 from wic.pluginbase import SourcePlugin
+from wic.utils.misc import get_custom_config
 from wic.utils.oe.misc import exec_cmd, exec_native_cmd, get_bitbake_var, \
                               BOOTDD_EXTRA_SPACE
 
 class BootimgEFIPlugin(SourcePlugin):
+    """
+    Create EFI boot partition.
+    This plugin supports GRUB 2 and gummiboot bootloaders.
+    """
+
     name = 'bootimg-efi'
 
     @classmethod
-    def do_configure_grubefi(self, hdddir, cr, cr_workdir):
+    def do_configure_grubefi(cls, hdddir, creator, cr_workdir):
         """
         Create loader-specific (grub-efi) config
         """
-        splash = os.path.join(cr_workdir, "/EFI/boot/splash.jpg")
-        if os.path.exists(splash):
-            splashline = "menu background splash.jpg"
-        else:
-            splashline = ""
+        configfile = creator.ks.bootloader.configfile
+        custom_cfg = None
+        if configfile:
+            custom_cfg = get_custom_config(configfile)
+            if custom_cfg:
+                # Use a custom configuration for grub
+                grubefi_conf = custom_cfg
+                msger.debug("Using custom configuration file "
+                        "%s for grub.cfg" % configfile)
+            else:
+                msger.error("configfile is specified but failed to "
+                        "get it from %s." % configfile)
 
-        (rootdev, root_part_uuid) = cr._get_boot_config()
-        options = cr.ks.handler.bootloader.appendLine
+        if not custom_cfg:
+            # Create grub configuration using parameters from wks file
+            bootloader = creator.ks.bootloader
 
-        grubefi_conf = ""
-        grubefi_conf += "serial --unit=0 --speed=115200 --word=8 --parity=no --stop=1\n"
-        grubefi_conf += "default=boot\n"
-        timeout = kickstart.get_timeout(cr.ks)
-        if not timeout:
-            timeout = 0
-        grubefi_conf += "timeout=%s\n" % timeout
-        grubefi_conf += "menuentry 'boot'{\n"
+            grubefi_conf = ""
+            grubefi_conf += "serial --unit=0 --speed=115200 --word=8 --parity=no --stop=1\n"
+            grubefi_conf += "default=boot\n"
+            grubefi_conf += "timeout=%s\n" % bootloader.timeout
+            grubefi_conf += "menuentry 'boot'{\n"
 
-        kernel = "/bzImage"
+            kernel = "/bzImage"
 
-        if cr._ptable_format == 'msdos':
-            rootstr = rootdev
-        else:
-            raise ImageError("Unsupported partition table format found")
-
-        grubefi_conf += "linux %s root=%s rootwait %s\n" \
-            % (kernel, rootstr, options)
-        grubefi_conf += "}\n"
+            grubefi_conf += "linux %s root=%s rootwait %s\n" \
+                % (kernel, creator.rootdev, bootloader.append)
+            grubefi_conf += "}\n"
 
         msger.debug("Writing grubefi config %s/hdd/boot/EFI/BOOT/grub.cfg" \
                         % cr_workdir)
@@ -77,7 +82,7 @@ class BootimgEFIPlugin(SourcePlugin):
         cfg.close()
 
     @classmethod
-    def do_configure_gummiboot(self, hdddir, cr, cr_workdir):
+    def do_configure_gummiboot(cls, hdddir, creator, cr_workdir):
         """
         Create loader-specific (gummiboot) config
         """
@@ -87,16 +92,11 @@ class BootimgEFIPlugin(SourcePlugin):
         install_cmd = "install -d %s/loader/entries" % hdddir
         exec_cmd(install_cmd)
 
-        (rootdev, root_part_uuid) = cr._get_boot_config()
-        options = cr.ks.handler.bootloader.appendLine
-
-        timeout = kickstart.get_timeout(cr.ks)
-        if not timeout:
-            timeout = 0
+        bootloader = creator.ks.bootloader
 
         loader_conf = ""
         loader_conf += "default boot\n"
-        loader_conf += "timeout %d\n" % timeout
+        loader_conf += "timeout %d\n" % bootloader.timeout
 
         msger.debug("Writing gummiboot config %s/hdd/boot/loader/loader.conf" \
                         % cr_workdir)
@@ -104,18 +104,28 @@ class BootimgEFIPlugin(SourcePlugin):
         cfg.write(loader_conf)
         cfg.close()
 
-        kernel = "/bzImage"
+        configfile = creator.ks.bootloader.configfile
+        custom_cfg = None
+        if configfile:
+            custom_cfg = get_custom_config(configfile)
+            if custom_cfg:
+                # Use a custom configuration for gummiboot
+                boot_conf = custom_cfg
+                msger.debug("Using custom configuration file "
+                        "%s for gummiboots's boot.conf" % configfile)
+            else:
+                msger.error("configfile is specified but failed to "
+                        "get it from %s." % configfile)
 
-        if cr._ptable_format == 'msdos':
-            rootstr = rootdev
-        else:
-            raise ImageError("Unsupported partition table format found")
+        if not custom_cfg:
+            # Create gummiboot configuration using parameters from wks file
+            kernel = "/bzImage"
 
-        boot_conf = ""
-        boot_conf += "title boot\n"
-        boot_conf += "linux %s\n" % kernel
-        boot_conf += "options LABEL=Boot root=%s %s\n" \
-            % (rootstr, options)
+            boot_conf = ""
+            boot_conf += "title boot\n"
+            boot_conf += "linux %s\n" % kernel
+            boot_conf += "options LABEL=Boot root=%s %s\n" % \
+                             (creator.rootdev, bootloader.append)
 
         msger.debug("Writing gummiboot config %s/hdd/boot/loader/entries/boot.conf" \
                         % cr_workdir)
@@ -125,24 +135,22 @@ class BootimgEFIPlugin(SourcePlugin):
 
 
     @classmethod
-    def do_configure_partition(self, part, source_params, cr, cr_workdir,
+    def do_configure_partition(cls, part, source_params, creator, cr_workdir,
                                oe_builddir, bootimg_dir, kernel_dir,
                                native_sysroot):
         """
         Called before do_prepare_partition(), creates loader-specific config
         """
         hdddir = "%s/hdd/boot" % cr_workdir
-        rm_cmd = "rm -rf %s" % cr_workdir
-        exec_cmd(rm_cmd)
 
         install_cmd = "install -d %s/EFI/BOOT" % hdddir
         exec_cmd(install_cmd)
 
         try:
             if source_params['loader'] == 'grub-efi':
-                self.do_configure_grubefi(hdddir, cr, cr_workdir)
+                cls.do_configure_grubefi(hdddir, creator, cr_workdir)
             elif source_params['loader'] == 'gummiboot':
-                self.do_configure_gummiboot(hdddir, cr, cr_workdir)
+                cls.do_configure_gummiboot(hdddir, creator, cr_workdir)
             else:
                 msger.error("unrecognized bootimg-efi loader: %s" % source_params['loader'])
         except KeyError:
@@ -150,7 +158,7 @@ class BootimgEFIPlugin(SourcePlugin):
 
 
     @classmethod
-    def do_prepare_partition(self, part, source_params, cr, cr_workdir,
+    def do_prepare_partition(cls, part, source_params, creator, cr_workdir,
                              oe_builddir, bootimg_dir, kernel_dir,
                              rootfs_dir, native_sysroot):
         """
@@ -163,7 +171,7 @@ class BootimgEFIPlugin(SourcePlugin):
             if not bootimg_dir:
                 msger.error("Couldn't find HDDDIR, exiting\n")
             # just so the result notes display it
-            cr.set_bootimg_dir(bootimg_dir)
+            creator.set_bootimg_dir(bootimg_dir)
 
         staging_kernel_dir = kernel_dir
 
@@ -225,5 +233,5 @@ class BootimgEFIPlugin(SourcePlugin):
         out = exec_cmd(du_cmd)
         bootimg_size = out.split()[0]
 
-        part.set_size(bootimg_size)
-        part.set_source_file(bootimg)
+        part.size = bootimg_size
+        part.source_file = bootimg

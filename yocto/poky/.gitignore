@@ -1,7 +1,7 @@
 *.pyc
 *.pyo
 /*.patch
-build*/
+/build*/
 pyshtables.py
 pstage/
 scripts/oe-git-proxy-socks
@@ -14,6 +14,7 @@ hob-image-*.bb
 *.orig
 *.rej
 *~
+!meta-poky
 !meta-yocto
 !meta-yocto-bsp
 !meta-yocto-imported
@@ -21,3 +22,6 @@ documentation/user-manual/user-manual.html
 documentation/user-manual/user-manual.pdf
 documentation/user-manual/user-manual.tgz
 pull-*/
+bitbake/lib/toaster/contrib/tts/backlog.txt
+bitbake/lib/toaster/contrib/tts/log/*
+bitbake/lib/toaster/contrib/tts/.cache/*

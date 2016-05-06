@@ -63,9 +63,9 @@ class ConfigParameters(object):
             raise Exception("Unable to set configuration option 'cmd' on the server: %s" % error)
 
         if not self.options.pkgs_to_build:
-            bbpkgs, error = server.runCommand(["getVariable", "BBPKGS"])
+            bbpkgs, error = server.runCommand(["getVariable", "BBTARGETS"])
             if error:
-                raise Exception("Unable to get the value of BBPKGS from the server: %s" % error)
+                raise Exception("Unable to get the value of BBTARGETS from the server: %s" % error)
             if bbpkgs:
                 self.options.pkgs_to_build.extend(bbpkgs.split())
 
@@ -73,7 +73,8 @@ class ConfigParameters(object):
         options = {}
         for o in ["abort", "tryaltconfigs", "force", "invalidate_stamp", 
                   "verbose", "debug", "dry_run", "dump_signatures", 
-                  "debug_domains", "extra_assume_provided", "profile"]:
+                  "debug_domains", "extra_assume_provided", "profile",
+                  "prefile", "postfile"]:
             options[o] = getattr(self.options, o)
 
         ret, error = server.runCommand(["updateConfig", options, environment])
@@ -128,12 +129,15 @@ class CookerConfiguration(object):
         self.extra_assume_provided = []
         self.prefile = []
         self.postfile = []
+        self.prefile_server = []
+        self.postfile_server = []
         self.debug = 0
         self.cmd = None
         self.abort = True
         self.force = False
         self.profile = False
         self.nosetscene = False
+        self.setsceneonly = False
         self.invalidate_stamp = False
         self.dump_signatures = []
         self.dry_run = False
@@ -173,10 +177,24 @@ def catch_parse_error(func):
     def wrapped(fn, *args):
         try:
             return func(fn, *args)
-        except (IOError, bb.parse.ParseError, bb.data_smart.ExpansionError) as exc:
+        except IOError as exc:
             import traceback
-            parselog.critical( traceback.format_exc())
+            parselog.critical(traceback.format_exc())
             parselog.critical("Unable to parse %s: %s" % (fn, exc))
+            sys.exit(1)
+        except bb.data_smart.ExpansionError as exc:
+            import traceback
+
+            bbdir = os.path.dirname(__file__) + os.sep
+            exc_class, exc, tb = sys.exc_info()
+            for tb in iter(lambda: tb.tb_next, None):
+                # Skip frames in bitbake itself, we only want the metadata
+                fn, _, _, _ = traceback.extract_tb(tb, 1)[0]
+                if not fn.startswith(bbdir):
+                    break
+            parselog.critical("Unable to parse %s", fn, exc_info=(exc_class, exc, tb))
+        except bb.parse.ParseError as exc:
+            parselog.critical(str(exc))
             sys.exit(1)
     return wrapped
 
@@ -274,6 +292,8 @@ class CookerDataBuilder(object):
                 parselog.debug(2, "Adding layer %s", layer)
                 if 'HOME' in approved and '~' in layer:
                     layer = os.path.expanduser(layer)
+                if layer.endswith('/'):
+                    layer = layer.rstrip('/')
                 data.setVar('LAYERDIR', layer)
                 data = parse_config_file(os.path.join(layer, "conf", "layer.conf"), data)
                 data.expandVarref('LAYERDIR')
@@ -301,15 +321,17 @@ class CookerDataBuilder(object):
 
         # Nomally we only register event handlers at the end of parsing .bb files
         # We register any handlers we've found so far here...
-        for var in data.getVar('__BBHANDLERS') or []:
-            bb.event.register(var, data.getVar(var),  (data.getVarFlag(var, "eventmask", True) or "").split())
+        for var in data.getVar('__BBHANDLERS', False) or []:
+            handlerfn = data.getVarFlag(var, "filename", False)
+            handlerln = int(data.getVarFlag(var, "lineno", False))
+            bb.event.register(var, data.getVar(var, False),  (data.getVarFlag(var, "eventmask", True) or "").split(), handlerfn, handlerln)
 
         if data.getVar("BB_WORKERCONTEXT", False) is None:
             bb.fetch.fetcher_init(data)
         bb.codeparser.parser_cache_init(data)
         bb.event.fire(bb.event.ConfigParsed(), data)
 
-        if data.getVar("BB_INVALIDCONF") is True:
+        if data.getVar("BB_INVALIDCONF", False) is True:
             data.setVar("BB_INVALIDCONF", False)
             self.parseConfigurationFiles(self.prefiles, self.postfiles)
             return

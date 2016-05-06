@@ -41,22 +41,69 @@ logger = logging.getLogger("BitBake")
 class BBMainException(Exception):
     pass
 
-def get_ui(config):
-    if not config.ui:
-        # modify 'ui' attribute because it is also read by cooker
-        config.ui = os.environ.get('BITBAKE_UI', 'knotty')
+def present_options(optionlist):
+    if len(optionlist) > 1:
+        return ' or '.join([', '.join(optionlist[:-1]), optionlist[-1]])
+    else:
+        return optionlist[0]
 
-    interface = config.ui
+class BitbakeHelpFormatter(optparse.IndentedHelpFormatter):
+    def format_option(self, option):
+        # We need to do this here rather than in the text we supply to
+        # add_option() because we don't want to call list_extension_modules()
+        # on every execution (since it imports all of the modules)
+        # Note also that we modify option.help rather than the returned text
+        # - this is so that we don't have to re-format the text ourselves
+        if option.dest == 'ui':
+            valid_uis = list_extension_modules(bb.ui, 'main')
+            option.help = option.help.replace('@CHOICES@', present_options(valid_uis))
+        elif option.dest == 'servertype':
+            valid_server_types = list_extension_modules(bb.server, 'BitBakeServer')
+            option.help = option.help.replace('@CHOICES@', present_options(valid_server_types))
 
+        return optparse.IndentedHelpFormatter.format_option(self, option)
+
+def list_extension_modules(pkg, checkattr):
+    """
+    Lists extension modules in a specific Python package
+    (e.g. UIs, servers). NOTE: Calling this function will import all of the
+    submodules of the specified module in order to check for the specified
+    attribute; this can have unusual side-effects. As a result, this should
+    only be called when displaying help text or error messages.
+    Parameters:
+        pkg: previously imported Python package to list
+        checkattr: attribute to look for in module to determine if it's valid
+            as the type of extension you are looking for
+    """
+    import pkgutil
+    pkgdir = os.path.dirname(pkg.__file__)
+
+    modules = []
+    for _, modulename, _ in pkgutil.iter_modules([pkgdir]):
+        if os.path.isdir(os.path.join(pkgdir, modulename)):
+            # ignore directories
+            continue
+        try:
+            module = __import__(pkg.__name__, fromlist=[modulename])
+        except:
+            # If we can't import it, it's not valid
+            continue
+        module_if = getattr(module, modulename)
+        if getattr(module_if, 'hidden_extension', False):
+            continue
+        if not checkattr or hasattr(module_if, checkattr):
+            modules.append(modulename)
+    return modules
+
+def import_extension_module(pkg, modulename, checkattr):
     try:
         # Dynamically load the UI based on the ui name. Although we
         # suggest a fixed set this allows you to have flexibility in which
         # ones are available.
-        module = __import__("bb.ui", fromlist = [interface])
-        return getattr(module, interface)
+        module = __import__(pkg.__name__, fromlist = [modulename])
+        return getattr(module, modulename)
     except AttributeError:
-        raise BBMainException("FATAL: Invalid user interface '%s' specified.\n"
-                 "Valid interfaces: depexp, goggle, ncurses, hob, knotty [default]." % interface)
+        raise BBMainException('FATAL: Unable to import extension module "%s" from %s. Valid extension modules: %s' % (modulename, pkg.__name__, present_options(list_extension_modules(pkg, checkattr))))
 
 
 # Display bitbake/OE warnings via the BitBake.Warnings logger, ignoring others"""
@@ -82,8 +129,9 @@ class BitBakeConfigParameters(cookerdata.ConfigParameters):
 
     def parseCommandLine(self, argv=sys.argv):
         parser = optparse.OptionParser(
+            formatter = BitbakeHelpFormatter(),
             version = "BitBake Build Tool Core version %s" % bb.__version__,
-            usage = """%prog [options] [recipename/target ...]
+            usage = """%prog [options] [recipename/target recipe:do_task ...]
 
     Executes the specified task (default is 'build') for a given set of target recipes (.bb files).
     It is assumed there is a conf/bblayers.conf available in cwd or in BBPATH which
@@ -146,11 +194,15 @@ class BitBakeConfigParameters(cookerdata.ConfigParameters):
         parser.add_option("-P", "--profile", help = "Profile the command and save reports.",
                    action = "store_true", dest = "profile", default = False)
 
-        parser.add_option("-u", "--ui", help = "The user interface to use (e.g. knotty, hob, depexp).",
-                   action = "store", dest = "ui")
+        env_ui = os.environ.get('BITBAKE_UI', None)
+        default_ui = env_ui or 'knotty'
+        # @CHOICES@ is substituted out by BitbakeHelpFormatter above
+        parser.add_option("-u", "--ui", help = "The user interface to use (@CHOICES@ - default %default).",
+                   action="store", dest="ui", default=default_ui)
 
-        parser.add_option("-t", "--servertype", help = "Choose which server to use, process or xmlrpc.",
-                   action = "store", dest = "servertype")
+        # @CHOICES@ is substituted out by BitbakeHelpFormatter above
+        parser.add_option("-t", "--servertype", help = "Choose which server type to use (@CHOICES@ - default %default).",
+                   action = "store", dest = "servertype", default = "process")
 
         parser.add_option("", "--token", help = "Specify the connection token to be used when connecting to a remote server.",
                    action = "store", dest = "xmlrpctoken")
@@ -166,6 +218,9 @@ class BitBakeConfigParameters(cookerdata.ConfigParameters):
 
         parser.add_option("", "--no-setscene", help = "Do not run any setscene tasks. sstate will be ignored and everything needed, built.",
                    action = "store_true", dest = "nosetscene", default = False)
+
+        parser.add_option("", "--setscene-only", help = "Only run setscene tasks, don't run any real tasks.",
+                   action = "store_true", dest = "setsceneonly", default = False)
 
         parser.add_option("", "--remote-server", help = "Connect to the specified server.",
                    action = "store", dest = "remote_server", default = False)
@@ -192,7 +247,7 @@ class BitBakeConfigParameters(cookerdata.ConfigParameters):
         if "BBTOKEN" in os.environ:
             options.xmlrpctoken = os.environ["BBTOKEN"]
 
-        if "BBEVENTLOG" is os.environ:
+        if "BBEVENTLOG" in os.environ:
             options.writeeventlog = os.environ["BBEVENTLOG"]
 
         # fill in proper log name if not supplied
@@ -227,12 +282,13 @@ class BitBakeConfigParameters(cookerdata.ConfigParameters):
 
 def start_server(servermodule, configParams, configuration, features):
     server = servermodule.BitBakeServer()
+    single_use = not configParams.server_only
     if configParams.bind:
         (host, port) = configParams.bind.split(':')
-        server.initServer((host, int(port)))
+        server.initServer((host, int(port)), single_use)
         configuration.interface = [ server.serverImpl.host, server.serverImpl.port ]
     else:
-        server.initServer()
+        server.initServer(single_use=single_use)
         configuration.interface = []
 
     try:
@@ -257,6 +313,7 @@ def start_server(servermodule, configParams, configuration, features):
                 logger.handle(event)
         raise exc_info[1], None, exc_info[2]
     server.detach()
+    cooker.lock.close()
     return server
 
 
@@ -278,21 +335,8 @@ def bitbake_main(configParams, configuration):
 
     configuration.setConfigParameters(configParams)
 
-    ui_module = get_ui(configParams)
-
-    # Server type can be xmlrpc or process currently, if nothing is specified,
-    # the default server is process
-    if configParams.servertype:
-        server_type = configParams.servertype
-    else:
-        server_type = 'process'
-
-    try:
-        module = __import__("bb.server", fromlist = [server_type])
-        servermodule = getattr(module, server_type)
-    except AttributeError:
-        raise BBMainException("FATAL: Invalid server type '%s' specified.\n"
-                              "Valid interfaces: xmlrpc, process [default]." % server_type)
+    ui_module = import_extension_module(bb.ui, configParams.ui, 'main')
+    servermodule = import_extension_module(bb.server, configParams.servertype, 'BitBakeServer')
 
     if configParams.server_only:
         if configParams.servertype != "xmlrpc":
@@ -343,6 +387,13 @@ def bitbake_main(configParams, configuration):
         # Collect the feature set for the UI
         featureset = getattr(ui_module, "featureSet", [])
 
+    if configParams.server_only:
+        for param in ('prefile', 'postfile'):
+            value = getattr(configParams, param)
+            if value:
+                setattr(configuration, "%s_server" % param, value)
+                param = "%s_server" % param
+
     if not configParams.remote_server:
         # we start a server with a given configuration
         server = start_server(servermodule, configParams, configuration, featureset)
@@ -357,9 +408,14 @@ def bitbake_main(configParams, configuration):
         try:
             server_connection = server.establishConnection(featureset)
         except Exception as e:
-            if configParams.kill_server:
-                return 0
             bb.fatal("Could not connect to server %s: %s" % (configParams.remote_server, str(e)))
+
+        if configParams.kill_server:
+            server_connection.connection.terminateServer()
+            bb.event.ui_queue = []
+            return 0
+
+        server_connection.setupEventQueue()
 
         # Restore the environment in case the UI needs it
         for k in cleanedvars:
@@ -370,11 +426,6 @@ def bitbake_main(configParams, configuration):
 
         if configParams.status_only:
             server_connection.terminate()
-            return 0
-
-        if configParams.kill_server:
-            server_connection.connection.terminateServer()
-            bb.event.ui_queue = []
             return 0
 
         try:

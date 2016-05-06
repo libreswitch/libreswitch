@@ -17,7 +17,7 @@ LIC_FILES_CHKSUM = "file://README;beginline=30;endline=55;md5=b394fadb039bbfca6a
 
 PR = "r2"
 
-SRC_URI = "http://gnome-build-stage-1.googlecode.com/files/uuid-1.6.2.tar.gz \
+SRC_URI = "${DEBIAN_MIRROR}/main/o/${BPN}/${BPN}_${PV}.orig.tar.gz \
 	   file://0001-Change-library-name.patch \
 	   file://0002-uuid-preserve-m-option-status-in-v-option-handling.patch \
 	   file://0003-Fix-whatis-entries.patch \
@@ -32,7 +32,7 @@ SRC_URI[sha256sum] = "11a615225baa5f8bb686824423f50e4427acd3f70d394765bdff32801f
 
 S = "${WORKDIR}/uuid-${PV}"
 
-inherit autotools
+inherit autotools update-alternatives
 
 EXTRA_OECONF = "--without-dce --without-cxx --without-perl --without-perl-compat --without-php --without-pgsql"
 EXTRA_OECONF = "--includedir=${includedir}/ossp"
@@ -57,3 +57,7 @@ FILES_${PN} = "${libdir}/libossp-uuid.so.16*"
 FILES_${PN}-dev += "${bindir}/uuid-config"
 
 BBCLASSEXTEND = "native nativesdk"
+
+ALTERNATIVE_${PN}-doc = "uuid.3"
+ALTERNATIVE_PRIORITY_${PN}-doc = "200"
+ALTERNATIVE_LINK_NAME[uuid.3] = "${mandir}/man3/uuid.3"

@@ -12,7 +12,7 @@ do_install_append () {
         install -m 0755 ${WORKDIR}/dhclient-exit-hooks ${D}${sysconfdir}/dhclient-exit-hooks
 }
 
-FILES_dhcp-client += "${systemd_unitdir}/system/dhclient@.service ${sysconfdir}/dhclient-exit-hooks \
+FILES_${PN}-client += "${systemd_unitdir}/system/dhclient@.service ${sysconfdir}/dhclient-exit-hooks \
                       ${systemd_unitdir}/system/dhclient6@.service"
 
 SYSTEMD_PACKAGES += "${PN}-client"

@@ -102,6 +102,56 @@
             </glossdef>
         </glossentry>
 
+        <glossentry id='var-BB_ALLOWED_NETWORKS'><glossterm>BB_ALLOWED_NETWORKS</glossterm>
+            <glossdef>
+                <para>
+                    Specifies a space-delimited list of hosts that the fetcher
+                    is allowed to use to obtain the required source code.
+                    Following are considerations surrounding this variable:
+                    <itemizedlist>
+                        <listitem><para>
+                            This host list is only used if
+                            <link linkend='var-BB_NO_NETWORK'><filename>BB_NO_NETWORK</filename></link>
+                            is either not set or set to "0".
+                            </para></listitem>
+                        <listitem><para>
+                            Limited support for wildcard matching against the
+                            beginning of host names exists.
+                            For example, the following setting matches
+                            <filename>git.gnu.org</filename>,
+                            <filename>ftp.gnu.org</filename>, and
+                            <filename>foo.git.gnu.org</filename>.
+                            <literallayout class='monospaced'>
+     BB_ALLOWED_NETWORKS = "*.gnu.org"
+                            </literallayout>
+                            </para></listitem>
+                        <listitem><para>
+                            Mirrors not in the host list are skipped and
+                            logged in debug.
+                            </para></listitem>
+                        <listitem><para>
+                            Attempts to access networks not in the host list
+                            cause a failure.
+                            </para></listitem>
+                    </itemizedlist>
+                    Using <filename>BB_ALLOWED_NETWORKS</filename> in
+                    conjunction with
+                    <link linkend='var-PREMIRRORS'><filename>PREMIRRORS</filename></link>
+                    is very useful.
+                    Adding the host you want to use to
+                    <filename>PREMIRRORS</filename> results in the source code
+                    being fetched from an allowed location and avoids raising
+                    an error when a host that is not allowed is in a
+                    <link linkend='var-SRC_URI'><filename>SRC_URI</filename></link>
+                    statement.
+                    This is because the fetcher does not attempt to use the
+                    host listed in <filename>SRC_URI</filename> after a
+                    successful fetch from the
+                    <filename>PREMIRRORS</filename> occurs.
+                </para>
+            </glossdef>
+        </glossentry>
+
         <glossentry id='var-BB_CONSOLELOG'><glossterm>BB_CONSOLELOG</glossterm>
             <glossdef>
                 <para>
@@ -806,6 +856,56 @@
             </glossdef>
         </glossentry>
 
+        <glossentry id='var-BB_TASK_IONICE_LEVEL'><glossterm>BB_TASK_IONICE_LEVEL</glossterm>
+            <glossdef>
+                <para>
+                    Allows adjustment of a task's Input/Output priority.
+                    During Autobuilder testing, random failures can occur
+                    for tasks due to I/O starvation.
+                    These failures occur during various QEMU runtime timeouts.
+                    You can use the <filename>BB_TASK_IONICE_LEVEL</filename>
+                    variable to adjust the I/O priority of these tasks.
+                    <note>
+                        This variable works similarly to the
+                        <link linkend='var-BB_TASK_NICE_LEVEL'><filename>BB_TASK_NICE_LEVEL</filename></link>
+                        variable except with a task's I/O priorities.
+                    </note>
+                </para>
+
+                <para>
+                    Set the variable as follows:
+                    <literallayout class='monospaced'>
+     BB_TASK_IONICE_LEVEL = "<replaceable>class</replaceable>.<replaceable>prio</replaceable>"
+                    </literallayout>
+                    For <replaceable>class</replaceable>, the default value is
+                    "2", which is a best effort.
+                    You can use "1" for realtime and "3" for idle.
+                    If you want to use realtime, you must have superuser
+                    privileges.
+                </para>
+
+                <para>
+                    For <replaceable>prio</replaceable>, you can use any
+                    value from "0", which is the highest priority, to "7",
+                    which is the lowest.
+                    The default value is "4".
+                    You do not need any special privileges to use this range
+                    of priority values.
+                    <note>
+                        In order for your I/O priority settings to take effect,
+                        you need the Completely Fair Queuing (CFQ) Scheduler
+                        selected for the backing block device.
+                        To select the scheduler, use the following command form
+                        where <replaceable>device</replaceable> is the device
+                        (e.g. sda, sdb, and so forth):
+                        <literallayout class='monospaced'>
+      $ sudo sh -c “echo cfq > /sys/block/<replaceable>device</replaceable>/queu/scheduler
+                        </literallayout>
+                    </note>
+                </para>
+            </glossdef>
+        </glossentry>
+
         <glossentry id='var-BB_TASK_NICE_LEVEL'><glossterm>BB_TASK_NICE_LEVEL</glossterm>
             <glossdef>
                 <para>
@@ -1016,6 +1116,20 @@
             </glossdef>
         </glossentry>
 
+        <glossentry id='var-BBLAYERS_FETCH_DIR'><glossterm>BBLAYERS_FETCH_DIR</glossterm>
+            <glossdef>
+                <para>
+                    Sets the base location where layers are stored.
+                    By default, this location is set to
+                    <filename>${COREBASE}</filename>.
+                    This setting is used in conjunction with
+                    <filename>bitbake-layers layerindex-fetch</filename> and
+                    tells <filename>bitbake-layers</filename> where to place
+                    the fetched layers.
+                </para>
+            </glossdef>
+        </glossentry>
+
         <glossentry id='var-BBMASK'><glossterm>BBMASK</glossterm>
             <glossdef>
                 <para>
@@ -1028,14 +1142,14 @@
                     to "hide" these <filename>.bb</filename> and
                     <filename>.bbappend</filename> files.
                     BitBake ignores any recipe or recipe append files that
-                    match the expression.
+                    match any of the expressions.
                     It is as if BitBake does not see them at all.
                     Consequently, matching files are not parsed or otherwise
                     used by BitBake.</para>
                 <para>
-                    The value you provide is passed to Python's regular
+                    The values you provide are passed to Python's regular
                     expression compiler.
-                    The expression is compared against the full paths to
+                    The expressions are compared against the full paths to
                     the files.
                     For complete syntax information, see Python's
                     documentation at
@@ -1051,18 +1165,16 @@
      BBMASK = "meta-ti/recipes-misc/"
                     </literallayout>
                     If you want to mask out multiple directories or recipes,
-                    use the vertical bar to separate the regular expression
-                    fragments.
+                    you can specify multiple regular expression fragments.
                     This next example masks out multiple directories and
                     individual recipes:
                     <literallayout class='monospaced'>
-     BBMASK = "meta-ti/recipes-misc/|meta-ti/recipes-ti/packagegroup/"
-     BBMASK .= "|.*meta-oe/recipes-support/"
-     BBMASK .= "|.*openldap"
-     BBMASK .= "|.*opencv"
-     BBMASK .= "|.*lzma"
+     BBMASK += "/meta-ti/recipes-misc/ meta-ti/recipes-ti/packagegroup/"
+     BBMASK += "/meta-oe/recipes-support/"
+     BBMASK += "/meta-foo/.*/openldap"
+     BBMASK += "opencv.*\.bbappend"
+     BBMASK += "lzma"
                     </literallayout>
-                    Notice how the vertical bar is used to append the fragments.
                     <note>
                         When specifying a directory name, use the trailing
                         slash character to ensure you match just that directory
@@ -1105,6 +1217,15 @@
                     Points to the server that runs memory-resident BitBake.
                     The variable is only used when you employ memory-resident
                     BitBake.
+                </para>
+            </glossdef>
+        </glossentry>
+
+        <glossentry id='var-BBTARGETS'><glossterm>BBTARGETS</glossterm>
+            <glossdef>
+                <para>
+                    Allows you to use a configuration file to add to the list
+                    of command-line target recipes you want to build.
                 </para>
             </glossdef>
         </glossentry>

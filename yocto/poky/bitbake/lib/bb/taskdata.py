@@ -41,7 +41,7 @@ class TaskData:
     """
     BitBake Task Data implementation
     """
-    def __init__(self, abort = True, tryaltconfigs = False, skiplist = None):
+    def __init__(self, abort = True, tryaltconfigs = False, skiplist = None, allowincomplete = False):
         self.build_names_index = []
         self.run_names_index = []
         self.fn_index = []
@@ -70,6 +70,7 @@ class TaskData:
 
         self.abort = abort
         self.tryaltconfigs = tryaltconfigs
+        self.allowincomplete = allowincomplete
 
         self.skiplist = skiplist
 
@@ -171,6 +172,8 @@ class TaskData:
         if fnid in self.tasks_fnid:
             return
 
+        self.add_extra_deps(fn, dataCache)
+
         for task in task_deps['tasks']:
 
             # Work out task dependencies
@@ -240,6 +243,21 @@ class TaskData:
             if dep in self.failed_rdeps:
                 self.fail_fnid(fnid)
                 return
+
+    def add_extra_deps(self, fn, dataCache):
+        func = dataCache.extradepsfunc.get(fn, None)
+        if func:
+            bb.providers.buildWorldTargetList(dataCache)
+            pn = dataCache.pkg_fn[fn]
+            params = {'deps': dataCache.deps[fn],
+                      'world_target': dataCache.world_target,
+                      'pkg_pn': dataCache.pkg_pn,
+                      'self_pn': pn}
+            funcname = '_%s_calculate_extra_depends' % pn.replace('-', '_')
+            paramlist = ','.join(params.keys())
+            func = 'def %s(%s):\n%s\n\n%s(%s)' % (funcname, paramlist, func, funcname, paramlist)
+            bb.utils.better_exec(func, params)
+
 
     def have_build_target(self, target):
         """
@@ -428,7 +446,14 @@ class TaskData:
             return
 
         if not item in dataCache.providers:
-            bb.event.fire(bb.event.NoProvider(item, dependees=self.get_dependees_str(item), reasons=self.get_reasons(item), close_matches=self.get_close_matches(item, dataCache.providers.keys())), cfgData)
+            close_matches = self.get_close_matches(item, dataCache.providers.keys())
+            # Is it in RuntimeProviders ?
+            all_p = bb.providers.getRuntimeProviders(dataCache, item)
+            for fn in all_p:
+                new = dataCache.pkg_fn[fn] + " RPROVIDES " + item
+                if new not in close_matches:
+                    close_matches.append(new)
+            bb.event.fire(bb.event.NoProvider(item, dependees=self.get_dependees_str(item), reasons=self.get_reasons(item), close_matches=close_matches), cfgData)
             raise bb.providers.NoProvider(item)
 
         if self.have_build_target(item):
@@ -513,7 +538,7 @@ class TaskData:
             self.add_runtime_target(fn, item)
             self.add_tasks(fn, dataCache)
 
-    def fail_fnid(self, fnid, missing_list = []):
+    def fail_fnid(self, fnid, missing_list=None):
         """
         Mark a file as failed (unbuildable)
         Remove any references from build and runtime provider lists
@@ -522,6 +547,8 @@ class TaskData:
         """
         if fnid in self.failed_fnids:
             return
+        if not missing_list:
+            missing_list = []
         logger.debug(1, "File '%s' is unbuildable, removing...", self.fn_index[fnid])
         self.failed_fnids.append(fnid)
         for target in self.build_targets:
@@ -535,7 +562,7 @@ class TaskData:
                 if len(self.run_targets[target]) == 0:
                     self.remove_runtarget(target, missing_list)
 
-    def remove_buildtarget(self, targetid, missing_list = []):
+    def remove_buildtarget(self, targetid, missing_list=None):
         """
         Mark a build target as failed (unbuildable)
         Trigger removal of any files that have this as a dependency
@@ -560,7 +587,7 @@ class TaskData:
             logger.error("Required build target '%s' has no buildable providers.\nMissing or unbuildable dependency chain was: %s", target, missing_list)
             raise bb.providers.NoProvider(target)
 
-    def remove_runtarget(self, targetid, missing_list = []):
+    def remove_runtarget(self, targetid, missing_list=None):
         """
         Mark a run target as failed (unbuildable)
         Trigger removal of any files that have this as a dependency
@@ -594,9 +621,10 @@ class TaskData:
                     added = added + 1
                 except bb.providers.NoProvider:
                     targetid = self.getbuild_id(target)
-                    if self.abort and targetid in self.external_targets:
+                    if self.abort and targetid in self.external_targets and not self.allowincomplete:
                         raise
-                    self.remove_buildtarget(targetid)
+                    if not self.allowincomplete:
+                        self.remove_buildtarget(targetid)
             for target in self.get_unresolved_run_targets(dataCache):
                 try:
                     self.add_rprovider(cfgData, dataCache, target)
@@ -607,6 +635,17 @@ class TaskData:
             if added == 0:
                 break
         # self.dump_data()
+
+    def get_providermap(self, prefix=None):
+        provmap = {}
+        for name in self.build_names_index:
+            if prefix and not name.startswith(prefix):
+                continue
+            if self.have_build_target(name):
+                provider = self.get_provider(name)
+                if provider:
+                    provmap[name] = self.fn_index[provider[0]]
+        return provmap
 
     def dump_data(self):
         """

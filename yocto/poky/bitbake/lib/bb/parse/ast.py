@@ -83,9 +83,9 @@ class DataNode(AstNode):
 
     def getFunc(self, key, data):
         if 'flag' in self.groupd and self.groupd['flag'] != None:
-            return data.getVarFlag(key, self.groupd['flag'], noweakdefault=True)
+            return data.getVarFlag(key, self.groupd['flag'], expand=False, noweakdefault=True)
         else:
-            return data.getVar(key, noweakdefault=True)
+            return data.getVar(key, False, noweakdefault=True, parsing=True)
 
     def eval(self, data):
         groupd = self.groupd
@@ -136,29 +136,42 @@ class DataNode(AstNode):
         if flag:
             data.setVarFlag(key, flag, val, **loginfo)
         else:
-            data.setVar(key, val, **loginfo)
+            data.setVar(key, val, parsing=True, **loginfo)
 
 class MethodNode(AstNode):
     tr_tbl = string.maketrans('/.+-@%&', '_______')
 
-    def __init__(self, filename, lineno, func_name, body):
+    def __init__(self, filename, lineno, func_name, body, python, fakeroot):
         AstNode.__init__(self, filename, lineno)
         self.func_name = func_name
         self.body = body
+        self.python = python
+        self.fakeroot = fakeroot
 
     def eval(self, data):
         text = '\n'.join(self.body)
+        funcname = self.func_name
         if self.func_name == "__anonymous":
             funcname = ("__anon_%s_%s" % (self.lineno, self.filename.translate(MethodNode.tr_tbl)))
+            self.python = True
             text = "def %s(d):\n" % (funcname) + text
-            bb.methodpool.insert_method(funcname, text, self.filename)
-            anonfuncs = data.getVar('__BBANONFUNCS') or []
+            bb.methodpool.insert_method(funcname, text, self.filename, self.lineno - len(self.body))
+            anonfuncs = data.getVar('__BBANONFUNCS', False) or []
             anonfuncs.append(funcname)
             data.setVar('__BBANONFUNCS', anonfuncs)
-            data.setVar(funcname, text)
-        else:
-            data.setVarFlag(self.func_name, "func", 1)
-            data.setVar(self.func_name, text)
+        if data.getVar(funcname, False):
+            # clean up old version of this piece of metadata, as its
+            # flags could cause problems
+            data.delVarFlag(funcname, 'python')
+            data.delVarFlag(funcname, 'fakeroot')
+        if self.python:
+            data.setVarFlag(funcname, "python", "1")
+        if self.fakeroot:
+            data.setVarFlag(funcname, "fakeroot", "1")
+        data.setVarFlag(funcname, "func", 1)
+        data.setVar(funcname, text, parsing=True)
+        data.setVarFlag(funcname, 'filename', self.filename)
+        data.setVarFlag(funcname, 'lineno', str(self.lineno - len(self.body)))
 
 class PythonMethodNode(AstNode):
     def __init__(self, filename, lineno, function, modulename, body):
@@ -172,31 +185,12 @@ class PythonMethodNode(AstNode):
         # 'this' file. This means we will not parse methods from
         # bb classes twice
         text = '\n'.join(self.body)
-        bb.methodpool.insert_method(self.modulename, text, self.filename)
+        bb.methodpool.insert_method(self.modulename, text, self.filename, self.lineno - len(self.body) - 1)
         data.setVarFlag(self.function, "func", 1)
         data.setVarFlag(self.function, "python", 1)
-        data.setVar(self.function, text)
-
-class MethodFlagsNode(AstNode):
-    def __init__(self, filename, lineno, key, m):
-        AstNode.__init__(self, filename, lineno)
-        self.key = key
-        self.m = m
-
-    def eval(self, data):
-        if data.getVar(self.key):
-            # clean up old version of this piece of metadata, as its
-            # flags could cause problems
-            data.setVarFlag(self.key, 'python', None)
-            data.setVarFlag(self.key, 'fakeroot', None)
-        if self.m.group("py") is not None:
-            data.setVarFlag(self.key, "python", "1")
-        else:
-            data.delVarFlag(self.key, "python")
-        if self.m.group("fr") is not None:
-            data.setVarFlag(self.key, "fakeroot", "1")
-        else:
-            data.delVarFlag(self.key, "fakeroot")
+        data.setVar(self.function, text, parsing=True)
+        data.setVarFlag(self.function, 'filename', self.filename)
+        data.setVarFlag(self.function, 'lineno', str(self.lineno - len(self.body) - 1))
 
 class ExportFuncsNode(AstNode):
     def __init__(self, filename, lineno, fns, classname):
@@ -209,26 +203,28 @@ class ExportFuncsNode(AstNode):
         for func in self.n:
             calledfunc = self.classname + "_" + func
 
-            if data.getVar(func) and not data.getVarFlag(func, 'export_func'):
+            if data.getVar(func, False) and not data.getVarFlag(func, 'export_func', False):
                 continue
 
-            if data.getVar(func):
+            if data.getVar(func, False):
                 data.setVarFlag(func, 'python', None)
                 data.setVarFlag(func, 'func', None)
 
             for flag in [ "func", "python" ]:
-                if data.getVarFlag(calledfunc, flag):
-                    data.setVarFlag(func, flag, data.getVarFlag(calledfunc, flag))
+                if data.getVarFlag(calledfunc, flag, False):
+                    data.setVarFlag(func, flag, data.getVarFlag(calledfunc, flag, False))
             for flag in [ "dirs" ]:
-                if data.getVarFlag(func, flag):
-                    data.setVarFlag(calledfunc, flag, data.getVarFlag(func, flag))
+                if data.getVarFlag(func, flag, False):
+                    data.setVarFlag(calledfunc, flag, data.getVarFlag(func, flag, False))
+            data.setVarFlag(func, "filename", "autogenerated")
+            data.setVarFlag(func, "lineno", 1)
 
-            if data.getVarFlag(calledfunc, "python"):
-                data.setVar(func, "    bb.build.exec_func('" + calledfunc + "', d)\n")
+            if data.getVarFlag(calledfunc, "python", False):
+                data.setVar(func, "    bb.build.exec_func('" + calledfunc + "', d)\n", parsing=True)
             else:
                 if "-" in self.classname:
                    bb.fatal("The classname %s contains a dash character and is calling an sh function %s using EXPORT_FUNCTIONS. Since a dash is illegal in sh function names, this cannot work, please rename the class or don't use EXPORT_FUNCTIONS." % (self.classname, calledfunc))
-                data.setVar(func, "    " + calledfunc + "\n")
+                data.setVar(func, "    " + calledfunc + "\n", parsing=True)
             data.setVarFlag(func, 'export_func', '1')
 
 class AddTaskNode(AstNode):
@@ -255,7 +251,7 @@ class BBHandlerNode(AstNode):
         self.hs = fns.split()
 
     def eval(self, data):
-        bbhands = data.getVar('__BBHANDLERS') or []
+        bbhands = data.getVar('__BBHANDLERS', False) or []
         for h in self.hs:
             bbhands.append(h)
             data.setVarFlag(h, "handler", 1)
@@ -278,14 +274,11 @@ def handleExport(statements, filename, lineno, m):
 def handleData(statements, filename, lineno, groupd):
     statements.append(DataNode(filename, lineno, groupd))
 
-def handleMethod(statements, filename, lineno, func_name, body):
-    statements.append(MethodNode(filename, lineno, func_name, body))
+def handleMethod(statements, filename, lineno, func_name, body, python, fakeroot):
+    statements.append(MethodNode(filename, lineno, func_name, body, python, fakeroot))
 
 def handlePythonMethod(statements, filename, lineno, funcname, modulename, body):
     statements.append(PythonMethodNode(filename, lineno, funcname, modulename, body))
-
-def handleMethodFlags(statements, filename, lineno, key, m):
-    statements.append(MethodFlagsNode(filename, lineno, key, m))
 
 def handleExportFuncs(statements, filename, lineno, m, classname):
     statements.append(ExportFuncsNode(filename, lineno, m.group(1), classname))
@@ -315,23 +308,24 @@ def handleInherit(statements, filename, lineno, m):
 
 def finalize(fn, d, variant = None):
     all_handlers = {}
-    for var in d.getVar('__BBHANDLERS') or []:
+    for var in d.getVar('__BBHANDLERS', False) or []:
         # try to add the handler
-        bb.event.register(var, d.getVar(var), (d.getVarFlag(var, "eventmask", True) or "").split())
+        handlerfn = d.getVarFlag(var, "filename", False)
+        handlerln = int(d.getVarFlag(var, "lineno", False))
+        bb.event.register(var, d.getVar(var, False), (d.getVarFlag(var, "eventmask", True) or "").split(), handlerfn, handlerln)
 
     bb.event.fire(bb.event.RecipePreFinalise(fn), d)
 
     bb.data.expandKeys(d)
     bb.data.update_data(d)
     code = []
-    for funcname in d.getVar("__BBANONFUNCS") or []:
+    for funcname in d.getVar("__BBANONFUNCS", False) or []:
         code.append("%s(d)" % funcname)
     bb.utils.better_exec("\n".join(code), {"d": d})
     bb.data.update_data(d)
 
-    tasklist = d.getVar('__BBTASKS') or []
-    deltasklist = d.getVar('__BBDELTASKS') or []
-    bb.build.add_tasks(tasklist, deltasklist, d)
+    tasklist = d.getVar('__BBTASKS', False) or []
+    bb.build.add_tasks(tasklist, d)
 
     bb.parse.siggen.finalise(fn, d, variant)
 

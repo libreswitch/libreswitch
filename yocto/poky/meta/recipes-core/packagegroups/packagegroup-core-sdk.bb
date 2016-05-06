@@ -23,7 +23,6 @@ RDEPENDS_packagegroup-core-sdk = "\
     findutils \
     quilt \
     less \
-    distcc \
     ldd \
     file \
     tcl"
@@ -33,8 +32,11 @@ SANITIZERS_aarch64 = ""
 SANITIZERS_mips = ""
 SANITIZERS_mips64 = ""
 SANITIZERS_mips64n32 = ""
+SANITIZERS_nios2 = ""
 SANITIZERS_powerpc64 = ""
 SANITIZERS_sparc = ""
+SANITIZERS_libc-musl = ""
+SANITIZERS_libc-uclibc = ""
 
 RRECOMMENDS_packagegroup-core-sdk = "\
     libgomp \
@@ -72,9 +74,9 @@ RRECOMMENDS_packagegroup-core-sdk = "\
 #                    if packaged('%s-dev' % name, d):
 #                        rreclist.append('%s-dev' % name)
 #
-#            oldrrec = d.getVar('RRECOMMENDS_%s' % newpkg) or ''
+#            oldrrec = d.getVar('RRECOMMENDS_%s' % newpkg, False) or ''
 #            d.setVar('RRECOMMENDS_%s' % newpkg, oldrrec + ' ' + ' '.join(rreclist))
-#            # bb.note('RRECOMMENDS_%s = "%s"' % (newpkg, d.getVar('RRECOMMENDS_%s' % newpkg)))
+#            # bb.note('RRECOMMENDS_%s = "%s"' % (newpkg, d.getVar('RRECOMMENDS_%s' % newpkg, False)))
 #
 #    # bb.note('pkgs is %s' % pkgs)
 #    d.setVar('PACKAGES', ' '.join(pkgs))

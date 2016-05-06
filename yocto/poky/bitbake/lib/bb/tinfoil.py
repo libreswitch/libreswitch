@@ -36,13 +36,13 @@ class Tinfoil:
 
         # Set up logging
         self.logger = logging.getLogger('BitBake')
-        console = logging.StreamHandler(output)
-        bb.msg.addDefaultlogFilter(console)
+        self._log_hdlr = logging.StreamHandler(output)
+        bb.msg.addDefaultlogFilter(self._log_hdlr)
         format = bb.msg.BBLogFormatter("%(levelname)s: %(message)s")
         if output.isatty():
             format.enable_color()
-        console.setFormatter(format)
-        self.logger.addHandler(console)
+        self._log_hdlr.setFormatter(format)
+        self.logger.addHandler(self._log_hdlr)
 
         self.config = CookerConfiguration()
         configparams = TinfoilConfigParameters(parse_only=True)
@@ -83,6 +83,12 @@ class Tinfoil:
                 self.cooker_data = self.cooker.recipecache
             else:
                 self.parseRecipes()
+
+    def shutdown(self):
+        self.cooker.shutdown(force=True)
+        self.cooker.post_serve()
+        self.cooker.unlockBitbake()
+        self.logger.removeHandler(self._log_hdlr)
 
 class TinfoilConfigParameters(ConfigParameters):
 

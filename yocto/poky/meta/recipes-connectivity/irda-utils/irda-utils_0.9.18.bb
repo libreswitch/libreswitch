@@ -3,7 +3,7 @@ DESCRIPTION = "Provides common files needed to use IrDA. \
 IrDA allows communication over Infrared with other devices \
 such as phones and laptops."
 HOMEPAGE = "http://irda.sourceforge.net/"
-BUGTRACKER = "irda-users@lists.sourceforge.net"
+BUGTRACKER = "http://sourceforge.net/p/irda/bugs/"
 SECTION = "base"
 LICENSE = "GPLv2+"
 LIC_FILES_CHKSUM = "file://irdadump/COPYING;md5=94d55d512a9ba36caa9b7df079bae19f \
@@ -13,6 +13,7 @@ LIC_FILES_CHKSUM = "file://irdadump/COPYING;md5=94d55d512a9ba36caa9b7df079bae19f
 
 SRC_URI = "${SOURCEFORGE_MIRROR}/irda/irda-utils-${PV}.tar.gz \
            file://ldflags.patch \
+           file://musl.patch \
            file://init"
 
 SRC_URI[md5sum] = "84dc12aa4c3f61fccb8d8919bf4079bb"
@@ -32,15 +33,18 @@ EXTRA_OEMAKE = "\
 INITSCRIPT_NAME = "irattach"
 INITSCRIPT_PARAMS = "defaults 20"
 
+TARGETS ??= "irattach irdaping"
 do_compile () {
-	oe_runmake -C irattach
-	oe_runmake -C irdaping
+	for t in ${TARGETS}; do
+		oe_runmake -C $t
+	done
 }
 
 do_install () {
 	install -d ${D}${sbindir}
-	oe_runmake -C irattach ROOT="${D}" install
-	oe_runmake -C irdaping ROOT="${D}" install
+	for t in ${TARGETS}; do
+		oe_runmake -C $t ROOT="${D}" install
+	done
 
 	install -d ${D}${sysconfdir}/init.d
 	install -m 0755 ${WORKDIR}/init ${D}${sysconfdir}/init.d/${INITSCRIPT_NAME}

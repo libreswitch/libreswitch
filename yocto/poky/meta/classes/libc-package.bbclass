@@ -204,7 +204,7 @@ python package_do_split_gconvs () {
 
     do_split_packages(d, locales_dir, file_regex='(.*)', output_pattern=bpn+'-localedata-%s', \
         description='locale definition for %s', hook=calc_locale_deps, extra_depends='')
-    d.setVar('PACKAGES', d.getVar('PACKAGES') + ' ' + d.getVar('MLPREFIX') + bpn + '-gconv')
+    d.setVar('PACKAGES', d.getVar('PACKAGES', False) + ' ' + d.getVar('MLPREFIX', False) + bpn + '-gconv')
 
     use_bin = d.getVar("GLIBC_INTERNAL_USE_BINARY_LOCALE", True)
 
@@ -236,8 +236,8 @@ python package_do_split_gconvs () {
                 supported[locale] = charset
 
     def output_locale_source(name, pkgname, locale, encoding):
-        d.setVar('RDEPENDS_%s' % pkgname, 'localedef %s-localedata-%s %s-charmap-%s' % \
-        (mlprefix+bpn, legitimize_package_name(locale), mlprefix+bpn, legitimize_package_name(encoding)))
+        d.setVar('RDEPENDS_%s' % pkgname, '%slocaledef %s-localedata-%s %s-charmap-%s' % \
+        (mlprefix, mlprefix+bpn, legitimize_package_name(locale), mlprefix+bpn, legitimize_package_name(encoding)))
         d.setVar('pkg_postinst_%s' % pkgname, d.getVar('locale_base_postinst', True) \
         % (locale, encoding, locale))
         d.setVar('pkg_postrm_%s' % pkgname, d.getVar('locale_base_postrm', True) % \
@@ -310,7 +310,7 @@ python package_do_split_gconvs () {
         bb.note("generating locale %s (%s)" % (locale, encoding))
 
     def output_locale(name, locale, encoding):
-        pkgname = d.getVar('MLPREFIX') + 'locale-base-' + legitimize_package_name(name)
+        pkgname = d.getVar('MLPREFIX', False) + 'locale-base-' + legitimize_package_name(name)
         d.setVar('ALLOW_EMPTY_%s' % pkgname, '1')
         d.setVar('PACKAGES', '%s %s' % (pkgname, d.getVar('PACKAGES', True)))
         rprovides = ' %svirtual-locale-%s' % (mlprefix, legitimize_package_name(name))
@@ -332,6 +332,8 @@ python package_do_split_gconvs () {
         bb.build.exec_func("do_prep_locale_tree", d)
 
     utf8_only = int(d.getVar('LOCALE_UTF8_ONLY', True) or 0)
+    utf8_is_default = int(d.getVar('LOCALE_UTF8_IS_DEFAULT', True) or 0)
+
     encodings = {}
     for locale in to_generate:
         charset = supported[locale]
@@ -344,10 +346,11 @@ python package_do_split_gconvs () {
         else:
             base = locale
 
-        # Precompiled locales are kept as is, obeying SUPPORTED, while
-        # others are adjusted, ensuring that the non-suffixed locales
-        # are utf-8, while the suffixed are not.
-        if use_bin == "precompiled":
+        # Non-precompiled locales may be renamed so that the default
+        # (non-suffixed) encoding is always UTF-8, i.e., instead of en_US and
+        # en_US.UTF-8, we have en_US and en_US.ISO-8859-1. This implicitly
+        # contradicts SUPPORTED.
+        if use_bin == "precompiled" or not utf8_is_default:
             output_locale(locale, base, charset)
         else:
             if charset == 'UTF-8':
@@ -363,8 +366,7 @@ python package_do_split_gconvs () {
             m.write(cmd + ":\n")
             m.write("\t" + commands[cmd] + "\n\n")
         m.close()
-        d.setVar("B", os.path.dirname(makefile))
-        d.setVar("EXTRA_OEMAKE", "${PARALLEL_MAKE}")
+        d.setVar("EXTRA_OEMAKE", "-C %s ${PARALLEL_MAKE}" % (os.path.dirname(makefile)))
         bb.note("Executing binary locale generation makefile")
         bb.build.exec_func("oe_runmake", d)
         bb.note("collecting binary locales from locale tree")

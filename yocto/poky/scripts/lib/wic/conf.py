@@ -17,9 +17,9 @@
 
 import os
 
+from wic.ksparser import KickStart, KickStartError
 from wic import msger
-from wic import kickstart
-from wic.utils import misc, runner, errors
+from wic.utils import misc
 
 
 def get_siteconf():
@@ -30,20 +30,18 @@ def get_siteconf():
     return scripts_path + "/lib/image/config/wic.conf"
 
 class ConfigMgr(object):
-    DEFAULTS = {'common': {
-                    "distro_name": "Default Distribution",
-                    "plugin_dir": "/usr/lib/wic/plugins", # TODO use prefix also?
-                },
-                'create': {
-                    "tmpdir": '/var/tmp/wic',
-                    "outdir": './wic-output',
-
-                    "release": None,
-                    "logfile": None,
-                    "name_prefix": None,
-                    "name_suffix": None,
-                },
-               }
+    DEFAULTS = {
+        'common': {
+            "distro_name": "Default Distribution",
+            "plugin_dir": "/usr/lib/wic/plugins"}, # TODO use prefix also?
+        'create': {
+            "tmpdir": '/var/tmp/wic',
+            "outdir": './wic-output',
+            "release": None,
+            "logfile": None,
+            "name_prefix": None,
+            "name_suffix": None}
+        }
 
     # make the manager class as singleton
     _instance = None
@@ -69,6 +67,7 @@ class ConfigMgr(object):
     def reset(self):
         self.__ksconf = None
         self.__siteconf = None
+        self.create = {}
 
         # initialize the values with defaults
         for sec, vals in self.DEFAULTS.iteritems():
@@ -88,9 +87,12 @@ class ConfigMgr(object):
         if not ksconf:
             return
 
-        ks = kickstart.read_kickstart(ksconf)
+        try:
+            ksobj = KickStart(ksconf)
+        except KickStartError as err:
+            msger.error(str(err))
 
-        self.create['ks'] = ks
+        self.create['ks'] = ksobj
         self.create['name'] = os.path.splitext(os.path.basename(ksconf))[0]
 
         self.create['name'] = misc.build_name(ksconf,

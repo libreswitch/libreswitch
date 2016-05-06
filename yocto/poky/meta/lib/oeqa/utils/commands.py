@@ -17,6 +17,12 @@ import logging
 from oeqa.utils import CommandError
 from oeqa.utils import ftools
 import re
+import contextlib
+# Export test doesn't require bb
+try:
+    import bb
+except ImportError:
+    pass
 
 class Command(object):
     def __init__(self, command, bg=False, timeout=None, data=None, **options):
@@ -141,7 +147,7 @@ def get_bb_var(var, target=None, postconfig=None):
     lastline = None
     for line in bbenv.splitlines():
         if re.search("^(export )?%s=" % var, line):
-            val = line.split('=')[1]
+            val = line.split('=', 1)[1]
             val = val.strip('\"')
             break
         elif re.match("unset %s$" % var, line):
@@ -173,3 +179,61 @@ def create_temp_layer(templayerdir, templayername, priority=999, recipepathspec=
         f.write('BBFILE_PATTERN_%s = "^${LAYERDIR}/"\n' % templayername)
         f.write('BBFILE_PRIORITY_%s = "%d"\n' % (templayername, priority))
         f.write('BBFILE_PATTERN_IGNORE_EMPTY_%s = "1"\n' % templayername)
+
+
+@contextlib.contextmanager
+def runqemu(pn, ssh=True):
+
+    import bb.tinfoil
+    import bb.build
+
+    tinfoil = bb.tinfoil.Tinfoil()
+    tinfoil.prepare(False)
+    try:
+        tinfoil.logger.setLevel(logging.WARNING)
+        import oeqa.targetcontrol
+        tinfoil.config_data.setVar("TEST_LOG_DIR", "${WORKDIR}/testimage")
+        tinfoil.config_data.setVar("TEST_QEMUBOOT_TIMEOUT", "1000")
+        import oe.recipeutils
+        recipefile = oe.recipeutils.pn_to_recipe(tinfoil.cooker, pn)
+        recipedata = oe.recipeutils.parse_recipe(recipefile, [], tinfoil.config_data)
+
+        # The QemuRunner log is saved out, but we need to ensure it is at the right
+        # log level (and then ensure that since it's a child of the BitBake logger,
+        # we disable propagation so we don't then see the log events on the console)
+        logger = logging.getLogger('BitBake.QemuRunner')
+        logger.setLevel(logging.DEBUG)
+        logger.propagate = False
+        logdir = recipedata.getVar("TEST_LOG_DIR", True)
+
+        qemu = oeqa.targetcontrol.QemuTarget(recipedata)
+    finally:
+        # We need to shut down tinfoil early here in case we actually want
+        # to run tinfoil-using utilities with the running QEMU instance.
+        # Luckily QemuTarget doesn't need it after the constructor.
+        tinfoil.shutdown()
+
+    # Setup bitbake logger as console handler is removed by tinfoil.shutdown
+    bblogger = logging.getLogger('BitBake')
+    bblogger.setLevel(logging.INFO)
+    console = logging.StreamHandler(sys.stdout)
+    bbformat = bb.msg.BBLogFormatter("%(levelname)s: %(message)s")
+    if sys.stdout.isatty():
+        bbformat.enable_color()
+    console.setFormatter(bbformat)
+    bblogger.addHandler(console)
+
+    try:
+        qemu.deploy()
+        try:
+            qemu.start(ssh=ssh)
+        except bb.build.FuncFailed:
+            raise Exception('Failed to start QEMU - see the logs in %s' % logdir)
+
+        yield qemu
+
+    finally:
+        try:
+            qemu.stop()
+        except:
+            pass

@@ -9,8 +9,8 @@ LSB_CORE_x86 = "lsb-core-ia32"
 LSB_CORE_x86-64 = "lsb-core-amd64"
 RPROVIDES_${PN} += "${LSB_CORE}"
 
-# lsb_release needs getopt
-RDEPENDS_${PN} += "${VIRTUAL-RUNTIME_getopt}"
+# lsb_release needs getopt, lsbinitscripts
+RDEPENDS_${PN} += "${VIRTUAL-RUNTIME_getopt} lsbinitscripts"
 
 LIC_FILES_CHKSUM = "file://README;md5=12da544b1a3a5a1795a21160b49471cf"
 
@@ -24,6 +24,10 @@ SRC_URI = "${SOURCEFORGE_MIRROR}/project/lsb/lsb_release/1.4/lsb-release-1.4.tar
 
 SRC_URI[md5sum] = "30537ef5a01e0ca94b7b8eb6a36bb1e4"
 SRC_URI[sha256sum] = "99321288f8d62e7a1d485b7c6bdccf06766fb8ca603c6195806e4457fdf17172"
+
+UPSTREAM_CHECK_URI = "http://sourceforge.net/projects/lsb/files/lsb_release/"
+UPSTREAM_CHECK_REGEX = "/lsb_release/(?P<pver>(\d+[\.\-_]*)+)/"
+
 S = "${WORKDIR}/lsb-release-1.4"
 
 CLEANBROKEN = "1"
@@ -40,7 +44,7 @@ do_install(){
 	mkdir -p ${D}${sysconfdir}/lsb-release.d
 	printf "LSB_VERSION=\"core-4.1-noarch:" > ${D}${sysconfdir}/lsb-release
 
-	if [ "${TARGET_ARCH}" = "i586" ];then
+	if [ "${TARGET_ARCH}" = "i586" ] || [ "${TARGET_ARCH}" = "i686" ];then
 		printf "core-4.1-ia32" >>  ${D}${sysconfdir}/lsb-release
 	else
 		printf "core-4.1-${TARGET_ARCH}" >>  ${D}${sysconfdir}/lsb-release
@@ -53,7 +57,7 @@ do_install(){
 	fi
 	echo "DISTRIB_DESCRIPTION=\"${DISTRO_NAME} ${DISTRO_VERSION}\"" >> ${D}${sysconfdir}/lsb-release
 
-	if [ "${TARGET_ARCH}" = "i586" ];then
+	if [ "${TARGET_ARCH}" = "i586" ] || [ "${TARGET_ARCH}" = "i686" ];then
 		mkdir -p ${D}${sysconfdir}/lsb-release.d
 		touch ${D}${sysconfdir}/lsb-release.d/graphics-${PV}-noarch
 		touch ${D}${sysconfdir}/lsb-release.d/desktop-${PV}-noarch
@@ -99,7 +103,7 @@ do_install_append(){
                ln -sf ld-linux-x86-64.so.2 ld-lsb-x86-64.so.2
                ln -sf ld-linux-x86-64.so.2 ld-lsb-x86-64.so.3
        fi
-       if [ "${TARGET_ARCH}" = "i586" ];then
+       if [ "${TARGET_ARCH}" = "i586" ] || [ "${TARGET_ARCH}" = "i686" ];then
 	       cd ${D}/${baselib}
                ln -sf ld-linux.so.2 ld-lsb.so.2
                ln -sf ld-linux.so.2 ld-lsb.so.3
@@ -121,6 +125,7 @@ do_install_append(){
        fi
 }
 FILES_${PN} += "/lib64 \
+                ${base_libdir} \
                 /usr/lib/lsb \
                 ${base_libdir}/lsb/* \
                 /lib/lsb/* \

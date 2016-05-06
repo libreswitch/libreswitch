@@ -25,4 +25,4 @@ do_install_append () {
   rm -rf ${D}${sbindir} ${D}${libdir} ${D}${datadir}
 }
 
-FILES_${PN} = "${bindir}"
+FILES_${PN} = "${bindir} ${prefix}/libexec"

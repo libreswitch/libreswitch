@@ -50,14 +50,14 @@ fi
 
 # Perform group additions first, since user additions may depend
 # on these groups existing
-if test "x$GROUPADD_PARAM" != "x"; then
+if test "x`echo $GROUPADD_PARAM | tr -d '[:space:]'`" != "x"; then
 	echo "Running groupadd commands..."
 	# Invoke multiple instances of groupadd for parameter lists
 	# separated by ';'
 	opts=`echo "$GROUPADD_PARAM" | cut -d ';' -f 1`
 	remaining=`echo "$GROUPADD_PARAM" | cut -d ';' -f 2-`
 	while test "x$opts" != "x"; do
-		perform_groupadd "$SYSROOT" "$OPT $opts" 10
+		perform_groupadd "$SYSROOT" "$OPT $opts"
 		if test "x$opts" = "x$remaining"; then
 			break
 		fi
@@ -66,14 +66,14 @@ if test "x$GROUPADD_PARAM" != "x"; then
 	done
 fi 
 
-if test "x$USERADD_PARAM" != "x"; then
+if test "x`echo $USERADD_PARAM | tr -d '[:space:]'`" != "x"; then
 	echo "Running useradd commands..."
 	# Invoke multiple instances of useradd for parameter lists
 	# separated by ';'
 	opts=`echo "$USERADD_PARAM" | cut -d ';' -f 1`
 	remaining=`echo "$USERADD_PARAM" | cut -d ';' -f 2-`
 	while test "x$opts" != "x"; do
-		perform_useradd "$SYSROOT" "$OPT $opts" 10
+		perform_useradd "$SYSROOT" "$OPT $opts"
 		if test "x$opts" = "x$remaining"; then
 			break
 		fi
@@ -82,14 +82,14 @@ if test "x$USERADD_PARAM" != "x"; then
 	done
 fi
 
-if test "x$GROUPMEMS_PARAM" != "x"; then
+if test "x`echo $GROUPMEMS_PARAM | tr -d '[:space:]'`" != "x"; then
 	echo "Running groupmems commands..."
 	# Invoke multiple instances of groupmems for parameter lists
 	# separated by ';'
 	opts=`echo "$GROUPMEMS_PARAM" | cut -d ';' -f 1`
 	remaining=`echo "$GROUPMEMS_PARAM" | cut -d ';' -f 2-`
 	while test "x$opts" != "x"; do
-		perform_groupmems "$SYSROOT" "$OPT $opts" 10
+		perform_groupmems "$SYSROOT" "$OPT $opts"
 		if test "x$opts" = "x$remaining"; then
 			break
 		fi
@@ -127,6 +127,35 @@ useradd_sysroot_sstate () {
 	fi
 }
 
+userdel_sysroot_sstate () {
+if test "x${STAGING_DIR_TARGET}" != "x"; then
+    if [ "${BB_CURRENTTASK}" = "configure" -o "${BB_CURRENTTASK}" = "clean" ]; then
+        export PSEUDO="${FAKEROOTENV} PSEUDO_LOCALSTATEDIR=${STAGING_DIR_TARGET}${localstatedir}/pseudo ${STAGING_DIR_NATIVE}${bindir}/pseudo"
+        OPT="--root ${STAGING_DIR_TARGET}"
+
+        # Remove groups and users defined for package
+        GROUPADD_PARAM="${@get_all_cmd_params(d, 'groupadd')}"
+        USERADD_PARAM="${@get_all_cmd_params(d, 'useradd')}"
+
+        if test "x`echo $USERADD_PARAM | tr -d '[:space:]'`" != "x"; then
+            user=`echo "$USERADD_PARAM" | cut -d ';' -f 1 | awk '{ print $NF }'`
+            perform_userdel "${STAGING_DIR_TARGET}" "$OPT $user"
+        fi
+
+        if test "x`echo $GROUPADD_PARAM | tr -d '[:space:]'`" != "x"; then
+            group=`echo "$GROUPADD_PARAM" | cut -d ';' -f 1 | awk '{ print $NF }'`
+            perform_groupdel "${STAGING_DIR_TARGET}" "$OPT $group"
+        fi
+
+    fi
+fi
+}
+
+SSTATECLEANFUNCS = "userdel_sysroot_sstate"
+SSTATECLEANFUNCS_class-cross = ""
+SSTATECLEANFUNCS_class-native = ""
+SSTATECLEANFUNCS_class-nativesdk = ""
+
 do_install[prefuncs] += "${SYSROOTFUNC}"
 SYSROOTFUNC = "useradd_sysroot"
 SYSROOTFUNC_class-cross = ""
@@ -150,11 +179,11 @@ def update_useradd_after_parse(d):
     useradd_packages = d.getVar('USERADD_PACKAGES', True)
 
     if not useradd_packages:
-        raise bb.build.FuncFailed("%s inherits useradd but doesn't set USERADD_PACKAGES" % d.getVar('FILE'))
+        raise bb.build.FuncFailed("%s inherits useradd but doesn't set USERADD_PACKAGES" % d.getVar('FILE', False))
 
     for pkg in useradd_packages.split():
         if not d.getVar('USERADD_PARAM_%s' % pkg, True) and not d.getVar('GROUPADD_PARAM_%s' % pkg, True) and not d.getVar('GROUPMEMS_PARAM_%s' % pkg, True):
-            bb.fatal("%s inherits useradd but doesn't set USERADD_PARAM, GROUPADD_PARAM or GROUPMEMS_PARAM for package %s" % (d.getVar('FILE'), pkg))
+            bb.fatal("%s inherits useradd but doesn't set USERADD_PARAM, GROUPADD_PARAM or GROUPMEMS_PARAM for package %s" % (d.getVar('FILE', False), pkg))
 
 python __anonymous() {
     if not bb.data.inherits_class('nativesdk', d) \
@@ -191,9 +220,9 @@ fakeroot python populate_packages_prepend () {
         preinst = d.getVar('pkg_preinst_%s' % pkg, True) or d.getVar('pkg_preinst', True)
         if not preinst:
             preinst = '#!/bin/sh\n'
-        preinst += 'bbnote () {\n%s}\n' % d.getVar('bbnote', True)
-        preinst += 'bbwarn () {\n%s}\n' % d.getVar('bbwarn', True)
-        preinst += 'bbfatal () {\n%s}\n' % d.getVar('bbfatal', True)
+        preinst += 'bbnote () {\n\techo "NOTE: $*"\n}\n'
+        preinst += 'bbwarn () {\n\techo "WARNING: $*"\n}\n'
+        preinst += 'bbfatal () {\n\techo "ERROR: $*"\n\texit 1\n}\n'
         preinst += 'perform_groupadd () {\n%s}\n' % d.getVar('perform_groupadd', True)
         preinst += 'perform_useradd () {\n%s}\n' % d.getVar('perform_useradd', True)
         preinst += 'perform_groupmems () {\n%s}\n' % d.getVar('perform_groupmems', True)
@@ -202,10 +231,10 @@ fakeroot python populate_packages_prepend () {
 
         # RDEPENDS setup
         rdepends = d.getVar("RDEPENDS_%s" % pkg, True) or ""
-        rdepends += ' ' + d.getVar('MLPREFIX') + 'base-passwd'
-        rdepends += ' ' + d.getVar('MLPREFIX') + 'shadow'
+        rdepends += ' ' + d.getVar('MLPREFIX', False) + 'base-passwd'
+        rdepends += ' ' + d.getVar('MLPREFIX', False) + 'shadow'
         # base-files is where the default /etc/skel is packaged
-        rdepends += ' ' + d.getVar('MLPREFIX') + 'base-files'
+        rdepends += ' ' + d.getVar('MLPREFIX', False) + 'base-files'
         d.setVar("RDEPENDS_%s" % pkg, rdepends)
 
     # Add the user/group preinstall scripts and RDEPENDS requirements

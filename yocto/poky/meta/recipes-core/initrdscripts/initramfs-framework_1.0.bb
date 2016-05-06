@@ -1,7 +1,7 @@
 SUMMARY = "Modular initramfs system"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COREBASE}/meta/COPYING.MIT;md5=3da9cfbcb788c80a0384361b4de20420"
-RDEPENDS_${PN} += "busybox"
+RDEPENDS_${PN} += "${VIRTUAL-RUNTIME_base-utils}"
 
 PR = "r2"
 
@@ -34,6 +34,11 @@ do_install() {
 
     # debug
     install -m 0755 ${WORKDIR}/debug ${D}/init.d/00-debug
+
+    # Create device nodes expected by some kernels in initramfs
+    # before even executing /init.
+    install -d ${D}/dev
+    mknod -m 622 ${D}/dev/console c 5 1
 }
 
 PACKAGES = "${PN}-base \
@@ -42,10 +47,10 @@ PACKAGES = "${PN}-base \
             initramfs-module-e2fs \
             initramfs-module-debug"
 
-FILES_${PN}-base = "/init /init.d/99-finish"
+FILES_${PN}-base = "/init /init.d/99-finish /dev"
 
 SUMMARY_initramfs-module-mdev = "initramfs support for mdev"
-RDEPENDS_initramfs-module-mdev = "${PN}-base"
+RDEPENDS_initramfs-module-mdev = "${PN}-base busybox-mdev"
 FILES_initramfs-module-mdev = "/init.d/01-mdev"
 
 SUMMARY_initramfs-module-udev = "initramfs support for udev"

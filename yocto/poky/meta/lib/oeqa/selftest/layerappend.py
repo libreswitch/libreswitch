@@ -46,11 +46,13 @@ FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 
 SRC_URI_append += "file://appendtest.txt"
 """
-    layerappend = "BBLAYERS += \"COREBASE/meta-layertest0 COREBASE/meta-layertest1 COREBASE/meta-layertest2\""
+    layerappend = ''
 
     def tearDownLocal(self):
-        ftools.remove_from_file(self.builddir + "/conf/bblayers.conf", self.layerappend.replace("COREBASE", self.builddir + "/.."))
+        if self.layerappend:
+            ftools.remove_from_file(self.builddir + "/conf/bblayers.conf", self.layerappend)
 
+    @testcase(1196)
     def test_layer_appends(self):
         corebase = get_bb_var("COREBASE")
         stagingdir = get_bb_var("STAGING_DIR_TARGET")
@@ -78,7 +80,9 @@ SRC_URI_append += "file://appendtest.txt"
                 with open(layer + "/recipes-test/layerappendtest/appendtest.txt", "w") as f:
                     f.write("Layer 2 test")
             self.track_for_cleanup(layer)
-        ftools.append_file(self.builddir + "/conf/bblayers.conf", self.layerappend.replace("COREBASE", self.builddir + "/.."))
+
+        self.layerappend = "BBLAYERS += \"{0}/meta-layertest0 {0}/meta-layertest1 {0}/meta-layertest2\"".format(corebase)
+        ftools.append_file(self.builddir + "/conf/bblayers.conf", self.layerappend)
         bitbake("layerappendtest")
         data = ftools.read_file(stagingdir + "/appendtest.txt")
         self.assertEqual(data, "Layer 2 test")

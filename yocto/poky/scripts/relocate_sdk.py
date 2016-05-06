@@ -112,7 +112,7 @@ def change_interpreter(elf_file_name):
             f.write(dl_path)
             break
 
-def change_dl_sysdirs():
+def change_dl_sysdirs(elf_file_name):
     if arch == 32:
         sh_fmt = "<IIIIIIIIII"
     else:
@@ -156,12 +156,33 @@ def change_dl_sysdirs():
             elif name == b(".ldsocache"):
                 ldsocache_path = f.read(sh_size)
                 new_ldsocache_path = old_prefix.sub(new_prefix, ldsocache_path)
+                new_ldsocache_path = new_ldsocache_path.rstrip(b("\0"))
+                if (len(new_ldsocache_path) >= sh_size):
+                    print("ERROR: could not relocate %s, .ldsocache section size = %i and %i is needed." \
+                    % (elf_file_name, sh_size, len(new_ldsocache_path)))
+                    sys.exit(-1)
                 # pad with zeros
                 new_ldsocache_path += b("\0") * (sh_size - len(new_ldsocache_path))
                 # write it back
                 f.seek(sh_offset)
                 f.write(new_ldsocache_path)
-
+            elif name == b(".gccrelocprefix"):
+                offset = 0
+                while (offset + 4096) <= sh_size:
+                    path = f.read(4096)
+                    new_path = old_prefix.sub(new_prefix, path)
+                    new_path = new_path.rstrip(b("\0"))
+                    if (len(new_path) >= 4096):
+                        print("ERROR: could not relocate %s, max path size = 4096 and %i is needed." \
+                        % (elf_file_name, len(new_path)))
+                        sys.exit(-1)
+                    # pad with zeros
+                    new_path += b("\0") * (4096 - len(new_path))
+                    #print "Changing %s to %s at %s" % (str(path), str(new_path), str(offset))
+                    # write it back
+                    f.seek(sh_offset + offset)
+                    f.write(new_path)
+                    offset = offset + 4096
     if sysdirs != "" and sysdirslen != "":
         paths = sysdirs.split(b("\0"))
         sysdirs = b("")
@@ -229,7 +250,7 @@ for e in executables_list:
         if arch:
             parse_elf_header()
             change_interpreter(e)
-            change_dl_sysdirs()
+            change_dl_sysdirs(e)
 
     """ change permissions back """
     if perms:

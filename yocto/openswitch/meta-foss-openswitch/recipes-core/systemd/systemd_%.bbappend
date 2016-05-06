@@ -12,16 +12,9 @@ ALTERNATIVE_PRIORITY[systemd-def-target] ?= "1"
 
 FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 
-DEPENDS += "python-lxml-native libgcrypt"
-
-inherit pythonnative python-dir
-
 SRC_URI += "file://systemctl-alias.sh \
-    file://silent-fsck-on-boot.patch \
-    file://revert-ipv6ll-address-setting.patch \
-    file://systemd-coredump-groupname.patch \
-    file://systemd-coredump-conf.patch \
     file://system.conf \
+    file://systemd-coredump-groupname.patch \
 "
 
 # We remove the dependency from os-release to avoid rebuilding constantly
@@ -37,34 +30,24 @@ do_install_append() {
     echo "L+ /var/log/journal 0666 root root - /var/diagnostics/logs" >> ${D}${sysconfdir}/tmpfiles.d/00-create-volatile.conf
     sed -i -e 's/.*Storage.*/Storage=persistent/' ${D}${sysconfdir}/systemd/journald.conf
     sed -i -e 's/.*SyncIntervalSec.*/SyncIntervalSec=1440m/' ${D}${sysconfdir}/systemd/journald.conf
+    echo "GroupName=ops_coredump" >> ${D}${sysconfdir}/systemd/coredump.conf
+
+    # Correct attributes in systemd, since we use /var/log/journal as a symlink into our support partition
+    sed -i -e 's?/var/log/journal?/var/diagnostics/logs?' ${D}/${prefix}/lib/tmpfiles.d/systemd.conf
+    sed -i -e 's?/var/log/journal?/var/diagnostics/logs?' ${D}/${prefix}/lib/tmpfiles.d/journal-nocow.conf
 }
 
-# We use systemd core dump
-EXTRA_OECONF_remove = "--disable-coredump"
+# We use systemd core dump, coredump
+PACKAGECONFIG_append += "audit coredump resolved"
+
 EXTRA_OECONF += "--with-dns-servers=" ""
 EXTRA_OECONF_append = " --disable-timesyncd"
 FILES_${PN} += "${bindir}/coredumpctl \
                  /var/log/journal"
-EXTRA_OECONF_remove = "--without-python"
-EXTRA_OECONF += "with-python"
-
-# Enable Audit framework on OpenSwitch
-PACKAGECONFIG_append += "audit"
 
 # Make sure to only build against AppArmor if we want to
 PACKAGECONFIG[apparmor] = "--enable-apparmor,--disable-apparmor,apparmor"
 PACKAGECONFIG_append += "${@bb.utils.contains('DISTRO_FEATURES', 'apparmor', 'apparmor', '', d)}"
-
-PACKAGES =+ "python-${PN}-dbg python-${PN} python-${PN}-dev"
-
-FILES_python-${PN} += "${libdir}/${PYTHON_DIR}/site-packages/systemd/ \
-                              ${libdir}/${PYTHON_DIR}/site-packages/systemd/*.py ${libdir}/${PYTHON_DIR}/site-packages/systemd/*.so"
-
-RDEPENDS_python-${PN} = "python-core"
-
-FILES_python-${PN}-dbg += "${libdir}/${PYTHON_DIR}/site-packages/systemd/.debug/"
-
-FILES_python-${PN}-dev += "${libdir}/${PYTHON_DIR}/site-packages/systemd/*.la"
 
 #pkg_postinst_udev-hwdb_prepend() {
 #	# Abort script since causes problems for read-only fs

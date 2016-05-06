@@ -10,7 +10,6 @@ LICENSE = "LGPL2.1"
 DEPENDS = "sqlite3 attr"
 
 FILES_${PN} = "${prefix}/lib/pseudo/lib*/libpseudo.so ${bindir}/* ${localstatedir}/pseudo ${prefix}/var/pseudo"
-FILES_${PN}-dbg += "${prefix}/lib/pseudo/lib*/.debug"
 INSANE_SKIP_${PN} += "libdir"
 INSANE_SKIP_${PN}-dbg += "libdir"
 
@@ -36,6 +35,7 @@ do_compile () {
 	fi
 	oe_runmake ${MAKEOPTS}
 }
+do_compile[vardepsexclude] = "SITEINFO_BITS"
 
 maybe_make32() {
 	# We probably don't need to build 32-bit binaries.
@@ -64,6 +64,7 @@ maybe_make32() {
 		bbnote "If you need to run 32-bit executables, ensure that NO32LIBS is set to 0."
 	fi
 }
+maybe_make32[vardepsexclude] = "SITEINFO_BITS"
 
 warn_32bit_missing() {
 	bbwarn "Can't find stubs-32.h, but usually need it to build 32-bit libpseudo."
@@ -128,6 +129,7 @@ do_install_append_class-nativesdk () {
 		mkdir -p ${D}${prefix}/lib/pseudo/lib
 		cp lib/pseudo/lib/libpseudo.so ${D}${prefix}/lib/pseudo/lib/.
 	fi
+	chrpath -d ${D}${prefix}/lib/pseudo/lib*/libpseudo.so
 }
 
 BBCLASSEXTEND = "native nativesdk"

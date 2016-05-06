@@ -29,6 +29,7 @@ import tempfile
 import ConfigParser
 import re
 from collections import OrderedDict
+from string import Template
 
 __version__ = "0.2.1"
 
@@ -72,20 +73,32 @@ class Configuration(object):
                 else:
                     # Apply special type transformations for some properties.
                     # Type matches the RawConfigParser.get*() methods.
-                    types = {'signoff': 'boolean'}
+                    types = {'signoff': 'boolean', 'update': 'boolean'}
                     if name in types:
                         value = getattr(parser, 'get' + types[name])(section, name)
                     self.repos[repo][name] = value
+
+        def readglobalsection(parser, section):
+            for (name, value) in parser.items(section):
+                if name == "commit_msg":
+                    self.commit_msg_template = value
 
         logger.debug("Loading config file %s" % self.conffile)
         self.parser = ConfigParser.ConfigParser()
         with open(self.conffile) as f:
             self.parser.readfp(f)
 
+        # initialize default values
+        self.commit_msg_template = "Automatic commit to update last_revision"
+
         self.repos = {}
         for repo in self.parser.sections():
-            self.repos[repo] = {}
-            readsection(self.parser, repo, repo)
+            if repo == "combo-layer-settings":
+                # special handling for global settings
+                readglobalsection(self.parser, repo)
+            else:
+                self.repos[repo] = {}
+                readsection(self.parser, repo, repo)
 
         # Load local configuration, if available
         self.localconffile = None
@@ -367,7 +380,7 @@ tail -c +18 $tmpname | head -c -4
                             if not parent:
                                 parent = '.'
                             # May run outside of the current directory, so do not assume that .git exists.
-                            filter_branch.extend(['--tree-filter', 'mkdir -p .git/tmptree && mv $(ls -1 -a | grep -v -e ^.git$ -e ^.$ -e ^..$) .git/tmptree && mkdir -p %s && mv .git/tmptree %s' % (parent, dest_dir)])
+                            filter_branch.extend(['--tree-filter', 'mkdir -p .git/tmptree && find . -mindepth 1 -maxdepth 1 ! -name .git -print0 | xargs -0 -I SOURCE mv SOURCE .git/tmptree && mkdir -p %s && mv .git/tmptree %s' % (parent, dest_dir)])
                         filter_branch.append('HEAD')
                         runcmd(filter_branch)
                         runcmd('git update-ref -d refs/original/refs/heads/%s' % name)
@@ -502,6 +515,10 @@ def check_patch(patchfile):
         os.rename(patchfile + '.tmp', patchfile)
 
 def drop_to_shell(workdir=None):
+    if not sys.stdin.isatty():
+        print "Not a TTY so can't drop to shell for resolution, exiting."
+        return False
+
     shell = os.environ.get('SHELL', 'bash')
     print('Dropping to shell "%s"\n' \
           'When you are finished, run the following to continue:\n' \
@@ -547,10 +564,10 @@ def get_repos(conf, repo_names):
     for repo in repos:
         if not repo in conf.repos:
             logger.error("Specified component '%s' not found in configuration" % repo)
-            sys.exit(0)
+            sys.exit(1)
 
     if not repos:
-        repos = conf.repos
+        repos = [ repo for repo in conf.repos if conf.repos[repo].get("update", True) ]
 
     return repos
 
@@ -568,10 +585,27 @@ def action_pull(conf, args):
         repo = conf.repos[name]
         ldir = repo['local_repo_dir']
         branch = repo.get('branch', "master")
-        runcmd("git checkout %s" % branch, ldir)
-        logger.info("git pull for component repo %s in %s ..." % (name, ldir))
-        output=runcmd("git pull", ldir)
-        logger.info(output)
+        logger.info("update branch %s of component repo %s in %s ..." % (branch, name, ldir))
+        if not conf.hard_reset:
+            # Try to pull only the configured branch. Beware that this may fail
+            # when the branch is currently unknown (for example, after reconfiguring
+            # combo-layer). In that case we need to fetch everything and try the check out
+            # and pull again.
+            try:
+                runcmd("git checkout %s" % branch, ldir, printerr=False)
+            except subprocess.CalledProcessError:
+                output=runcmd("git fetch", ldir)
+                logger.info(output)
+                runcmd("git checkout %s" % branch, ldir)
+                runcmd("git pull --ff-only", ldir)
+            else:
+                output=runcmd("git pull --ff-only", ldir)
+                logger.info(output)
+        else:
+            output=runcmd("git fetch", ldir)
+            logger.info(output)
+            runcmd("git checkout %s" % branch, ldir)
+            runcmd("git reset --hard FETCH_HEAD", ldir)
 
 def action_update(conf, args):
     """
@@ -628,7 +662,14 @@ def action_update(conf, args):
             patch_cmd_range = "%s..%s" % (repo['last_revision'], top_revision)
             rev_cmd_range = patch_cmd_range
 
-        file_filter = repo.get('file_filter',"")
+        file_filter = repo.get('file_filter',".")
+
+        # Filter out unwanted files
+        exclude = repo.get('file_exclude', '')
+        if exclude:
+            for path in exclude.split():
+                p = "%s/%s" % (dest_dir, path) if dest_dir != '.' else path
+                file_filter += " ':!%s'" % p
 
         patch_cmd = "git format-patch -N %s --output-directory %s %s -- %s" % \
             (prefix,repo_patch_dir, patch_cmd_range, file_filter)
@@ -647,38 +688,6 @@ def action_update(conf, args):
                 runcmd("%s %s %s %s" % (repo['hook'], patch, revlist[count], name))
                 count=count-1
 
-        # Step 3a: Filter out unwanted files and patches.
-        exclude = repo.get('file_exclude', '')
-        if exclude:
-            filter = ['filterdiff', '-p1']
-            for path in exclude.split():
-                filter.append('-x')
-                filter.append('%s/%s' % (dest_dir, path) if dest_dir != '.' else path)
-            for patch in patchlist[:]:
-                filtered = patch + '.tmp'
-                with open(filtered, 'w') as f:
-                    runcmd(filter + [patch], out=f)
-                # Now check for empty patches.
-                if runcmd(['filterdiff', '--list', filtered]):
-                    # Possibly modified.
-                    os.unlink(patch)
-                    os.rename(filtered, patch)
-                else:
-                    # Empty, ignore it. Must also remove from revlist.
-                    with open(patch, 'r') as f:
-                        fromline = f.readline()
-                    if not fromline:
-                        # Patch must have been empty to start with. No need
-                        # to remove it.
-                        continue
-                    m = re.match(r'''^From ([0-9a-fA-F]+) .*\n''', fromline)
-                    rev = m.group(1)
-                    logger.debug('skipping empty patch %s = %s' % (patch, rev))
-                    os.unlink(patch)
-                    os.unlink(filtered)
-                    patchlist.remove(patch)
-                    revlist.remove(rev)
-
         # Step 4: write patch list and revision list to file, for user to edit later
         patchlist_file = os.path.join(os.getcwd(), patch_dir, "patchlist-%s" % name)
         repo['patchlist'] = patchlist_file
@@ -695,7 +704,7 @@ def action_update(conf, args):
         print('You may now edit the patch and patch list in %s\n' \
               'For example, you can remove unwanted patch entries from patchlist-*, so that they will be not applied later' % patch_dir);
         if not drop_to_shell(patch_dir):
-            sys.exit(0)
+            sys.exit(1)
 
     # Step 6: apply the generated and revised patch
     apply_patchlist(conf, repos)
@@ -711,7 +720,21 @@ def action_update(conf, args):
     if output:
         logger.info("Committing updated configuration file")
         if output.lstrip().startswith("M"):
-            runcmd('git commit -m "Automatic commit to update last_revision" %s' % relpath)
+
+            # create the "components" string
+            component_str = "all components"
+            if len(components) > 0:
+                # otherwise tell which components were actually changed
+                component_str = ", ".join(components)
+
+            # expand the template with known values
+            template = Template(conf.commit_msg_template)
+            raw_msg = template.substitute(components = component_str)
+
+            # sanitize the string before using it in command line
+            msg = raw_msg.replace('"', '\\"')
+
+            runcmd('git commit -m "%s" %s' % (msg, relpath))
 
 def apply_patchlist(conf, repos):
     """
@@ -761,7 +784,7 @@ def apply_patchlist(conf, repos):
                         if not drop_to_shell():
                             if prevrev != repo['last_revision']:
                                 conf.update(name, "last_revision", prevrev)
-                            sys.exit(0)
+                            sys.exit(1)
                 prevrev = lastrev
                 i += 1
             # Once all patches are applied, we should update
@@ -864,6 +887,10 @@ Action:
     parser.add_option("-n", "--no-pull", help = "skip pulling component repos during update",
                action = "store_true", dest = "nopull", default = False)
 
+    parser.add_option("--hard-reset",
+               help = "instead of pull do fetch and hard-reset in component repos",
+               action = "store_true", dest = "hard_reset", default = False)
+
     parser.add_option("-H", "--history", help = "import full history of components during init",
                       action = "store_true", default = False)
 
@@ -893,5 +920,5 @@ if __name__ == "__main__":
     except Exception:
         ret = 1
         import traceback
-        traceback.print_exc(5)
+        traceback.print_exc()
     sys.exit(ret)

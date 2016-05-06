@@ -19,4 +19,5 @@ IMAGE_FEATURES += "ssh-server-openssh"
 IMAGE_FEATURES += "package-management"
 
 IMAGE_GEN_DEBUGFS = "1"
-IMAGE_FSTYPES += "dbg.tar"
+
+IMAGE_FSTYPES_DEBUGFS = "tar"

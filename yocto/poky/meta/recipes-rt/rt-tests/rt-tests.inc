@@ -1,14 +1,8 @@
-# Version v0.91
-PV = "0.91"
-SRCREV = "3fed00ff8d2c0cdbc5ba078cbd60ce3cfcee615f"
+# Version v0.96
+PV = "0.96"
+SRCREV = "24f8c0175e04bab78e7555698e34d7002b01c87f"
 
-SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/clrkwllms/rt-tests.git \
-           file://0001-rt-tests-Allow-for-user-specified-PYLIB.patch \
-           file://0002-rt-tests-Break-out-install_hwlatdetect.patch \
-           file://added-missing-dependencies.patch \
-           file://hackbench-fix-error-check.patch \
-           file://Makefile-fix-gzip-command.patch \
-"
+SRC_URI = "git://git.kernel.org/pub/scm/utils/rt-tests/rt-tests.git"
 
 S = "${WORKDIR}/git"
 

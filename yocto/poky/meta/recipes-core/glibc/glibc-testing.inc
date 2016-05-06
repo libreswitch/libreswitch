@@ -22,7 +22,6 @@ do_compile_append () {
 	sed -i -e "/^'/d" ${B}/${HOST_PREFIX}testglibc
 	sed -i -e "/^UID/d" ${B}/${HOST_PREFIX}testglibc
 	sed -i -e "/^TERM/d" ${B}/${HOST_PREFIX}testglibc
-	sed -i -e "/^PATCH_GET/d" ${B}/${HOST_PREFIX}testglibc
 	sed -i -e "/^PKG_/d" ${B}/${HOST_PREFIX}testglibc
 	sed -i -e "/^POSIXLY_/d" ${B}/${HOST_PREFIX}testglibc
 	sed -i -e "/^PPID/d" ${B}/${HOST_PREFIX}testglibc
@@ -54,7 +53,7 @@ then
 	echo "1. You dont have passwordless ssh setup to access \$target"
 	echo "2. NFS share on \$target is not mounted or if mounted then not matching the build tree layout."
 	echo "   The tree should be accessible at same location on build host and target"
-	echo "   You can add nfs-server to IMAGE_FEATURES to get the nfs client on target"
+	echo "   You can add nfs-client to IMAGE_FEATURES to get the nfs client on target"
 	echo "3. nfs server on build host is not running."
 	echo "   Please make sure that you have 'no_root_squash' added in /etc/exports if you want"
 	echo "   to test as root user on target (usually its recommended to create a non"

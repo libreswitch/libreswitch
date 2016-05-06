@@ -3,15 +3,10 @@ from oeqa.oetest import oeRuntimeTest, skipModule
 from oeqa.utils.decorators import *
 
 def setUpModule():
-    if not oeRuntimeTest.hasPackage("syslog"):
+    if not (oeRuntimeTest.hasPackage("busybox-syslog") or oeRuntimeTest.hasPackage("sysklogd")):
         skipModule("No syslog package in image")
 
 class SyslogTest(oeRuntimeTest):
-
-    @skipUnlessPassed("test_ssh")
-    def test_syslog_help(self):
-        (status,output) = self.target.run('/sbin/syslogd --help')
-        self.assertEqual(status, 0, msg="status and output: %s and %s" % (status,output))
 
     @testcase(201)
     @skipUnlessPassed("test_syslog_help")
@@ -19,17 +14,18 @@ class SyslogTest(oeRuntimeTest):
         (status,output) = self.target.run(oeRuntimeTest.pscmd + ' | grep -i [s]yslogd')
         self.assertEqual(status, 0, msg="no syslogd process, ps output: %s" % self.target.run(oeRuntimeTest.pscmd)[1])
 
-
 class SyslogTestConfig(oeRuntimeTest):
 
+    @testcase(1149)
     @skipUnlessPassed("test_syslog_running")
     def test_syslog_logger(self):
         (status,output) = self.target.run('logger foobar && test -e /var/log/messages && grep foobar /var/log/messages || logread | grep foobar')
         self.assertEqual(status, 0, msg="Test log string not found in /var/log/messages. Output: %s " % output)
 
+    @testcase(1150)
     @skipUnlessPassed("test_syslog_running")
     def test_syslog_restart(self):
-        if "systemd" != oeRuntimeTest.tc.d.getVar("VIRTUAL-RUNTIME_init_manager"):
+        if "systemd" != oeRuntimeTest.tc.d.getVar("VIRTUAL-RUNTIME_init_manager", False):
             (status,output) = self.target.run('/etc/init.d/syslog restart')
         else:
             (status,output) = self.target.run('systemctl restart syslog.service')
@@ -37,7 +33,8 @@ class SyslogTestConfig(oeRuntimeTest):
     @testcase(202)
     @skipUnlessPassed("test_syslog_restart")
     @skipUnlessPassed("test_syslog_logger")
-    @unittest.skipIf("systemd" == oeRuntimeTest.tc.d.getVar("VIRTUAL-RUNTIME_init_manager"), "Not appropiate for systemd image")
+    @unittest.skipIf("systemd" == oeRuntimeTest.tc.d.getVar("VIRTUAL-RUNTIME_init_manager", False), "Not appropiate for systemd image")
+    @unittest.skipIf(oeRuntimeTest.hasPackage("sysklogd") or not oeRuntimeTest.hasPackage("busybox"), "Non-busybox syslog")
     def test_syslog_startup_config(self):
         self.target.run('echo "LOGFILE=/var/log/test" >> /etc/syslog-startup.conf')
         (status,output) = self.target.run('/etc/init.d/syslog restart')

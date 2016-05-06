@@ -238,6 +238,66 @@
                 section in the Yocto Project Development Manual.
             </para>
         </section>
+
+        <section id='using-an-in-tree-defconfig-file'>
+            <title>Using an "In-Tree"&nbsp;&nbsp;<filename>defconfig</filename> File</title>
+
+            <para>
+                It might be desirable to have kernel configuration fragment
+                support through a <filename>defconfig</filename> file that
+                is pulled from the kernel source tree for the configured
+                machine.
+                By default, the OpenEmbedded build system looks for
+                <filename>defconfig</filename> files in the layer used for
+                Metadata, which is "out-of-tree", and then configures them
+                using the following:
+                <literallayout class='monospaced'>
+     SRC_URI += "file://defconfig"
+                </literallayout>
+                If you do not want to maintain copies of
+                <filename>defconfig</filename> files in your layer but would
+                rather allow users to use the default configuration from the
+                kernel tree and still be able to add configuration fragments
+                to the
+                <ulink url='&YOCTO_DOCS_REF_URL;#var-SRC_URI'><filename>SRC_URI</filename></ulink>
+                through, for example, append files, you can direct the
+                OpenEmbedded build system to use a
+                <filename>defconfig</filename> file that is "in-tree".
+            </para>
+
+            <para>
+                To specify an "in-tree" <filename>defconfig</filename> file,
+                edit the recipe that builds your kernel so that it has the
+                following command form:
+                <literallayout class='monospaced'>
+     KBUILD_DEFCONFIG_KMACHINE ?= <replaceable>defconfig_file</replaceable>
+                </literallayout>
+                You need to append the variable with
+                <ulink url='&YOCTO_DOCS_REF_URL;#var-KMACHINE'><filename>KMACHINE</filename></ulink>
+                and then supply the path to your "in-tree"
+                <filename>defconfig</filename> file.
+            </para>
+
+            <para>
+                Aside from modifying your kernel recipe and providing your own
+                <filename>defconfig</filename> file, you need to be sure no
+                files or statements set <filename>SRC_URI</filename> to use a
+                <filename>defconfig</filename> other than your "in-tree"
+                file (e.g. a kernel's <filename>linux-</filename><replaceable>machine</replaceable><filename>.inc</filename>
+                file).
+                In other words, if the build system detects a statement
+                that identifies an "out-of-tree"
+                <filename>defconfig</filename> file, that statement
+                will override your
+                <filename>KBUILD_DEFCONFIG</filename> variable.
+            </para>
+
+            <para>
+                See the
+                <ulink url='&YOCTO_DOCS_REF_URL;#var-KBUILD_DEFCONFIG'><filename>KBUILD_DEFCONFIG</filename></ulink>
+                variable description for more information.
+            </para>
+        </section>
     </section>
 
     <section id='using-an-iterative-development-process'>
@@ -330,6 +390,10 @@
                 You can use the entire <filename>.config</filename> file as the
                 <filename>defconfig</filename> file as described in the
                 "<link linkend='changing-the-configuration'>Changing the Configuration</link>" section.
+                For more information on the <filename>.config</filename> file,
+                see the
+                "<ulink url='&YOCTO_DOCS_DEV_URL;#using-menuconfig'>Using <filename>menuconfig</filename></ulink>"
+                section in the Yocto Project Development Manual.
             </para>
 
             <para>
@@ -347,7 +411,14 @@
                         configuration task as follows:
                         <literallayout class='monospaced'>
      $ bitbake linux-yocto -c kernel_configme -f
-                        </literallayout></para></listitem>
+                        </literallayout>
+                        This step ensures that you will be creating a
+                        <filename>.config</filename> file from a known state.
+                        Because situations exist where your build state might
+                        become unknown, it is best to run the previous
+                        command prior to starting up
+                        <filename>menuconfig</filename>.
+                        </para></listitem>
                     <listitem><para>Run the <filename>menuconfig</filename>
                         command:
                         <literallayout class='monospaced'>
@@ -565,15 +636,46 @@
                     to store your patches and configuration files (e.g.
                     <filename>linux-yocto-myproject</filename>).
                     </para></listitem>
+                <listitem><para>Make sure you have either a
+                    <filename>defconfig</filename> file or configuration
+                    fragment files.
+                    When you use the <filename>linux-yocto-custom.bb</filename>
+                    recipe, you must specify a configuration.
+                    If you do not have a <filename>defconfig</filename> file,
+                    you can run the following:
+                    <literallayout class='monospaced'>
+     $ make defconfig
+                    </literallayout>
+                    After running the command, copy the resulting
+                    <filename>.config</filename> to the
+                    <filename>files</filename> directory as "defconfig" and
+                    then add it to the
+                    <ulink url='&YOCTO_DOCS_REF_URL;#var-SRC_URI'><filename>SRC_URI</filename></ulink>
+                    variable in the recipe.</para>
+                    <para>Running the <filename>make defconfig</filename>
+                    command results in the default configuration for your
+                    architecture as defined by your kernel.
+                    However, no guarantee exists that this configuration is
+                    valid for your use case, or that your board will even boot.
+                    This is particularly true for non-x86 architectures.
+                    To use non-x86 <filename>defconfig</filename> files, you
+                    need to be more specific and find one that matches your
+                    board (i.e. for arm, you look in
+                    <filename>arch/arm/configs</filename> and use the one that
+                    is the best starting point for your board).
+                    </para></listitem>
                 <listitem><para>Edit the following variables in your recipe
                     as appropriate for your project:
                     <itemizedlist>
                         <listitem><para><ulink url='&YOCTO_DOCS_REF_URL;#var-SRC_URI'><filename>SRC_URI</filename></ulink>:
-                            The <filename>SRC_URI</filename> should be a Git
-                            repository that uses one of the supported Git fetcher
-                            protocols (i.e. <filename>file</filename>,
+                            The <filename>SRC_URI</filename> should specify
+                            a Git repository that uses one of the supported Git
+                            fetcher protocols (i.e. <filename>file</filename>,
                             <filename>git</filename>, <filename>http</filename>,
                             and so forth).
+                            The <filename>SRC_URI</filename> variable should
+                            also specify either a <filename>defconfig</filename>
+                            file or some configuration fragment files.
                             The skeleton recipe provides an example
                             <filename>SRC_URI</filename> as a syntax reference.
                             </para></listitem>
@@ -650,12 +752,26 @@
             <title>Building Out-of-Tree Modules on the Target</title>
 
             <para>
+                While the traditional Yocto Project development model would be
+                to include kernel modules as part of the normal build
+                process, you might find it useful to build modules on the
+                target.
+                This could be the case if your target system is capable
+                and powerful enough to handle the necessary compilation.
+                Before deciding to build on your target, however, you should
+                consider the benefits of using a proper cross-development
+                environment from your build host.
+            </para>
+
+            <para>
                 If you want to be able to build out-of-tree modules on
                 the target, there are some steps you need to take
                 on the target that is running your SDK image.
                 Briefly, the <filename>kernel-dev</filename> package
                 is installed by default on all
-                <filename>*.sdk</filename> images.
+                <filename>*.sdk</filename> images and the
+                <filename>kernel-devsrc</filename> package is installed
+                on many of the <filename>*.sdk</filename> images.
                 However, you need to create some scripts prior to
                 attempting to build the out-of-tree modules on the target
                 that is running that image.
@@ -673,7 +789,9 @@
                 Because all SDK image recipes include
                 <filename>dev-pkgs</filename>, the
                 <filename>kernel-dev</filename> packages will be installed
-                as part of the SDK image.
+                as part of the SDK image and the
+                <filename>kernel-devsrc</filename> packages will be installed
+                as part of applicable SDK images.
                 The SDK uses the scripts when building out-of-tree
                 modules.
                 Once you have switched to that directory and created the
@@ -913,6 +1031,127 @@
                 </literallayout>
             </para>
         </section>
+    </section>
+
+    <section id='adding-recipe-space-kernel-features'>
+        <title>Adding Recipe-Space Kernel Features</title>
+
+        <para>
+            You can add kernel features in the
+            <link linkend='recipe-space-metadata'>recipe-space</link> by
+            using the
+            <ulink url='&YOCTO_DOCS_REF_URL;#var-KERNEL_FEATURES'><filename>KERNEL_FEATURES</filename></ulink>
+            variable and by specifying the feature's <filename>.scc</filename>
+            file path in the
+            <ulink url='&YOCTO_DOCS_REF_URL;#var-SRC_URI'><filename>SRC_URI</filename></ulink>
+            statement.
+            When you add features using this method, the OpenEmbedded build
+            system checks to be sure the features are present.
+            If the features are not present, the build stops.
+            Kernel features are the last elements processed for configuring
+            and patching the kernel.
+            Therefore, adding features in this manner is a way
+            to enforce specific features are present and enabled
+            without needing to do a full audit of any other layer's additions
+            to the <filename>SRC_URI</filename> statement.
+        </para>
+
+        <para>
+            You add a kernel feature by providing the feature as part of the
+            <filename>KERNEL_FEATURES</filename> variable and by providing the
+            path to the feature's <filename>.scc</filename> file, which is
+            relative to the root of the kernel Metadata.
+            The OpenEmbedded build system searches all forms of kernel
+            Metadata on the <filename>SRC_URI</filename> statement regardless
+            of whether the Metadata is in the "kernel-cache", system kernel
+            Metadata, or a recipe-space Metadata.
+            See the
+            "<link linkend='kernel-metadata-location'>Kernel Metadata Location</link>"
+            section for additional information.
+        </para>
+
+        <para>
+            When you specify the feature's <filename>.scc</filename> file
+            on the <filename>SRC_URI</filename> statement, the OpenEmbedded
+            build system adds the directory of that
+            <filename>.scc</filename> file along with all its subdirectories
+            to the kernel feature search path.
+            Because subdirectories are searched, you can reference a single
+            <filename>.scc</filename> file in the
+            <filename>SRC_URI</filename> statement to reference multiple kernel
+            features.
+        </para>
+
+        <para>
+            Consider the following example that adds the "test.scc" feature
+            to the build.
+            <orderedlist>
+                <listitem><para>
+                    Create a <filename>.scc</filename> file and locate it
+                    just as you would any other patch file,
+                    <filename>.cfg</filename> file, or fetcher item
+                    you specify in the <filename>SRC_URI</filename>
+                    statement.
+                    <note><title>Notes</title>
+                        <itemizedlist>
+                            <listitem><para>
+                                You must add the directory of the
+                                <filename>.scc</filename> file to the fetcher's
+                                search path in the same manner as you would
+                                add a <filename>.patch</filename> file.
+                                </para></listitem>
+                            <listitem><para>
+                                You can create additional
+                                <filename>.scc</filename> files beneath the
+                                directory that contains the file you are
+                                adding.
+                                All subdirectories are searched during the
+                                build as potential feature directories.
+                                </para></listitem>
+                        </itemizedlist>
+                    </note>
+                    Continuing with the example, suppose the "test.scc"
+                    feature you are adding has a
+                    <filename>test.scc</filename> file in the following
+                    directory:
+                    <literallayout class='monospaced'>
+     <replaceable>my_recipe</replaceable>
+        |
+        +-linux-yocto
+           |
+           +-test.cfg
+           +-test.scc
+                    </literallayout>
+                    In this example, the <filename>linux-yocto</filename>
+                    directory has both the feature
+                    <filename>test.scc</filename> file and a similarly
+                    named configuration fragment file
+                    <filename>test.cfg</filename>.
+                    </para></listitem>
+                <listitem><para>
+                    Add the <filename>.scc</filename> file to the
+                    recipe's <filename>SRC_URI</filename> statement:
+                    <literallayout class='monospaced'>
+     SRC_URI_append = " file://test.scc"
+                    </literallayout>
+                    The leading space before the path is important as the
+                    path is appended to the existing path.
+                    </para></listitem>
+                <listitem><para>
+                    Specify the feature as a kernel feature:
+                    <literallayout class='monospaced'>
+     KERNEL_FEATURES_append = " test.scc"
+                    </literallayout>
+                    The OpenEmbedded build system processes the kernel feature
+                    when it builds the kernel.
+                    <note>
+                        If other features are contained below "test.scc",
+                        then their directories are relative to the directory
+                        containing the <filename>test.scc</filename> file.
+                    </note>
+                    </para></listitem>
+            </orderedlist>
+        </para>
     </section>
 </chapter>
 <!--

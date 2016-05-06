@@ -36,14 +36,14 @@ def icecc_dep_prepend(d):
     # INHIBIT_DEFAULT_DEPS doesn't apply to the patch command.  Whether or  not
     # we need that built is the responsibility of the patch function / class, not
     # the application.
-    if not d.getVar('INHIBIT_DEFAULT_DEPS'):
+    if not d.getVar('INHIBIT_DEFAULT_DEPS', False):
         return "icecc-create-env-native"
     return ""
 
 DEPENDS_prepend += "${@icecc_dep_prepend(d)} "
 
 def get_cross_kernel_cc(bb,d):
-    kernel_cc = d.getVar('KERNEL_CC')
+    kernel_cc = d.getVar('KERNEL_CC', False)
 
     # evaluate the expression by the shell if necessary
     if '`' in kernel_cc or '$(' in kernel_cc:
@@ -56,14 +56,14 @@ def get_cross_kernel_cc(bb,d):
     return kernel_cc
 
 def get_icecc(d):
-    return d.getVar('ICECC_PATH') or bb.utils.which(os.getenv("PATH"), "icecc")
+    return d.getVar('ICECC_PATH', False) or bb.utils.which(os.getenv("PATH"), "icecc")
 
 def create_path(compilers, bb, d):
     """
     Create Symlinks for the icecc in the staging directory
     """
     staging = os.path.join(d.expand('${STAGING_BINDIR}'), "ice")
-    if icc_is_kernel(bb, d):
+    if icecc_is_kernel(bb, d):
         staging += "-kernel"
 
     #check if the icecc path is set by the user
@@ -90,19 +90,19 @@ def create_path(compilers, bb, d):
 
     return staging
 
-def use_icc(bb,d):
-    if d.getVar('ICECC_DISABLED') == "1":
+def use_icecc(bb,d):
+    if d.getVar('ICECC_DISABLED', False) == "1":
         # don't even try it, when explicitly disabled
         return "no"
 
     # allarch recipes don't use compiler
-    if icc_is_allarch(bb, d):
+    if icecc_is_allarch(bb, d):
         return "no"
 
     pn = d.getVar('PN', True)
 
     system_class_blacklist = []
-    user_class_blacklist = (d.getVar('ICECC_USER_CLASS_BL') or "none").split()
+    user_class_blacklist = (d.getVar('ICECC_USER_CLASS_BL', False) or "none").split()
     package_class_blacklist = system_class_blacklist + user_class_blacklist
 
     for black in package_class_blacklist:
@@ -119,8 +119,8 @@ def use_icc(bb,d):
     # e.g. when there is new version
     # building libgcc-initial with icecc fails with CPP sanity check error if host sysroot contains cross gcc built for another target tune/variant
     system_package_blacklist = ["libgcc-initial"]
-    user_package_blacklist = (d.getVar('ICECC_USER_PACKAGE_BL') or "").split()
-    user_package_whitelist = (d.getVar('ICECC_USER_PACKAGE_WL') or "").split()
+    user_package_blacklist = (d.getVar('ICECC_USER_PACKAGE_BL', False) or "").split()
+    user_package_whitelist = (d.getVar('ICECC_USER_PACKAGE_WL', False) or "").split()
     package_blacklist = system_package_blacklist + user_package_blacklist
 
     if pn in package_blacklist:
@@ -131,35 +131,35 @@ def use_icc(bb,d):
         bb.debug(1, "%s: found in whitelist, enable icecc" % pn)
         return "yes"
 
-    if d.getVar('PARALLEL_MAKE') == "":
+    if d.getVar('PARALLEL_MAKE', False) == "":
         bb.debug(1, "%s: has empty PARALLEL_MAKE, disable icecc" % pn)
         return "no"
 
     return "yes"
 
-def icc_is_allarch(bb, d):
-    return d.getVar("PACKAGE_ARCH") == "all"
+def icecc_is_allarch(bb, d):
+    return d.getVar("PACKAGE_ARCH", True) == "all" or bb.data.inherits_class('allarch', d)
 
-def icc_is_kernel(bb, d):
+def icecc_is_kernel(bb, d):
     return \
         bb.data.inherits_class("kernel", d);
 
-def icc_is_native(bb, d):
+def icecc_is_native(bb, d):
     return \
         bb.data.inherits_class("cross", d) or \
         bb.data.inherits_class("native", d);
 
 # Don't pollute allarch signatures with TARGET_FPU
-icc_version[vardepsexclude] += "TARGET_FPU"
-def icc_version(bb, d):
-    if use_icc(bb, d) == "no":
+icecc_version[vardepsexclude] += "TARGET_FPU"
+def icecc_version(bb, d):
+    if use_icecc(bb, d) == "no":
         return ""
 
-    parallel = d.getVar('ICECC_PARALLEL_MAKE') or ""
-    if not d.getVar('PARALLEL_MAKE') == "" and parallel:
+    parallel = d.getVar('ICECC_PARALLEL_MAKE', False) or ""
+    if not d.getVar('PARALLEL_MAKE', False) == "" and parallel:
         d.setVar("PARALLEL_MAKE", parallel)
 
-    if icc_is_native(bb, d):
+    if icecc_is_native(bb, d):
         archive_name = "local-host-env"
     elif d.expand('${HOST_PREFIX}') == "":
         bb.fatal(d.expand("${PN}"), " NULL prefix")
@@ -167,9 +167,9 @@ def icc_version(bb, d):
         prefix = d.expand('${HOST_PREFIX}' )
         distro = d.expand('${DISTRO}')
         target_sys = d.expand('${TARGET_SYS}')
-        float = d.getVar('TARGET_FPU') or "hard"
+        float = d.getVar('TARGET_FPU', False) or "hard"
         archive_name = prefix + distro + "-"        + target_sys + "-" + float
-        if icc_is_kernel(bb, d):
+        if icecc_is_kernel(bb, d):
             archive_name += "-kernel"
 
     import socket
@@ -178,29 +178,29 @@ def icc_version(bb, d):
 
     return tar_file
 
-def icc_path(bb,d):
-    if use_icc(bb, d) == "no":
+def icecc_path(bb,d):
+    if use_icecc(bb, d) == "no":
         # don't create unnecessary directories when icecc is disabled
         return
 
-    if icc_is_kernel(bb, d):
+    if icecc_is_kernel(bb, d):
         return create_path( [get_cross_kernel_cc(bb,d), ], bb, d)
 
     else:
         prefix = d.expand('${HOST_PREFIX}')
         return create_path( [prefix+"gcc", prefix+"g++"], bb, d)
 
-def icc_get_external_tool(bb, d, tool):
+def icecc_get_external_tool(bb, d, tool):
     external_toolchain_bindir = d.expand('${EXTERNAL_TOOLCHAIN}${bindir_cross}')
     target_prefix = d.expand('${TARGET_PREFIX}')
     return os.path.join(external_toolchain_bindir, '%s%s' % (target_prefix, tool))
 
 # Don't pollute native signatures with target TUNE_PKGARCH through STAGING_BINDIR_TOOLCHAIN
-icc_get_tool[vardepsexclude] += "STAGING_BINDIR_TOOLCHAIN"
-def icc_get_tool(bb, d, tool):
-    if icc_is_native(bb, d):
+icecc_get_tool[vardepsexclude] += "STAGING_BINDIR_TOOLCHAIN"
+def icecc_get_tool(bb, d, tool):
+    if icecc_is_native(bb, d):
         return bb.utils.which(os.getenv("PATH"), tool)
-    elif icc_is_kernel(bb, d):
+    elif icecc_is_kernel(bb, d):
         return bb.utils.which(os.getenv("PATH"), get_cross_kernel_cc(bb, d))
     else:
         ice_dir = d.expand('${STAGING_BINDIR_TOOLCHAIN}')
@@ -209,17 +209,17 @@ def icc_get_tool(bb, d, tool):
         if os.path.isfile(tool_bin):
             return tool_bin
         else:
-            external_tool_bin = icc_get_external_tool(bb, d, tool)
+            external_tool_bin = icecc_get_external_tool(bb, d, tool)
             if os.path.isfile(external_tool_bin):
                 return external_tool_bin
             else:
                 return ""
 
-def icc_get_and_check_tool(bb, d, tool):
+def icecc_get_and_check_tool(bb, d, tool):
     # Check that g++ or gcc is not a symbolic link to icecc binary in
     # PATH or icecc-create-env script will silently create an invalid
     # compiler environment package.
-    t = icc_get_tool(bb, d, tool)
+    t = icecc_get_tool(bb, d, tool)
     if t and os.popen("readlink -f %s" % t).read()[:-1] == get_icecc(d):
         bb.error("%s is a symlink to %s in PATH and this prevents icecc from working" % (t, get_icecc(d)))
         return ""
@@ -246,27 +246,27 @@ def set_icecc_env():
     return
 
 set_icecc_env() {
-    if [ "${@use_icc(bb, d)}" = "no" ]
+    if [ "${@use_icecc(bb, d)}" = "no" ]
     then
         return
     fi
-    ICECC_VERSION="${@icc_version(bb, d)}"
+    ICECC_VERSION="${@icecc_version(bb, d)}"
     if [ "x${ICECC_VERSION}" = "x" ]
     then
         bbwarn "Cannot use icecc: could not get ICECC_VERSION"
         return
     fi
 
-    ICE_PATH="${@icc_path(bb, d)}"
+    ICE_PATH="${@icecc_path(bb, d)}"
     if [ "x${ICE_PATH}" = "x" ]
     then
         bbwarn "Cannot use icecc: could not get ICE_PATH"
         return
     fi
 
-    ICECC_CC="${@icc_get_and_check_tool(bb, d, "gcc")}"
-    ICECC_CXX="${@icc_get_and_check_tool(bb, d, "g++")}"
-    # cannot use icc_get_and_check_tool here because it assumes as without target_sys prefix
+    ICECC_CC="${@icecc_get_and_check_tool(bb, d, "gcc")}"
+    ICECC_CXX="${@icecc_get_and_check_tool(bb, d, "g++")}"
+    # cannot use icecc_get_and_check_tool here because it assumes as without target_sys prefix
     ICECC_WHICH_AS="${@bb.utils.which(os.getenv('PATH'), 'as')}"
     if [ ! -x "${ICECC_CC}" -o ! -x "${ICECC_CXX}" ]
     then

@@ -80,6 +80,11 @@ class DataExpansions(unittest.TestCase):
         val = self.d.expand("${@d.getVar('foo', True) + ' ${bar}'}")
         self.assertEqual(str(val), "value_of_foo value_of_bar")
 
+    def test_python_unexpanded(self):
+        self.d.setVar("bar", "${unsetvar}")
+        val = self.d.expand("${@d.getVar('foo', True) + ' ${bar}'}")
+        self.assertEqual(str(val), "${@d.getVar('foo', True) + ' ${unsetvar}'}")
+
     def test_python_snippet_syntax_error(self):
         self.d.setVar("FOO", "${@foo = 5}")
         self.assertRaises(bb.data_smart.ExpansionError, self.d.getVar, "FOO", True)
@@ -134,12 +139,12 @@ class DataExpansions(unittest.TestCase):
 
     def test_rename(self):
         self.d.renameVar("foo", "newfoo")
-        self.assertEqual(self.d.getVar("newfoo"), "value_of_foo")
-        self.assertEqual(self.d.getVar("foo"), None)
+        self.assertEqual(self.d.getVar("newfoo", False), "value_of_foo")
+        self.assertEqual(self.d.getVar("foo", False), None)
 
     def test_deletion(self):
         self.d.delVar("foo")
-        self.assertEqual(self.d.getVar("foo"), None)
+        self.assertEqual(self.d.getVar("foo", False), None)
 
     def test_keys(self):
         keys = self.d.keys()
@@ -196,28 +201,28 @@ class TestMemoize(unittest.TestCase):
     def test_memoized(self):
         d = bb.data.init()
         d.setVar("FOO", "bar")
-        self.assertTrue(d.getVar("FOO") is d.getVar("FOO"))
+        self.assertTrue(d.getVar("FOO", False) is d.getVar("FOO", False))
 
     def test_not_memoized(self):
         d1 = bb.data.init()
         d2 = bb.data.init()
         d1.setVar("FOO", "bar")
         d2.setVar("FOO", "bar2")
-        self.assertTrue(d1.getVar("FOO") is not d2.getVar("FOO"))
+        self.assertTrue(d1.getVar("FOO", False) is not d2.getVar("FOO", False))
 
     def test_changed_after_memoized(self):
         d = bb.data.init()
         d.setVar("foo", "value of foo")
-        self.assertEqual(str(d.getVar("foo")), "value of foo")
+        self.assertEqual(str(d.getVar("foo", False)), "value of foo")
         d.setVar("foo", "second value of foo")
-        self.assertEqual(str(d.getVar("foo")), "second value of foo")
+        self.assertEqual(str(d.getVar("foo", False)), "second value of foo")
 
     def test_same_value(self):
         d = bb.data.init()
         d.setVar("foo", "value of")
         d.setVar("bar", "value of")
-        self.assertEqual(d.getVar("foo"),
-                         d.getVar("bar"))
+        self.assertEqual(d.getVar("foo", False),
+                         d.getVar("bar", False))
 
 class TestConcat(unittest.TestCase):
     def setUp(self):
@@ -270,6 +275,13 @@ class TestConcatOverride(unittest.TestCase):
         bb.data.update_data(self.d)
         self.assertEqual(self.d.getVar("TEST", True), "foo:val:val2:bar")
 
+    def test_append_unset(self):
+        self.d.setVar("TEST_prepend", "${FOO}:")
+        self.d.setVar("TEST_append", ":val2")
+        self.d.setVar("TEST_append", ":${BAR}")
+        bb.data.update_data(self.d)
+        self.assertEqual(self.d.getVar("TEST", True), "foo::val2:bar")
+
     def test_remove(self):
         self.d.setVar("TEST", "${VAL} ${BAR}")
         self.d.setVar("TEST_remove", "val")
@@ -318,11 +330,51 @@ class TestOverrides(unittest.TestCase):
         bb.data.update_data(self.d)
         self.assertEqual(self.d.getVar("TEST", True), "testvalue2")
 
+    def test_one_override_unset(self):
+        self.d.setVar("TEST2_bar", "testvalue2")
+        bb.data.update_data(self.d)
+        self.assertEqual(self.d.getVar("TEST2", True), "testvalue2")
+        self.assertItemsEqual(self.d.keys(), ['TEST', 'TEST2', 'OVERRIDES', 'TEST2_bar'])
+
     def test_multiple_override(self):
         self.d.setVar("TEST_bar", "testvalue2")
         self.d.setVar("TEST_local", "testvalue3")
         self.d.setVar("TEST_foo", "testvalue4")
         bb.data.update_data(self.d)
+        self.assertEqual(self.d.getVar("TEST", True), "testvalue3")
+        self.assertItemsEqual(self.d.keys(), ['TEST', 'TEST_foo', 'OVERRIDES', 'TEST_bar', 'TEST_local'])
+
+    def test_multiple_combined_overrides(self):
+        self.d.setVar("TEST_local_foo_bar", "testvalue3")
+        bb.data.update_data(self.d)
+        self.assertEqual(self.d.getVar("TEST", True), "testvalue3")
+
+    def test_multiple_overrides_unset(self):
+        self.d.setVar("TEST2_local_foo_bar", "testvalue3")
+        bb.data.update_data(self.d)
+        self.assertEqual(self.d.getVar("TEST2", True), "testvalue3")
+
+    def test_keyexpansion_override(self):
+        self.d.setVar("LOCAL", "local")
+        self.d.setVar("TEST_bar", "testvalue2")
+        self.d.setVar("TEST_${LOCAL}", "testvalue3")
+        self.d.setVar("TEST_foo", "testvalue4")
+        bb.data.update_data(self.d)
+        bb.data.expandKeys(self.d)
+        self.assertEqual(self.d.getVar("TEST", True), "testvalue3")
+
+    def test_rename_override(self):
+        self.d.setVar("ALTERNATIVE_ncurses-tools_class-target", "a")
+        self.d.setVar("OVERRIDES", "class-target")
+        bb.data.update_data(self.d)
+        self.d.renameVar("ALTERNATIVE_ncurses-tools", "ALTERNATIVE_lib32-ncurses-tools")
+        self.assertEqual(self.d.getVar("ALTERNATIVE_lib32-ncurses-tools", True), "a")
+
+    def test_underscore_override(self):
+        self.d.setVar("TEST_bar", "testvalue2")
+        self.d.setVar("TEST_some_val", "testvalue3")
+        self.d.setVar("TEST_foo", "testvalue4")
+        self.d.setVar("OVERRIDES", "foo:bar:some_val")
         self.assertEqual(self.d.getVar("TEST", True), "testvalue3")
 
 class TestKeyExpansion(unittest.TestCase):
@@ -347,13 +399,13 @@ class TestFlags(unittest.TestCase):
         self.d.setVarFlag("foo", "flag2", "value of flag2")
 
     def test_setflag(self):
-        self.assertEqual(self.d.getVarFlag("foo", "flag1"), "value of flag1")
-        self.assertEqual(self.d.getVarFlag("foo", "flag2"), "value of flag2")
+        self.assertEqual(self.d.getVarFlag("foo", "flag1", False), "value of flag1")
+        self.assertEqual(self.d.getVarFlag("foo", "flag2", False), "value of flag2")
 
     def test_delflag(self):
         self.d.delVarFlag("foo", "flag2")
-        self.assertEqual(self.d.getVarFlag("foo", "flag1"), "value of flag1")
-        self.assertEqual(self.d.getVarFlag("foo", "flag2"), None)
+        self.assertEqual(self.d.getVarFlag("foo", "flag1", False), "value of flag1")
+        self.assertEqual(self.d.getVarFlag("foo", "flag2", False), None)
 
 
 class Contains(unittest.TestCase):

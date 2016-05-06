@@ -10,7 +10,7 @@ SECTION = "libs"
 DEPENDS = "libid3tag"
 PR = "r3"
 
-SRC_URI = "${SOURCEFORGE_MIRROR}/mad/libmad-${PV}.tar.gz \
+SRC_URI = "ftp://ftp.mars.org/pub/mpeg/libmad-${PV}.tar.gz \
            file://no-force-mem.patch \
            file://add-pkgconfig.patch \
            file://fix_for_mips_with_gcc-4.5.0.patch \
@@ -26,8 +26,6 @@ S = "${WORKDIR}/libmad-${PV}"
 inherit autotools pkgconfig
 
 EXTRA_OECONF = "-enable-speed --enable-shared"
-# The ASO's don't take any account of thumb...
-EXTRA_OECONF_append_thumb = " --disable-aso --enable-fpm=default"
 EXTRA_OECONF_append_arm = " --enable-fpm=arm"
 
 do_configure_prepend () {

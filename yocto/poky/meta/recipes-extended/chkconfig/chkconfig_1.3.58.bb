@@ -4,6 +4,8 @@ information for system services.  Chkconfig manipulates the numerous \
 symbolic links in /etc/rc.d, to relieve system administrators of some \
 of the drudgery of manually editing the symbolic links."
 
+RECIPE_NO_UPDATE_REASON = "Version 1.5 requires selinux"
+
 HOMEPAGE = "http://fedorahosted.org/releases/c/h/chkconfig"
 
 LICENSE = "GPLv2"
@@ -14,7 +16,9 @@ PROVIDES += "virtual/update-alternatives"
 
 PR = "r7"
 
-SRC_URI = "http://fedorahosted.org/releases/c/h/chkconfig/${BPN}-${PV}.tar.bz2"
+SRC_URI = "http://fedorahosted.org/releases/c/h/chkconfig/${BPN}-${PV}.tar.bz2 \
+           file://replace_caddr_t.patch \
+          "
 
 SRC_URI[md5sum] = "c2039ca67f2749fe0c06ef7c6f8ee246"
 SRC_URI[sha256sum] = "18b497d25b2cada955c72810e45fcad8280d105f17cf45e2970f18271211de68"
@@ -36,10 +40,10 @@ EXTRA_OEMAKE = "\
 do_unpack[postfuncs] += "obey_variables"
 do_unpack[vardeps] += "obey_variables"
 obey_variables () {
-	sed -i -e 's,/etc,${sysconfdir},; s,/lib/systemd,${base_libdir}/systemd,' leveldb.h
+	sed -i -e 's,/etc,${sysconfdir},; s,/lib/systemd,${base_libdir}/systemd,' ${S}/leveldb.h
 	sed -i -e 's,/etc/alternatives,${sysconfdir}/alternatives,' \
 	       -e 's,/var/lib/alternatives,${localstatedir}/lib/alternatives,' \
-	       -e 's,/usr/share/locale,${datadir}/locale,' alternatives.c
+	       -e 's,/usr/share/locale,${datadir}/locale,' ${S}/alternatives.c
 }
 
 do_install() {

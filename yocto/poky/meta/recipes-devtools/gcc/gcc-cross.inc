@@ -24,6 +24,10 @@ EXTRA_OECONF += "\
     --with-system-zlib \
 "
 
+DEPENDS_remove_libc-baremetal := "virtual/${TARGET_PREFIX}libc-for-gcc"
+EXTRA_OECONF_append_libc-baremetal = " --without-headers"
+EXTRA_OECONF_remove_libc-baremetal = "--enable-threads=posix"
+
 EXTRA_OECONF_PATHS = "\
     --with-gxx-include-dir=/not/exist${target_includedir}/c++/${BINV} \
     --with-sysroot=/not/exist \
@@ -68,7 +72,6 @@ do_compile () {
 	sed -i -e "/^'/d" ${B}/${TARGET_PREFIX}testgcc
 	sed -i -e "/^UID/d" ${B}/${TARGET_PREFIX}testgcc
 	sed -i -e "/^TERM/d" ${B}/${TARGET_PREFIX}testgcc
-	sed -i -e "/^PATCH_GET/d" ${B}/${TARGET_PREFIX}testgcc
 	sed -i -e "/^PKG_/d" ${B}/${TARGET_PREFIX}testgcc
 	sed -i -e "/^POSIXLY_/d" ${B}/${TARGET_PREFIX}testgcc
 	sed -i -e "/^PPID/d" ${B}/${TARGET_PREFIX}testgcc

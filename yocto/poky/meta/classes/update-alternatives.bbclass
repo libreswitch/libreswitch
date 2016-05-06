@@ -61,7 +61,7 @@
 ALTERNATIVE_PRIORITY = "10"
 
 # We need special processing for vardeps because it can not work on
-# modified flag values.  So we agregate the flags into a new variable
+# modified flag values.  So we aggregate the flags into a new variable
 # and include that vairable in the set.
 UPDALTVARS  = "ALTERNATIVE ALTERNATIVE_LINK_NAME ALTERNATIVE_TARGET ALTERNATIVE_PRIORITY"
 
@@ -71,14 +71,14 @@ def gen_updatealternativesvardeps(d):
 
     # First compute them for non_pkg versions
     for v in vars:
-        for flag in (d.getVarFlags(v) or {}):
+        for flag in sorted((d.getVarFlags(v) or {}).keys()):
             if flag == "doc" or flag == "vardeps" or flag == "vardepsexp":
                 continue
             d.appendVar('%s_VARDEPS' % (v), ' %s:%s' % (flag, d.getVarFlag(v, flag, False)))
 
     for p in pkgs:
         for v in vars:
-            for flag in (d.getVarFlags("%s_%s" % (v,p)) or {}):
+            for flag in sorted((d.getVarFlags("%s_%s" % (v,p)) or {}).keys()):
                 if flag == "doc" or flag == "vardeps" or flag == "vardepsexp":
                     continue
                 d.appendVar('%s_VARDEPS_%s' % (v,p), ' %s:%s' % (flag, d.getVarFlag('%s_%s' % (v,p), flag, False)))
@@ -227,7 +227,7 @@ python populate_packages_updatealternatives () {
             provider = d.getVar('VIRTUAL-RUNTIME_update-alternatives', True)
             if provider:
                 #bb.note('adding runtime requirement for update-alternatives for %s' % pkg)
-                d.appendVar('RDEPENDS_%s' % pkg, ' ' + d.getVar('MLPREFIX') + provider)
+                d.appendVar('RDEPENDS_%s' % pkg, ' ' + d.getVar('MLPREFIX', False) + provider)
 
             bb.note('adding update-alternatives calls to postinst/prerm for %s' % pkg)
             bb.note('%s' % alt_setup_links)
@@ -252,7 +252,7 @@ python package_do_filedeps_append () {
             alt_target   = alt_target or d.getVar('ALTERNATIVE_TARGET_%s' % pkg, True) or d.getVar('ALTERNATIVE_TARGET', True) or alt_link
 
             if alt_link == alt_target:
-                bb.warn('alt_link == alt_target: %s == %s' % (alt_link, alt_target))
+                bb.warn('%s: alt_link == alt_target: %s == %s' % (pn, alt_link, alt_target))
                 alt_target = '%s.%s' % (alt_target, pn)
 
             if not os.path.lexists('%s/%s/%s' % (pkgdest, pkg, alt_target)):

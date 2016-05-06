@@ -19,9 +19,9 @@ from collections import OrderedDict, defaultdict
 
 
 # Help us to find places to insert values
-recipe_progression = ['SUMMARY', 'DESCRIPTION', 'HOMEPAGE', 'BUGTRACKER', 'SECTION', 'LICENSE', 'LIC_FILES_CHKSUM', 'PROVIDES', 'DEPENDS', 'PR', 'PV', 'SRCREV', 'SRC_URI', 'S', 'do_fetch', 'do_unpack', 'do_patch', 'EXTRA_OECONF', 'do_configure', 'EXTRA_OEMAKE', 'do_compile', 'do_install', 'do_populate_sysroot', 'INITSCRIPT', 'USERADD', 'GROUPADD', 'PACKAGES', 'FILES', 'RDEPENDS', 'RRECOMMENDS', 'RSUGGESTS', 'RPROVIDES', 'RREPLACES', 'RCONFLICTS', 'ALLOW_EMPTY', 'do_package', 'do_deploy']
+recipe_progression = ['SUMMARY', 'DESCRIPTION', 'HOMEPAGE', 'BUGTRACKER', 'SECTION', 'LICENSE', 'LIC_FILES_CHKSUM', 'PROVIDES', 'DEPENDS', 'PR', 'PV', 'SRCREV', 'SRC_URI', 'S', 'do_fetch()', 'do_unpack()', 'do_patch()', 'EXTRA_OECONF', 'do_configure()', 'EXTRA_OEMAKE', 'do_compile()', 'do_install()', 'do_populate_sysroot()', 'INITSCRIPT', 'USERADD', 'GROUPADD', 'PACKAGES', 'FILES', 'RDEPENDS', 'RRECOMMENDS', 'RSUGGESTS', 'RPROVIDES', 'RREPLACES', 'RCONFLICTS', 'ALLOW_EMPTY', 'do_package()', 'do_deploy()']
 # Variables that sometimes are a bit long but shouldn't be wrapped
-nowrap_vars = ['SUMMARY', 'HOMEPAGE', 'BUGTRACKER']
+nowrap_vars = ['SUMMARY', 'HOMEPAGE', 'BUGTRACKER', 'SRC_URI[md5sum]', 'SRC_URI[sha256sum]']
 list_vars = ['SRC_URI', 'LIC_FILES_CHKSUM']
 meta_vars = ['SUMMARY', 'DESCRIPTION', 'HOMEPAGE', 'BUGTRACKER', 'SECTION']
 
@@ -31,9 +31,13 @@ def pn_to_recipe(cooker, pn):
     import bb.providers
 
     if pn in cooker.recipecache.pkg_pn:
-        filenames = cooker.recipecache.pkg_pn[pn]
         best = bb.providers.findBestProvider(pn, cooker.data, cooker.recipecache, cooker.recipecache.pkg_pn)
         return best[3]
+    elif pn in cooker.recipecache.providers:
+        filenames = cooker.recipecache.providers[pn]
+        eligible, foundUnique = bb.providers.filterProviders(filenames, pn, cooker.expanded_data, cooker.recipecache)
+        filename = eligible[0]
+        return filename
     else:
         return None
 
@@ -72,6 +76,8 @@ def parse_recipe_simple(cooker, pn, d, appends=True):
             raise bb.providers.NoProvider('Unable to find any recipe file matching %s' % pn)
     if appends:
         appendfiles = cooker.collection.get_file_appends(recipefile)
+    else:
+        appendfiles = None
     return parse_recipe(recipefile, appendfiles, d)
 
 
@@ -79,10 +85,9 @@ def get_var_files(fn, varlist, d):
     """Find the file in which each of a list of variables is set.
     Note: requires variable history to be enabled when parsing.
     """
-    envdata = parse_recipe(fn, [], d)
     varfiles = {}
     for v in varlist:
-        history = envdata.varhistory.variable(v)
+        history = d.varhistory.variable(v)
         files = []
         for event in history:
             if 'file' in event and not 'flag' in event:
@@ -96,90 +101,174 @@ def get_var_files(fn, varlist, d):
     return varfiles
 
 
+def split_var_value(value, assignment=True):
+    """
+    Split a space-separated variable's value into a list of items,
+    taking into account that some of the items might be made up of
+    expressions containing spaces that should not be split.
+    Parameters:
+        value:
+            The string value to split
+        assignment:
+            True to assume that the value represents an assignment
+            statement, False otherwise. If True, and an assignment
+            statement is passed in the first item in
+            the returned list will be the part of the assignment
+            statement up to and including the opening quote character,
+            and the last item will be the closing quote.
+    """
+    inexpr = 0
+    lastchar = None
+    out = []
+    buf = ''
+    for char in value:
+        if char == '{':
+            if lastchar == '$':
+                inexpr += 1
+        elif char == '}':
+            inexpr -= 1
+        elif assignment and char in '"\'' and inexpr == 0:
+            if buf:
+                out.append(buf)
+            out.append(char)
+            char = ''
+            buf = ''
+        elif char.isspace() and inexpr == 0:
+            char = ''
+            if buf:
+                out.append(buf)
+            buf = ''
+        buf += char
+        lastchar = char
+    if buf:
+        out.append(buf)
+
+    # Join together assignment statement and opening quote
+    outlist = out
+    if assignment:
+        assigfound = False
+        for idx, item in enumerate(out):
+            if '=' in item:
+                assigfound = True
+            if assigfound:
+                if '"' in item or "'" in item:
+                    outlist = [' '.join(out[:idx+1])]
+                    outlist.extend(out[idx+1:])
+                    break
+    return outlist
+
+
 def patch_recipe_file(fn, values, patch=False, relpath=''):
     """Update or insert variable values into a recipe file (assuming you
        have already identified the exact file you want to update.)
        Note that some manual inspection/intervention may be required
        since this cannot handle all situations.
     """
+
+    import bb.utils
+
+    recipe_progression_res = []
+    recipe_progression_restrs = []
+    for item in recipe_progression:
+        if item.endswith('()'):
+            key = item[:-2]
+        else:
+            key = item
+        restr = '%s(_[a-zA-Z0-9-_$(){}]+|\[[^\]]*\])?' % key
+        if item.endswith('()'):
+            recipe_progression_restrs.append(restr + '()')
+        else:
+            recipe_progression_restrs.append(restr)
+        recipe_progression_res.append(re.compile('^%s$' % restr))
+
+    def get_recipe_pos(variable):
+        for i, p in enumerate(recipe_progression_res):
+            if p.match(variable):
+                return i
+        return -1
+
     remainingnames = {}
     for k in values.keys():
-        remainingnames[k] = recipe_progression.index(k) if k in recipe_progression else -1
+        remainingnames[k] = get_recipe_pos(k)
     remainingnames = OrderedDict(sorted(remainingnames.iteritems(), key=lambda x: x[1]))
 
-    with tempfile.NamedTemporaryFile('w', delete=False) as tf:
-        def outputvalue(name):
-            rawtext = '%s = "%s"\n' % (name, values[name])
-            if name in nowrap_vars:
-                tf.write(rawtext)
-            elif name in list_vars:
-                splitvalue = values[name].split()
-                if len(splitvalue) > 1:
-                    linesplit = ' \\\n' + (' ' * (len(name) + 4))
-                    tf.write('%s = "%s%s"\n' % (name, linesplit.join(splitvalue), linesplit))
-                else:
-                    tf.write(rawtext)
+    modifying = False
+
+    def outputvalue(name, lines, rewindcomments=False):
+        if values[name] is None:
+            return
+        rawtext = '%s = "%s"\n' % (name, values[name])
+        addlines = []
+        if name in nowrap_vars:
+            addlines.append(rawtext)
+        elif name in list_vars:
+            splitvalue = split_var_value(values[name], assignment=False)
+            if len(splitvalue) > 1:
+                linesplit = ' \\\n' + (' ' * (len(name) + 4))
+                addlines.append('%s = "%s%s"\n' % (name, linesplit.join(splitvalue), linesplit))
             else:
-                wrapped = textwrap.wrap(rawtext)
-                for wrapline in wrapped[:-1]:
-                    tf.write('%s \\\n' % wrapline)
-                tf.write('%s\n' % wrapped[-1])
+                addlines.append(rawtext)
+        else:
+            wrapped = textwrap.wrap(rawtext)
+            for wrapline in wrapped[:-1]:
+                addlines.append('%s \\\n' % wrapline)
+            addlines.append('%s\n' % wrapped[-1])
+        if rewindcomments:
+            # Ensure we insert the lines before any leading comments
+            # (that we'd want to ensure remain leading the next value)
+            for i, ln in reversed(list(enumerate(lines))):
+                if ln[0] != '#':
+                    lines[i+1:i+1] = addlines
+                    break
+            else:
+                lines.extend(addlines)
+        else:
+            lines.extend(addlines)
 
-        tfn = tf.name
-        with open(fn, 'r') as f:
-            # First runthrough - find existing names (so we know not to insert based on recipe_progression)
-            # Second runthrough - make the changes
-            existingnames = []
-            for runthrough in [1, 2]:
-                currname = None
-                for line in f:
-                    if not currname:
-                        insert = False
-                        for k in remainingnames.keys():
-                            for p in recipe_progression:
-                                if re.match('^%s(_prepend|_append)*[ ?:=(]' % p, line):
-                                    if remainingnames[k] > -1 and recipe_progression.index(p) > remainingnames[k] and runthrough > 1 and not k in existingnames:
-                                        outputvalue(k)
-                                        del remainingnames[k]
-                                    break
-                        for k in remainingnames.keys():
-                            if re.match('^%s[ ?:=]' % k, line):
-                                currname = k
-                                if runthrough == 1:
-                                    existingnames.append(k)
-                                else:
-                                    del remainingnames[k]
-                                break
-                        if currname and runthrough > 1:
-                            outputvalue(currname)
+    existingnames = []
+    def patch_recipe_varfunc(varname, origvalue, op, newlines):
+        if modifying:
+            # Insert anything that should come before this variable
+            pos = get_recipe_pos(varname)
+            for k in remainingnames.keys()[:]:
+                if remainingnames[k] > -1 and pos >= remainingnames[k] and not k in existingnames:
+                    outputvalue(k, newlines, rewindcomments=True)
+                    del remainingnames[k]
+            # Now change this variable, if it needs to be changed
+            if varname in existingnames and op in ['+=', '=', '=+']:
+                if varname in remainingnames:
+                    outputvalue(varname, newlines)
+                    del remainingnames[varname]
+                return None, None, 0, True
+        else:
+            if varname in values:
+                existingnames.append(varname)
+        return origvalue, None, 0, True
 
-                    if currname:
-                        sline = line.rstrip()
-                        if not sline.endswith('\\'):
-                            currname = None
-                        continue
-                    if runthrough > 1:
-                        tf.write(line)
-                f.seek(0)
-        if remainingnames:
-            tf.write('\n')
-            for k in remainingnames.keys():
-                outputvalue(k)
+    # First run - establish which values we want to set are already in the file
+    varlist = [re.escape(item) for item in values.keys()]
+    with open(fn, 'r') as f:
+        changed, fromlines = bb.utils.edit_metadata(f, varlist, patch_recipe_varfunc)
+    # Second run - actually set everything
+    modifying = True
+    varlist.extend(recipe_progression_restrs)
+    changed, tolines = bb.utils.edit_metadata(fromlines, varlist, patch_recipe_varfunc, match_overrides=True)
 
-    with open(tfn, 'U') as f:
-        tolines = f.readlines()
+    if remainingnames:
+        if tolines[-1].strip() != '':
+            tolines.append('\n')
+        for k in remainingnames.keys():
+            outputvalue(k, tolines)
+
     if patch:
-        with open(fn, 'U') as f:
-            fromlines = f.readlines()
         relfn = os.path.relpath(fn, relpath)
         diff = difflib.unified_diff(fromlines, tolines, 'a/%s' % relfn, 'b/%s' % relfn)
-        os.remove(tfn)
         return diff
     else:
         with open(fn, 'w') as f:
             f.writelines(tolines)
-        os.remove(tfn)
         return None
+
 
 def localise_file_vars(fn, varfiles, varlist):
     """Given a list of variables and variable history (fetched with get_var_files())
@@ -278,6 +367,22 @@ def copy_recipe_files(d, tgt_dir, whole_dir=False, download=True):
     return remotes
 
 
+def get_recipe_local_files(d, patches=False):
+    """Get a list of local files in SRC_URI within a recipe."""
+    uris = (d.getVar('SRC_URI', True) or "").split()
+    fetch = bb.fetch2.Fetch(uris, d)
+    ret = {}
+    for uri in uris:
+        if fetch.ud[uri].type == 'file':
+            if (not patches and
+                    bb.utils.exec_flat_python_func('patch_path', uri, fetch, '')):
+                continue
+            # Skip files that are referenced by absolute path
+            if not os.path.isabs(fetch.ud[uri].basepath):
+                ret[fetch.ud[uri].basepath] = fetch.localpath(uri)
+    return ret
+
+
 def get_recipe_patches(d):
     """Get a list of the patches included in SRC_URI within a recipe."""
     patchfiles = []
@@ -320,6 +425,8 @@ def validate_pn(pn):
         return 'Recipe name "%s" is invalid: is a reserved keyword' % pn
     elif pn.startswith('pn-'):
         return 'Recipe name "%s" is invalid: names starting with "pn-" are reserved' % pn
+    elif pn.endswith(('.bb', '.bbappend', '.bbclass', '.inc', '.conf')):
+        return 'Recipe name "%s" is invalid: should be just a name, not a file name' % pn
     return ''
 
 
@@ -436,7 +543,7 @@ def bbappend_recipe(rd, destlayerdir, srcfiles, install=None, wildcardver=False,
             for line in extralines:
                 if line[-1] == '\n':
                     line = line[:-1]
-                splitline = line.split(maxsplit=2)
+                splitline = line.split(None, 2)
                 if len(splitline) == 3:
                     bbappendlines.append(tuple(splitline))
                 else:
@@ -519,7 +626,7 @@ def bbappend_recipe(rd, destlayerdir, srcfiles, install=None, wildcardver=False,
                             instfunclines.append(line)
                     return (instfunclines, None, 4, False)
             else:
-                splitval = origvalue.split()
+                splitval = split_var_value(origvalue, assignment=False)
                 changed = False
                 removevar = varname
                 if varname in ['SRC_URI', 'SRC_URI_append%s' % appendoverride]:
@@ -617,33 +724,28 @@ def find_layerdir(fn):
 def replace_dir_vars(path, d):
     """Replace common directory paths with appropriate variable references (e.g. /etc becomes ${sysconfdir})"""
     dirvars = {}
-    for var in d:
+    # Sort by length so we get the variables we're interested in first
+    for var in sorted(d.keys(), key=len):
         if var.endswith('dir') and var.lower() == var:
             value = d.getVar(var, True)
-            if value.startswith('/') and not '\n' in value:
+            if value.startswith('/') and not '\n' in value and value not in dirvars:
                 dirvars[value] = var
     for dirpath in sorted(dirvars.keys(), reverse=True):
         path = path.replace(dirpath, '${%s}' % dirvars[dirpath])
     return path
 
-def get_recipe_pv_without_srcpv(rd, uri_type):
+def get_recipe_pv_without_srcpv(pv, uri_type):
     """
     Get PV without SRCPV common in SCM's for now only
     support git.
 
     Returns tuple with pv, prefix and suffix.
     """
-    pv = ''
     pfx = ''
     sfx = ''
 
     if uri_type == 'git':
-        rd_tmp = rd.createCopy()
-
-        rd_tmp.setVar('SRCPV', '')
-        pv = rd_tmp.getVar('PV', True)
-
-        git_regex = re.compile("(?P<pfx>(v|))(?P<ver>((\d+[\.\-_]*)+))(?P<sfx>(\+|)(git|)(r|)(AUTOINC|)(\+|))(?P<rev>.*)")
+        git_regex = re.compile("(?P<pfx>v?)(?P<ver>[^\+]*)((?P<sfx>\+(git)?r?(AUTOINC\+))(?P<rev>.*))?")
         m = git_regex.match(pv)
 
         if m:
@@ -651,7 +753,11 @@ def get_recipe_pv_without_srcpv(rd, uri_type):
             pfx = m.group('pfx')
             sfx = m.group('sfx')
     else:
-        pv = rd.getVar('PV', True)
+        regex = re.compile("(?P<pfx>(v|r)?)(?P<ver>.*)")
+        m = regex.match(pv)
+        if m:
+            pv = m.group('ver')
+            pfx = m.group('pfx')
 
     return (pv, pfx, sfx)
 
@@ -675,11 +781,21 @@ def get_recipe_upstream_version(rd):
     ru['type'] = 'U'
     ru['datetime'] = ''
 
-    # XXX: we suppose that the first entry points to the upstream sources
-    src_uri = rd.getVar('SRC_URI', True).split()[0] 
-    uri_type, _, _, _, _, _ =  decodeurl(src_uri)
-
     pv = rd.getVar('PV', True)
+
+    # XXX: If don't have SRC_URI means that don't have upstream sources so
+    # returns the current recipe version, so that upstream version check
+    # declares a match.
+    src_uris = rd.getVar('SRC_URI', True)
+    if not src_uris:
+        ru['version'] = pv
+        ru['type'] = 'M'
+        ru['datetime'] = datetime.now()
+        return ru
+
+    # XXX: we suppose that the first entry points to the upstream sources
+    src_uri = src_uris.split()[0]
+    uri_type, _, _, _, _, _ =  decodeurl(src_uri)
 
     manual_upstream_version = rd.getVar("RECIPE_UPSTREAM_VERSION", True)
     if manual_upstream_version:
@@ -702,21 +818,30 @@ def get_recipe_upstream_version(rd):
     else:
         ud = bb.fetch2.FetchData(src_uri, rd)
         pupver = ud.method.latest_versionstring(ud, rd)
+        (upversion, revision) = pupver
 
+        # format git version version+gitAUTOINC+HASH
         if uri_type == 'git':
-            (pv, pfx, sfx) = get_recipe_pv_without_srcpv(rd, uri_type)
+            (pv, pfx, sfx) = get_recipe_pv_without_srcpv(pv, uri_type)
 
-            latest_revision = ud.method.latest_revision(ud, rd, ud.names[0])
+            # if contains revision but not upversion use current pv
+            if upversion == '' and revision:
+                upversion = pv
 
-            # if contains revision but not pupver use current pv
-            if pupver == '' and latest_revision:
-                pupver = pv
+            if upversion:
+                tmp = upversion
+                upversion = ''
 
-            if pupver != '':
-                pupver = pfx + pupver + sfx + latest_revision[:10]
+                if pfx:
+                    upversion = pfx + tmp
+                else:
+                    upversion = tmp
 
-        if pupver != '':
-            ru['version'] = pupver
+                if sfx:
+                    upversion = upversion + sfx + revision[:10]
+
+        if upversion:
+            ru['version'] = upversion
             ru['type'] = 'A'
 
         ru['datetime'] = datetime.now()

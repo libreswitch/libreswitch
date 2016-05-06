@@ -8,12 +8,15 @@
 #
 DEFAULTTUNE ?= "core2-32"
 
+# Set x86 target arch to i686, so that glibc enables SSE optimised memcpy, etc.
+X86ARCH32 ?= "i686"
+
 # Include the previous tune to pull in PACKAGE_EXTRA_ARCHS
 require conf/machine/include/tune-i586.inc
 
 # Extra tune features
 TUNEVALID[core2] = "Enable core2 specific processor optimizations"
-TUNE_CCARGS .= "${@bb.utils.contains("TUNE_FEATURES", "core2", " -march=core2 -mtune=core2 -msse3 -mfpmath=sse", "", d)}"
+TUNE_CCARGS .= "${@bb.utils.contains('TUNE_FEATURES', 'core2', ' -march=core2 -mtune=core2 -msse3 -mfpmath=sse', '', d)}"
 
 # Extra tune selections
 AVAILTUNES += "core2-32"

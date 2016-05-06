@@ -2,8 +2,13 @@
 {% load humanize %}
 {% load projecttags %}
 
+{% block title %} {{build.target_set.all|dictsort:"target"|join:", "}} {{build.machine}} - {{build.project.name}} - Toaster {% endblock %}
 {% block parentbreadcrumb %}
-{{build.get_sorted_target_list.0.target}} {%if build.target_set.all.count > 1%}(+ {{build.target_set.all.count|add:"-1"}}){%endif%} {{build.machine}} ({{build.completed_on|date:"d/m/y H:i"}})
+{% if build.get_sorted_target_list.count > 0 %}
+  {{build.get_sorted_target_list.0.target}}
+{% endif %}
+
+{%if build.target_set.all.count > 1%}(+{{build.target_set.all.count|add:"-1"}}){%endif%} {{build.machine}} ({{build.completed_on|date:"d/m/y H:i"}})
 {% endblock %}
 
 {% block buildinfomain %}
@@ -23,56 +28,48 @@
               </strong> on
             {{build.completed_on|date:"d/m/y H:i"}}
 </span>
-{% if  build.warnings_no or build.errors_no %}
+{% if  build.warnings.count or build.errors.count %}
 &nbsp;with
 {% endif %}
 {%if build.outcome == build.SUCCEEDED or build.outcome == build.FAILED %}
-{% if  build.errors_no %}
-     <span > <i class="icon-minus-sign red"></i><strong><a href="#errors" class="error show-errors"> {{build.errors_no}} error{{build.errors_no|pluralize}}</a></strong></span>
+{% if  build.errors.count %}
+     <span > <i class="icon-minus-sign red"></i><strong><a href="#errors" class="error show-errors"> {{build.errors.count}} error{{build.errors.count|pluralize}}</a></strong></span>
 {% endif %}
-{% if  build.warnings_no %}
-{% if  build.errors_no %}
+{% if  build.warnings.count %}
+{% if  build.errors.count %}
     and
 {% endif %}
-    <span > <i class="icon-warning-sign yellow"></i><strong><a href="#warnings" class="warning show-warnings"> {{build.warnings_no}} warning{{build.warnings_no|pluralize}}</a></strong></span>
+    <span > <i class="icon-warning-sign yellow"></i><strong><a href="#warnings" class="warning show-warnings"> {{build.warnings.count}} warning{{build.warnings.count|pluralize}}</a></strong></span>
 {% endif %}
-            <span class="pull-right">Build time: <a href="{% url 'buildtime' build.pk %}">{{ build.timespent|sectohms }}</a>
-      {% if MANAGED and build.project %}
-            <a class="btn {%if build.outcome == build.SUCCEEDED%}btn-success{%else%}btn-danger{%endif%} pull-right log" href="{% url 'build_artifact' build.id "cookerlog" build.id %}">Download build log</a>
-      {% endif %}
+            <span class="pull-right">Build time: <a href="{% url 'buildtime' build.pk %}">{{ build.timespent_seconds|sectohms }}</a>
+            {% if build.cooker_log_path %}
+                <a class="btn {%if build.outcome == build.SUCCEEDED%}btn-success{%else%}btn-danger{%endif%} pull-right log" href="{% url 'build_artifact' build.id "cookerlog" build.id %}">Download build log</a>
+            {% endif %}
             </span>
+
 {%endif%}
     </div>
-    {% if build.toaster_exceptions.count > 0 %}
-    <div class="row">
-        <small class="pull-right">
-        <i class="icon-question-sign get-help get-help-blue" title="" data-original-title="Toaster exceptions do not affect your build: only the operation of Toaster"></i>
-        <a class="show-exceptions" href="#exceptions">Toaster threw {{build.toaster_exceptions.count}} exception{{build.toaster_exceptions.count|pluralize}}</a>
-    </small>
-    </div>
-    {% endif %}
   </div>
 </div>
 
-{% if build.errors_no %}
+{% if build.errors.count %}
 <div class="accordion span10 pull-right" id="errors">
   <div class="accordion-group">
     <div class="accordion-heading">
             <a class="accordion-toggle error toggle-errors">
          <h2 id="error-toggle">
            <i class="icon-minus-sign"></i>
-           {{build.errors_no}} error{{build.errors_no|pluralize}}
+           {{build.errors.count}} error{{build.errors.count|pluralize}}
          </h2>
       </a>
     </div>
     <div class="accordion-body collapse in" id="collapse-errors">
       <div class="accordion-inner">
         <div class="span10">
-          {% for error in logmessages %}{% if error.level == 2 %}
-            <div class="alert alert-error">
+          {% for error in build.errors %}
+            <div class="alert alert-error" data-error="{{ error.id }}">
               <pre>{{error.message}}</pre>
             </div>
-          {% endif %}
           {% endfor %}
         </div>
       </div>
@@ -113,41 +110,33 @@
                                   </p>
                     </div>
                 </div>
-                        {% else %}
+        {% else %}
             <dt>
                 <i class="icon-question-sign get-help" title="The location in disk of the license manifest, a document listing all packages installed in your image and their licenses"></i>
 
-            {% if MANAGED and build.project %}
                 License manifest
-            {% else %}
-                <a href="{% url 'targetpkg' build.pk target.target.pk %}">License manifest</a>
-            {% endif %}
             </dt>
-            {% if MANAGED and build.project %}
             <dd>
                 <a href="{% url 'targetpkg' build.pk target.target.pk %}">View in Toaster</a> |
                 <a href="{% url 'build_artifact' build.pk 'licensemanifest' target.target.pk %}">Download</a></dd>
-            {% else %}
-            <dd><code>{{target.target.license_manifest_path}}</code></dd>
-            {% endif %}
             <dt>
                 <i class="icon-question-sign get-help" title="Image files are stored in <code>/build/tmp/deploy/images/</code>"></i>
                 Image files
             </dt>
             <dd>
                 <ul>
-                                  {% for i in target.imageFiles %}
-            {% if build.project %}
-                    <li><a href="{% url 'build_artifact' build.pk 'imagefile' i.id %}">{{i.path}}</a>
-            {% else %}
-                    <li>{{i.path}}
-            {% endif %}
-                    ({{i.size|filtered_filesizeformat}})</li>
-                                  {% endfor %}
+                    {% for i in target.imageFiles %}
+                        <li>
+                            <a href="{% url 'build_artifact' build.pk 'imagefile' i.id %}">
+                                {{i.suffix}}
+                            </a>
+                            &nbsp;({{i.size|filtered_filesizeformat}})
+                        </li>
+                    {% endfor %}
                 </ul>
             </dd>
         </dl>
-                        {% endif %}
+        {% endif %}
     </div>
         {% endif %}
     {% endfor %}
@@ -170,13 +159,9 @@
                 Other artifacts</dt>
             <dd><div>
               {% for ba in build.buildartifact_set.all|dictsort:"file_name" %}
-                {% if MANAGED and build.project %}
                 <a href="{%url 'build_artifact' build.id 'buildartifact' ba.id %}">
-                {% endif %}
-                    {{ba.get_local_file_name}}
-                {% if MANAGED and build.project %}
+                    {{ba.get_basename}}
                 </a>
-                {% endif %}
 
                 ({{ba.file_size|filtered_filesizeformat}}) <br/>
               {% endfor %}
@@ -211,11 +196,9 @@
                         <span class="task-name">{{exectask.0.task_name}}</span>
                     </a>
 
-                      {% if MANAGED and build.project %}
                         <a href="{% url 'build_artifact' build.id "tasklogfile" exectask.0.id %}">
                             <i class="icon-download-alt" title="" data-original-title="Download task log file"></i>
                         </a>
-                      {% endif %}
 
                 {% elif exectask.count > 1%}
                     <a class="error" href="{% url "tasks" build.id %}?filter=outcome%3A4">{{exectask.count}}</a>
@@ -257,14 +240,14 @@
     </div>
 </div>
 
-{% if build.warnings_no %}
+{% if build.warnings.count %}
 <div class="accordion span10 pull-right" id="warnings">
   <div class="accordion-group">
     <div class="accordion-heading">
       <a class="accordion-toggle warning toggle-warnings">
         <h2 id="warning-toggle">
           <i class="icon-warning-sign"></i>
-          {{build.warnings_no}} warning{{build.warnings_no|pluralize}}
+          {{build.warnings.count}} warning{{build.warnings.count|pluralize}}
         </h2>
       </a>
     </div>
@@ -276,33 +259,6 @@
               <pre>{{warning.message}}</pre>
             </div>
           {% endif %}{% endfor %}
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-{% endif %}
-
-
-{% if build.toaster_exceptions.count > 0 %}
-<div class="accordion span10 pull-right" id="exceptions">
-  <div class="accordion-group">
-    <div class="accordion-heading">
-      <a class="accordion-toggle exception toggle-exceptions">
-        <h2 id="exception-toggle">
-          <i class="icon-warning-sign"></i>
-          {{build.toaster_exceptions.count}} Toaster exception{{build.toaster_exceptions.count|pluralize}}
-        </h2>
-      </a>
-    </div>
-    <div class="accordion-body collapse" id="collapse-exceptions">
-      <div class="accordion-inner">
-        <div class="span10">
-          {% for exception in build.toaster_exceptions %}
-            <div class="alert alert-exception">
-              <pre>{{exception.message}}</pre>
-            </div>
-          {% endfor %}
         </div>
       </div>
     </div>

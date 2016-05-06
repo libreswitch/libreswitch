@@ -31,6 +31,7 @@ except ImportError:
 import logging
 import atexit
 import traceback
+import ast
 import bb.utils
 import bb.compat
 import bb.exceptions
@@ -69,9 +70,14 @@ _ui_handler_seq = 0
 _event_handler_map = {}
 _catchall_handlers = {}
 _eventfilter = None
+_uiready = False
 
 def execute_handler(name, handler, event, d):
     event.data = d
+    addedd = False
+    if 'd' not in __builtins__:
+        __builtins__['d'] = d
+        addedd = True
     try:
         ret = handler(event)
     except (bb.parse.SkipRecipe, bb.BBHandledException):
@@ -87,6 +93,8 @@ def execute_handler(name, handler, event, d):
         raise
     finally:
         del event.data
+        if addedd:
+            del __builtins__['d']
 
 def fire_class_handlers(event, d):
     if isinstance(event, logging.LogRecord):
@@ -107,7 +115,7 @@ def print_ui_queue():
     """If we're exiting before a UI has been spawned, display any queued
     LogRecords to the console."""
     logger = logging.getLogger("BitBake")
-    if not _ui_handlers:
+    if not _uiready:
         from bb.msg import BBLogFormatter
         console = logging.StreamHandler(sys.stdout)
         console.setFormatter(BBLogFormatter("%(levelname)s: %(message)s"))
@@ -129,7 +137,7 @@ def print_ui_queue():
                 logger.handle(event)
 
 def fire_ui_handlers(event, d):
-    if not _ui_handlers:
+    if not _uiready:
         # No UI handlers registered yet, queue up the messages
         ui_queue.append(event)
         return
@@ -170,7 +178,7 @@ def fire_from_worker(event, d):
     fire_ui_handlers(event, d)
 
 noop = lambda _: None
-def register(name, handler, mask=[]):
+def register(name, handler, mask=None, filename=None, lineno=None):
     """Register an Event handler"""
 
     # already registered
@@ -182,7 +190,15 @@ def register(name, handler, mask=[]):
         if isinstance(handler, basestring):
             tmp = "def %s(e):\n%s" % (name, handler)
             try:
-                code = compile(tmp, "%s(e)" % name, "exec")
+                code = bb.methodpool.compile_cache(tmp)
+                if not code:
+                    if filename is None:
+                        filename = "%s(e)" % name
+                    code = compile(tmp, filename, "exec", ast.PyCF_ONLY_AST)
+                    if lineno is not None:
+                        ast.increment_lineno(code, lineno-1)
+                    code = compile(code, filename, "exec")
+                    bb.methodpool.compile_cache_add(tmp, code)
             except SyntaxError:
                 logger.error("Unable to register event handler '%s':\n%s", name,
                              ''.join(traceback.format_exc(limit=0)))
@@ -213,7 +229,10 @@ def set_eventfilter(func):
     global _eventfilter
     _eventfilter = func
 
-def register_UIHhandler(handler):
+def register_UIHhandler(handler, mainui=False):
+    if mainui:
+        global _uiready
+        _uiready = True
     bb.event._ui_handler_seq = bb.event._ui_handler_seq + 1
     _ui_handlers[_ui_handler_seq] = handler
     level, debug_domains = bb.msg.constructLogOptions()
@@ -364,11 +383,12 @@ class BuildStarted(BuildBase, OperationStarted):
 
 class BuildCompleted(BuildBase, OperationCompleted):
     """bbmake build run completed"""
-    def __init__(self, total, n, p, failures = 0):
+    def __init__(self, total, n, p, failures=0, interrupted=0):
         if not failures:
             OperationCompleted.__init__(self, total, "Building Succeeded")
         else:
             OperationCompleted.__init__(self, total, "Building Failed")
+        self._interrupted = interrupted
         BuildBase.__init__(self, n, p, failures)
 
 class DiskFull(Event):
@@ -383,7 +403,7 @@ class DiskFull(Event):
 class NoProvider(Event):
     """No Provider for an Event"""
 
-    def __init__(self, item, runtime=False, dependees=None, reasons=[], close_matches=[]):
+    def __init__(self, item, runtime=False, dependees=None, reasons=None, close_matches=None):
         Event.__init__(self)
         self._item = item
         self._runtime = runtime
@@ -497,6 +517,16 @@ class TargetsTreeGenerated(Event):
         Event.__init__(self)
         self._model = model
 
+class ReachableStamps(Event):
+    """
+    An event listing all stamps reachable after parsing
+    which the metadata may use to clean up stale data
+    """
+
+    def __init__(self, stamps):
+        Event.__init__(self)
+        self.stamps = stamps
+
 class FilesMatchingFound(Event):
     """
     Event when a list of files matching the supplied pattern has
@@ -574,6 +604,8 @@ class LogHandler(logging.Handler):
             etype, value, tb = record.exc_info
             if hasattr(tb, 'tb_next'):
                 tb = list(bb.exceptions.extract_traceback(tb, context=3))
+            # Need to turn the value into something the logging system can pickle
+            value = str(value)
             record.bb_exc_info = (etype, value, tb)
             record.exc_info = None
         fire(record, None)

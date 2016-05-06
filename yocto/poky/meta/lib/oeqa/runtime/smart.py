@@ -64,6 +64,7 @@ class SmartRepoTest(SmartTest):
         for i in self.repolist:
             oeRuntimeTest.tc.target.run('smart channel -y --remove '+str(i))
 
+    @testcase(1143)
     def test_smart_channel(self):
         self.smart('channel', 1)
 
@@ -96,6 +97,7 @@ class SmartRepoTest(SmartTest):
         self.smart('channel --disable rpmsys')
         self.smart('channel --enable rpmsys')
 
+    @testcase(1144)
     @skipUnlessPassed('test_smart_channel_add')
     def test_smart_install(self):
         self.smart('remove -y psplash-default')
@@ -145,7 +147,7 @@ class SmartRepoTest(SmartTest):
         for i in output.split("\n"):
             if ("rpmsys" != str(i)) and ("myrpmdir" != str(i)):
                 self.smart('channel --disable '+str(i))
-        self.target.run('cd /home/root')
+        self.target.run('cd $HOME')
         self.smart('install psplash')
         for i in output.split("\n"):
             if ("rpmsys" != str(i)) and ("myrpmdir" != str(i)):

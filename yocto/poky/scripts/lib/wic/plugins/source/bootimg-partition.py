@@ -32,10 +32,15 @@ from wic.utils.oe.misc import exec_cmd, get_bitbake_var
 from glob import glob
 
 class BootimgPartitionPlugin(SourcePlugin):
+    """
+    Create an image of boot partition, copying over files
+    listed in IMAGE_BOOT_FILES bitbake variable.
+    """
+
     name = 'bootimg-partition'
 
     @classmethod
-    def do_install_disk(self, disk, disk_name, cr, workdir, oe_builddir,
+    def do_install_disk(cls, disk, disk_name, cr, workdir, oe_builddir,
                         bootimg_dir, kernel_dir, native_sysroot):
         """
         Called after all partitions have been prepared and assembled into a
@@ -44,7 +49,7 @@ class BootimgPartitionPlugin(SourcePlugin):
         pass
 
     @classmethod
-    def do_configure_partition(self, part, source_params, cr, cr_workdir,
+    def do_configure_partition(cls, part, source_params, cr, cr_workdir,
                                oe_builddir, bootimg_dir, kernel_dir,
                                native_sysroot):
         """
@@ -55,7 +60,7 @@ class BootimgPartitionPlugin(SourcePlugin):
         pass
 
     @classmethod
-    def do_prepare_partition(self, part, source_params, cr, cr_workdir,
+    def do_prepare_partition(cls, part, source_params, cr, cr_workdir,
                              oe_builddir, bootimg_dir, kernel_dir,
                              rootfs_dir, native_sysroot):
         """
@@ -66,9 +71,6 @@ class BootimgPartitionPlugin(SourcePlugin):
         - copies all files listed in IMAGE_BOOT_FILES variable
         """
         hdddir = "%s/boot" % cr_workdir
-        rm_cmd = "rm -rf %s/boot" % cr_workdir
-        exec_cmd(rm_cmd)
-
         install_cmd = "install -d %s" % hdddir
         exec_cmd(install_cmd)
 

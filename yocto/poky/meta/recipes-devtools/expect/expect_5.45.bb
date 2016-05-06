@@ -29,6 +29,9 @@ SRC_URI = "${SOURCEFORGE_MIRROR}/expect/Expect/${PV}/${BPN}${PV}.tar.gz \
 SRC_URI[md5sum] = "44e1a4f4c877e9ddc5a542dfa7ecc92b"
 SRC_URI[sha256sum] = "b28dca90428a3b30e650525cdc16255d76bb6ccd65d448be53e620d95d5cc040"
 
+UPSTREAM_CHECK_URI = "http://sourceforge.net/projects/expect/files/Expect/"
+UPSTREAM_CHECK_REGEX = "/Expect/(?P<pver>(\d+[\.\-_]*)+)/"
+
 S = "${WORKDIR}/${BPN}${PV}"
 
 do_install_append() {
@@ -40,8 +43,7 @@ do_install_append() {
         sed -e 's|$dir|${libdir}|' -i ${D}${libdir}/expect${PV}/pkgIndex.tcl
 }
 
-EXTRA_OECONF += "--includedir=${STAGING_INCDIR} \
-                 --with-tcl=${STAGING_LIBDIR} \
+EXTRA_OECONF += "--with-tcl=${STAGING_LIBDIR} \
                  --with-tclinclude=${STAGING_INCDIR}/tcl8.6 \
                  --enable-shared \
                  --enable-threads \
@@ -49,14 +51,11 @@ EXTRA_OECONF += "--includedir=${STAGING_INCDIR} \
                 "
 EXTRA_OEMAKE_install = " 'SCRIPTS=' "
 
-FILES_${PN}-dbg += "${libdir}/${BPN}${PV}/.debug \
-                    ${libdir}/.debug \
-                   "
 FILES_${PN}-dev = "${libdir_native}/expect${PV}/libexpect*.so \
-                   ${STAGING_INCDIR}/expect.h \
-                   ${STAGING_INCDIR}/expect_tcl.h \
-                   ${STAGING_INCDIR}/expect_comm.h \
-                   ${STAGING_INCDIR}/tcldbg.h \
+                   ${includedir}/expect.h \
+                   ${includedir}/expect_tcl.h \
+                   ${includedir}/expect_comm.h \
+                   ${includedir}/tcldbg.h \
                    ${includedir}/*.h \
                   "
 

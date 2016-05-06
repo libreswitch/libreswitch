@@ -390,12 +390,13 @@ index 889d215..4307266 100644
      name='ovs',
      description='Open vSwitch library',
      version=VERSION,
-@@ -42,5 +74,26 @@ setuptools.setup(
+@@ -42,5 +74,27 @@ setuptools.setup(
          'Topic :: Software Development :: Libraries :: Python Modules',
          'Topic :: System :: Networking',
          'License :: OSI Approved :: Apache Software License'
 -    ]
 +    ],
++    zip_safe= False,
 +    ext_modules=[setuptools.Extension("ovs._json", sources=["ovs/_json.c"],
 +                                      libraries=['ovscommon'],
 +                                      include_dirs=[includedir, includedir + '/ovs' ],

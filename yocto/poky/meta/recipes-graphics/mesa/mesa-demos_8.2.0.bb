@@ -19,11 +19,15 @@ SRC_URI = "ftp://ftp.freedesktop.org/pub/mesa/demos/${PV}/${BPN}-${PV}.tar.bz2 \
     file://0007-Install-few-more-test-programs.patch \
     file://0008-glsl-perf-Add-few-missing-.glsl-.vert-.frag-files-to.patch \
     file://0009-glsl-perf-Install-.glsl-.vert-.frag-files.patch \
+    file://0010-sharedtex_mt-fix-rendering-thread-hang.patch \
+    file://0011-drop-demos-dependant-on-obsolete-MESA_screen_surface.patch \
 "
 SRC_URI[md5sum] = "72613a2c8c013716db02e3ff59d29061"
 SRC_URI[sha256sum] = "e4bfecb5816ddd4b7b37c1bc876b63f1f7f06fda5879221a9774d0952f90ba92"
 
-inherit autotools pkgconfig
+inherit autotools pkgconfig distro_features_check
+# depends on virtual/egl, virtual/libgl ...
+REQUIRED_DISTRO_FEATURES = "opengl"
 
 PACKAGECONFIG ?= "drm osmesa freetype2 gbm egl gles1 gles2 \
                   ${@bb.utils.contains('DISTRO_FEATURES', 'x11', 'x11 glew glu', '', d)}"
@@ -41,13 +45,17 @@ PACKAGECONFIG[gles1] = "--enable-gles1,--disable-gles1,virtual/libgles1"
 PACKAGECONFIG[gles2] = "--enable-gles2,--disable-gles2,virtual/libgles2"
 PACKAGECONFIG[glut] = "--with-glut=${STAGING_EXECPREFIXDIR},--without-glut,"
 PACKAGECONFIG[osmesa] = "--enable-osmesa,--disable-osmesa,"
-PACKAGECONFIG[vg] = "--enable-vg,--disable-vg,virtual/libvg"
+PACKAGECONFIG[vg] = "--enable-vg,--disable-vg,virtual/libopenvg"
 PACKAGECONFIG[wayland] = "--enable-wayland,--disable-wayland,virtual/libgl wayland"
 PACKAGECONFIG[x11] = "--enable-x11,--disable-x11,virtual/libx11"
 PACKAGECONFIG[glew] = "--enable-glew,--disable-glew,glew"
 PACKAGECONFIG[glu] = "--enable-glu,--disable-glu,virtual/libgl"
 
 do_install_append() {
-    # it can be completely empty when all PACKAGECONFIG options are disabled
-    rmdir --ignore-fail-on-non-empty ${D}${bindir}
+	# it can be completely empty when all PACKAGECONFIG options are disabled
+	rmdir --ignore-fail-on-non-empty ${D}${bindir}
+
+	if [ -f ${D}${bindir}/clear ]; then
+        	mv ${D}${bindir}/clear ${D}${bindir}/clear.mesa-demos
+	fi
 }
