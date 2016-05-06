@@ -1354,12 +1354,12 @@ def reset(args, config, basepath, workspace):
 
         srctree = workspace[pn]['srctree']
         if os.path.isdir(srctree):
-            if os.listdir(srctree):
+            if not os.listdir(srctree):
                 # We don't want to risk wiping out any work in progress
-                logger.info('Leaving source tree %s as-is; if you no '
-                            'longer need it then please delete it manually'
-                            % srctree)
-            else:
+                #logger.info('Leaving source tree %s as-is; if you no '
+                #            'longer need it then please delete it manually'
+                #            % srctree)
+            #else:
                 # This is unlikely, but if it's empty we can just remove it
                 os.rmdir(srctree)
 
