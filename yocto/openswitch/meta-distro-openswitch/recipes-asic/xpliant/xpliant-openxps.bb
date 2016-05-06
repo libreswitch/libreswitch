@@ -7,6 +7,8 @@ LIC_FILES_CHKSUM = "file://bin/serdes/OPS%20license%20file%20(2016-04-08)%20(Ava
 
 DEPENDS = "libxml2 libpcap lmsensors"
 
+RDEPENDS_${PN} = "libpcap python-doctest"
+
 DEPENDS_${PN} += "systemd"
 
 SRC_URI = "git://github.com/xpliant/OpenXPS;protocol=http"
