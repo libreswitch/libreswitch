@@ -26,6 +26,7 @@ SYSTEMD_SERVICE_${PN} = "${BPN}.service"
 do_install_append() {
     install -d ${D}/${includedir}
     cp ${S}/src/libcharon/plugins/vici/libvici.h ${D}/${includedir}
+    cp ${S}/src/libcharon/plugins/error_notify/error_notify_msg.h ${D}/${includedir}
 }
 
 inherit autotools gettext pkgconfig systemd
