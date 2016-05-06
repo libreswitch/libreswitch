@@ -7,7 +7,7 @@ After=ovsdb-server.service ops-init.service
 [Service]
 Type=forking
 ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-passwd-srv.pid
-ExecStart=/sbin/ip netns exec swns /usr/bin/ops-passwd-srv --detach --pidfile -vSYSLOG:INFO
+ExecStart=/usr/bin/ops-passwd-srv --detach --pidfile -vSYSLOG:INFO
 PIDFile=/var/run/openvswitch/ops-passwd-srv.pid
 Restart=on-abort
 
