@@ -21,12 +21,14 @@ do_compile_append() {
         O=${STAGING_KERNEL_BUILDDIR} ${MAKE_TARGETS}
 }
 
+FILES_${PN} += "/lib/firmware"
+
 do_install_append() {
     # Install serdes configuration files
-    install -d ${D}${sysconfdir}/openswitch/platform/Avago/serdes
-    install -m 0644 ${S}/bin/serdes/serdes.0x105A_0045.swap ${D}${sysconfdir}/openswitch/platform/Avago/serdes
-    install -m 0644 ${S}/bin/serdes/serdes.0x105A_0045.rom ${D}${sysconfdir}/openswitch/platform/Avago/serdes
-    install -m 0644 ${S}/bin/serdes/sbus_master.0x101A_0001.rom ${D}${sysconfdir}/openswitch/platform/Avago/serdes
+    install -d ${D}/lib/firmware/Avago/serdes
+    install -m 0644 ${S}/bin/serdes/serdes.0x105A_0045.swap ${D}/lib/firmware/Avago/serdes
+    install -m 0644 ${S}/bin/serdes/serdes.0x105A_0045.rom ${D}/lib/firmware/Avago/serdes
+    install -m 0644 ${S}/bin/serdes/sbus_master.0x101A_0001.rom ${D}/lib/firmware/Avago/serdes
 
     # Install kernel modules
     cd ${S}/xpnet

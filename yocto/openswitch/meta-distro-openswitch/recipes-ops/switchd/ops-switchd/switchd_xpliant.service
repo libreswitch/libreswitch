@@ -6,7 +6,7 @@ After=ovsdb-server.service ops-init.service
 
 [Service]
 Type=forking
-Environment="AAPL_ROM_PATH=/etc/openswitch/platform/Avago/serdes/"
+Environment="AAPL_ROM_PATH=/lib/firmware/Avago/serdes/"
 Environment="XP_ROOT=/usr/bin/xpliant/shell/"
 # HOST_PACKET_IF_MODE={ TAP_DMA, TAP_NETDEV, KNET_NETDEV }
 Environment="HOST_PACKET_IF_MODE=KNET_NETDEV"
