@@ -13,7 +13,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-switchd-container-plugin;protocol=${OPS_REPO
 "
 FILES_${PN} = "${libdir}/openvswitch/plugins"
 
-SRCREV = "bc39d1be60d50a1f19fd42e02b4eb6d5198e6f67"
+SRCREV = "31e3b83b29167bc46114356949ae1d10febecdff"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
