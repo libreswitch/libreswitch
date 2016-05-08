@@ -10,7 +10,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-vland;protocol=${OPS_REPO_PROTOCOL};branch=$
            file://ops-vland.service \
 "
 
-SRCREV = "3ea967087b5f962846eff2edac17b9bb2ee60459"
+SRCREV = "9494bdcc0a240bd62f15906839469ab0e941263c"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
