@@ -3,18 +3,6 @@ LICENSE = "Apache-2.0"
 
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
-PACKAGES += "ops-librbac ops-librbac-dev"
-FILES_ops-librbac = "/usr/lib/librbac.so.*.*.*"
-FILES_ops-librbac-dev = "/usr/lib/pkgconfig/rbac.pc /usr/lib/librbac.so*"
-
-SSTATE_DUPWHITELIST = \
-     "${STAGING_DIR_TARGET}/usr/include/rbac.h \
-      ${STAGING_DIR_TARGET}/usr/lib/librbac.so.0.1.0 \
-      ${STAGING_DIR_TARGET}/usr/lib/librbac.so \
-      ${STAGING_DIR_TARGET}/usr/lib/python2.7/site-packages/rbac.py \
-      ${STAGING_DIR_TARGET}/usr/lib/python2.7/site-packages/rbac.pyc"
-
-
 DEPENDS = "ops-ovsdb ops-cli ops-supportability"
 
 RDEPENDS_${PN} = "python-argparse python-json python-ops-ovsdb python-distribute python-pam pam-plugin-radius-auth pam-plugin-radius-chap-auth"
@@ -58,6 +46,11 @@ do_install() {
      install -m 0644 ${WORKDIR}/server ${D}${sysconfdir}/raddb/server
      install -d ${D}${sysconfdir}/sudoers.d
      install -m 0644 ${WORKDIR}/useradd ${D}${sysconfdir}/sudoers.d/useradd
+
+     # Uninstall old libraries
+     rm -f ${D}/usr/include/rbac.h
+     rm -f ${D}/usr/lib/librbac.so*
+     rm -f ${D}/usr/lib/python2.7/site-packages/rbac.py*
 }
 
 FILES_${PN} += "/usr/lib/cli/plugins/"

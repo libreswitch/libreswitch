@@ -7,13 +7,6 @@ PACKAGES += "ops-librbac ops-librbac-dev"
 FILES_ops-librbac = "/usr/lib/librbac.so.*.*.*"
 FILES_ops-librbac-dev = "/usr/lib/pkgconfig/rbac.pc /usr/lib/librbac.so*"
 
-SSTATE_DUPWHITELIST = \
-     "${STAGING_DIR_TARGET}/usr/include/rbac.h \
-      ${STAGING_DIR_TARGET}/usr/lib/librbac.so.0.1.0 \
-      ${STAGING_DIR_TARGET}/usr/lib/librbac.so \
-      ${STAGING_DIR_TARGET}/usr/lib/python2.7/site-packages/rbac.py \
-      ${STAGING_DIR_TARGET}/usr/lib/python2.7/site-packages/rbac.pyc"
-
 DEPENDS = ""
 
 BRANCH ?= "${OPS_REPO_BRANCH}"
