@@ -20,6 +20,7 @@ SRC_URI = " \
    git://github.com/ThrowTheSwitch/Unity.git;name=unity;destsuffix=git/vendor/unity \
    file://0001-gcov-and-valgrind-support-from-David-Thai.patch;patch=1 \
    file://0001-Hacked-to-shuffle.patch;patch=1;patchdir=vendor/unity \
+   file://0001-Handle-structs-as-parameters-and-functions-with-nest.patch;patch=1;patchdir=vendor/cmock \
     "
 
 SRCREV_ceedling = "0a04043fc920068633100a91c7ee81e2eb9d29b3"

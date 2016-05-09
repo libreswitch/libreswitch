@@ -14,11 +14,11 @@ ceedling_generate_env() {
     mkdir -p $proj_dir
     # Use ceedling to lay out a new project
     $ceedling_bin new $proj_dir
-
+    cd $proj_dir
     [ -e $proj_dir/src ] && rm -r $proj_dir/src
-    ln -s ${S}/src $proj_dir/src
+    ln -s ../../src src
     [ -e $proj_dir/include ] && rm -r $proj_dir/include
-    ln -s ${S}/include $proj_dir/include
+    ln -s ../../include include
     [ ! -h $proj_dir/vendor ] && rm -rf $proj_dir/vendor
     [ ! -e $proj_dir/build/.gitkeep ] && touch $proj_dir/build/.gitkeep
     [ ! -e $proj_dir/test/support/.gitkeep ] && touch $proj_dir/test/support/.gitkeep
@@ -53,7 +53,7 @@ ceedling_write_project_file_template() {
     :support:
         - [TESTS_DIR]/support
     :source:
-        - [SRC_DIR]
+        - [SRC_DIR]/**
     :include:
         - [INCL_DIR]
         - [STAGING_INCDIR_NATIVE]
@@ -80,10 +80,23 @@ ceedling_write_project_file_template() {
     :test:
         :compile:
             :*:
-                - [C_FLAGS]
+                - [C_FLAGS] -Wno-return-type -std=gnu99
         :link:
             :*:
                 - [LD_FLAGS]
+
+:tools_gcov_compiler:
+    :arguments:
+        - [C_FLAGS]
+        - -std=gnu99
+
+:tools_gcov_linker:
+    :arguments:
+        - [LD_FLAGS]
+
+:tools_gcov_lcov_exclude:
+    :arguments:
+        - 'test/*'
 
 :plugins:
     :load_paths:
@@ -92,6 +105,7 @@ ceedling_write_project_file_template() {
         - stdout_pretty_tests_report
         - module_generator
         - gcov
+        - valgrind
 
 :cmock:
     :mock_prefix: mock_
@@ -101,14 +115,23 @@ ceedling_write_project_file_template() {
     :plugins:
         - :ignore
         - :callback
+        - :ignore_arg
+        - :expect_any_args
+        - :return_thru_ptr
 
 :defines:
     :test:
         - OPS
         - HALON
+        - UNIT_TEST
     :test_preprocess:
         - OPS
         - HALON
+        - UNIT_TEST
+    :gcov:
+        - OPS
+        - HALON
+        - UNIT_TEST
 EOF
 }
 
@@ -193,7 +216,16 @@ ceedling_update_vendor_path() {
             echo "vendor" >> $project_home/.gitignore;
         fi
     else
-        echo "vendor" > $project_home/.gitignore
+        echo "vendor/ceedling/docs" > $project_home/.gitignore
+        echo "vendor/ceedling/lib" >> $project_home/.gitignore
+        echo "vendor/ceedling/plugins" >> $project_home/.gitignore
+        echo "vendor/ceedling/vendor" >> $project_home/.gitignore
+        echo "project.yml" >> $project_home/.gitignore
+        echo "build/test" >> $project_home/.gitignore
+        echo "build/gcov" >> $project_home/.gitignore
+        echo "build/artifacts" >> $project_home/.gitignore
+        echo "build/logs" >> $project_home/.gitignore
+        echo "build/temp" >> $project_home/.gitignore
     fi
 }
 

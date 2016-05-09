@@ -1,0 +1,90 @@
+From b03f33d636dea492a03a22d52f440e74c6e92763 Mon Sep 17 00:00:00 2001
+From: Damien Keehn <damien.keehn@hpe.com>
+Date: Mon, 9 May 2016 11:27:10 -0700
+Subject: [PATCH 1/1] Handle structs as parameters and functions with nested
+ curlys.
+
+---
+ lib/cmock_header_parser.rb | 53 ++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 51 insertions(+), 2 deletions(-)
+
+diff --git a/lib/cmock_header_parser.rb b/lib/cmock_header_parser.rb
+index f53b961..bfafef3 100644
+--- a/lib/cmock_header_parser.rb
++++ b/lib/cmock_header_parser.rb
+@@ -45,6 +45,53 @@ class CMockHeaderParser
+
+   private if $ThisIsOnlyATest.nil? ################
+
++  def wipeFunctions(source)
++         while source =~ /\([^\)]*\)\s*\{[^\}]*\}/ do
++             wipeFirstFunction(source)
++         end
++         return source
++  end
++
++  def wipeFirstFunction(str)
++     #find the start of the first function
++     str_start = str.index(/\([^\)]*\)\s*\{[^\}]*\}/)
++     #identify where code block starts
++     lcurly=str.index("{",str_start)
++     rcurly=lcurly
++     length = str.length()
++     idx=lcurly + 1 #don't reprocess the left Curly
++     stack = []
++     #prime with left curly brace, and store on stack untill matching right brace is found.
++     stack.push('{')
++     while idx < length && !stack.empty? do
++       char = str[idx]
++       case char
++       when '{'
++         stack.push(char)
++       when '}'
++         x = stack.pop
++         rcurly=idx
++         return false if x != '{'
++       end
++       idx = idx + 1
++     end
++
++
++     if ! stack.empty?
++        puts "Failed to find closing brace!"
++     end
++
++
++     #add semi-colon where code used to be
++     str[lcurly]=';'
++     #remove the code!
++     sliced= str.slice!(lcurly+1..rcurly)
++     #puts "this is the slice #{sliced}"
++
++     return str
++  end
++
+   def import_source(source)
+
+     # let's clean up the encoding in case they've done anything weird with the characters we might find
+@@ -93,8 +140,8 @@ class CMockHeaderParser
+       "#{functype} #{$2.strip}(#{$3});"
+     end
+
+-    # remove function definitions by stripping off the arguments right now
+-    source.gsub!(/\([^\)]*\)\s*\{[^\}]*\}/m, ";")
++    #Function removal needs to be brace-depth-aware.
++    wipeFunctions(source)
+
+     # remove pairs of braces because no function declarations will be inside of them
+     #source.gsub!(/\{[^\}]*\}/m, '')
+@@ -159,6 +206,8 @@ class CMockHeaderParser
+       return 'void'
+     else
+       c=0
++      #dk This hack handles structs in definitions. the following line puts the * in an uncompilable spot!
++      arg_list.gsub!(/(struct\s+\w+)(?:\s*\[[\s\d\w+-]*\])+/,'\1*')  # brackets into asterisks - struct special case
+       arg_list.gsub!(/(\w+)(?:\s*\[[\s\d\w+-]*\])+/,'*\1')  # magically turn brackets into asterisks
+       arg_list.gsub!(/\s+\*/,'*')                           # remove space to place asterisks with type (where they belong)
+       arg_list.gsub!(/\*(\w)/,'* \1')                       # pull asterisks away from arg to place asterisks with type (where they belong)
+-- 
+1.9.1
+
