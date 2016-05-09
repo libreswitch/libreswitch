@@ -1,4 +1,5 @@
 DESCRIPTION = "Package groups for OpenSwitch applications"
+
 LICENSE = "Apache-2.0"
 PR = "r1"
 
@@ -18,7 +19,6 @@ PACKAGES = ' \
             packagegroup-ops-core \
             '
 
-PACKAGES += "${@bb.utils.contains("IMAGE_FEATURES", "ops-p4", "packagegroup-ops-p4", "", d)}"
 PACKAGES += "${@bb.utils.contains("MACHINE_FEATURES", "ops-container", "packagegroup-ops-container", "", d)}"
 
 RDEPENDS_packagegroup-ops-base = "\
@@ -105,12 +105,6 @@ RDEPENDS_packagegroup-ops-min-debug = "\
     "
 
 RDEPENDS_packagegroup-ops-core = "\
-    "
-
-RDEPENDS_packagegroup-ops-p4 = "\
-    ops-switchd-p4switch-plugin \
-    ops-p4dp \
-    ops-p4c \
     "
 
 RDEPENDS_packagegroup-ops-container = "\

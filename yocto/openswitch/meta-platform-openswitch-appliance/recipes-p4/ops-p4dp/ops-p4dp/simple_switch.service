@@ -1,0 +1,21 @@
+# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+
+[Unit]
+Description=P4 Switch simulation Daemon
+After=ops-init.service
+
+[Service]
+ExecStartPre=-/bin/rm -f /var/run/simple_switch.pid
+ExecStartPre=-/sbin/ip netns del emulns
+ExecStartPre=/sbin/ip netns add emulns
+ExecStartPre=/sbin/ip netns exec emulns ip link add veth250 type veth peer name veth251
+ExecStartPre=/sbin/ip netns exec emulns ip link set dev lo up
+ExecStartPre=/sbin/ip netns exec emulns ip link set dev veth250 up
+ExecStartPre=/sbin/ip netns exec emulns ip link set dev veth251 up
+ExecStart=/sbin/ip netns exec emulns /usr/sbin/simple_switch -i 64@veth250 --thrift-port 10001 --nanolog ipc:///tmp/bm-log.ipc /usr/share/ovs_p4_plugin/switch_bmv2.json
+ExecStartPost=/usr/bin/setup_appliance_bmv2_ports.sh
+#PIDFile=/var/run/simple_switch.pid
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target

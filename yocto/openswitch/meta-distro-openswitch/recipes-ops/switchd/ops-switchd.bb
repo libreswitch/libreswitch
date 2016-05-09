@@ -27,6 +27,7 @@ RDEPENDS_${PN} = "openssl procps util-linux-uuidgen util-linux-libuuid coreutils
   python perl perl-module-strict sed gawk grep \
   ops-openvswitch ops-ovsdb \
   ${@bb.utils.contains('MACHINE_FEATURES', 'ops-container', 'openvswitch-sim-switch', '',d)} \
+  ${@bb.utils.contains('MACHINE_FEATURES', 'ops-p4', 'ops-switchd-p4switch-plugin', '',d)} \
 "
 RDEPENDS_${PN}_remove := "${@bb.utils.contains("IMAGE_FEATURES", "ops-p4", "openvswitch-sim-switch", "",d)}"
 

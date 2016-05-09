@@ -27,6 +27,9 @@ DEPENDS = "\
         ops-openvswitch \
 "
 
+RDEPENDS_${PN} = " \
+     ops-p4dp \
+"
 
 inherit openswitch autotools-brokensep pythonnative pkgconfig
 
