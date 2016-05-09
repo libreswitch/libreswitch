@@ -6,10 +6,10 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/BSD-3-Clause;md5=550794465ba0ec
 PR = "r0"
 PV = "git"
 
-SRCREV="${AUTOREV}"
+SRCREV="8123c744470aa4562635dd139d3895ed68d45dd7"
 
 SRC_URI = " \
-    git://code.google.com/p/netmap/;protocol=https \
+    git://github.com/luigirizzo/netmap.git;protocol=https \
     file://add-modules-install-target.patch \
     file://remove-warnings.patch \
 "
