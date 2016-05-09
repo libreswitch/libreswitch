@@ -1,0 +1,12 @@
+--- iputils-s20121221.org/traceroute6.c	2016-04-11 02:13:38.000000000 -0700
++++ iputils-s20121221/traceroute6.c	2016-04-11 02:20:44.010986902 -0700
+@@ -587,7 +587,8 @@
+
+	Fprintf(stderr, " from %s",
+		inet_ntop(AF_INET6, &saddr.sin6_addr, pa, sizeof(pa)));
+-	Fprintf(stderr, ", %d hops max, %d byte packets\n", max_ttl, datalen);
++	Fprintf(stderr, ", %d hops max, %d sec. timeout, %d probes, %d byte packets\n",
++               max_ttl, waittime, nprobes, datalen);
+	(void) fflush(stderr);
+
+	for (ttl = 1; ttl <= max_ttl; ++ttl) {
