@@ -3,7 +3,7 @@ LICENSE = "GPL-2.0 & LGPL-2.0"
 LIC_FILES_CHKSUM = "file://COPYING;md5=81bcece21748c91ba9992349a91ec11d\
                     file://COPYING.LIB;md5=01ef24401ded36cd8e5d18bfe947240c"
 
-DEPENDS = "ops-utils ops-ovsdb ncurses perl-native openssl ops-supportability"
+DEPENDS = "ops-utils ops-ovsdb ncurses perl-native openssl ops-supportability ops-cli"
 
 # the "ip" command from busybox is not sufficient (flush by protocol flushes all routes)
 RDEPENDS_${PN} += "iproute2"
@@ -30,7 +30,7 @@ EXTRA_OECONF = "--disable-doc --disable-ripd \
  --enable-ovsdb \
 "
 
-FILES_${PN} += "/usr/share/opsplugins"
+FILES_${PN} += "/usr/share/opsplugins /usr/lib/cli/plugins/"
 do_install_append() {
      install -d ${D}${systemd_unitdir}/system
      install -m 0644 ${WORKDIR}/ops-zebra.service ${D}${systemd_unitdir}/system/
