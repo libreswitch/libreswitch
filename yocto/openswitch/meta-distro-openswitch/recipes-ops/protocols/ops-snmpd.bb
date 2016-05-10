@@ -11,7 +11,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-snmpd;protocol=http;branch=re
            file://snmpd.conf\
            "
 
-SRCREV="da77250ce74f88c99a4318e9adc44eb49ea876f7"
+SRCREV="2145a73eaded38e473352300ac215c9905f6bdcf"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
