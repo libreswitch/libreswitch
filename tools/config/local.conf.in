@@ -204,6 +204,12 @@ SOURCE_MIRROR_URL ?= "http://##DISTRO_ARCHIVE_ADDRESS##/"
 INHERIT += "own-mirrors" 
 BB_GENERATE_MIRROR_TARBALLS = "1"
 
+# Uncomment this to delete work files as the build progresses rather than
+# keeping them around, which saves a lot of disk space. However, if any
+# problems arise it can be useful to have the work files to examine, so
+# you may need to disable it if need to debug recipe problems
+INHERIT += "rm_work"
+
 # CONF_VERSION is increased each time build/conf/ changes incompatibly and is used to
 # track the version of this file when it was generated. This can safely be ignored if
 # this doesn't mean anything to you.
