@@ -34,10 +34,11 @@ EXTRA_OECONF = "--disable-embedded-perl \
                 --enable-shared \
                 --disable-manuals \
                 --with-defaults \
-                --with-out-mib-modules="ucd_snmp target agent_mibs\
+                --with-out-mib-modules="ucd_snmp target agent_mibs \
                   disman/event disman/schedule utilities host mibII \
                   notification notification-log-mib" \
-                --with-mib-modules="mibII/system_mib agentx mibII/vacm_conf snmpv3mibs" \
+                --with-mib-modules="mibII/system_mib agentx mibII/vacm_conf snmpv3mibs \
+                  mibII/snmp_mib_5_5 snmpv3/usmStats_5_5" \
                 ${@base_conditional('SITEINFO_ENDIANNESS', 'le', '--with-endianness=little', '--with-endianness=big', d)}"
 
 do_install_append() {
