@@ -11,12 +11,14 @@ SRCREV = "f44bc6ddb9e49275abd2ddcdcffa81818911ef98"
 PV = "git${SRCPV}"
 S = "${WORKDIR}/git"
 
-PACKAGES_prepend = "${PN}-libpd ${PN}-libpd-dev ${PN}-libpd-staticdev ${PN}-libpd-dbg"
+PACKAGES_prepend = "${PN}-libpd ${PN}-libpd-dev ${PN}-libpd-staticdev ${PN}-libpd-dbg "
 PROVIDES = "${PACKAGES}"
 
 FILES_${PN}-libpd = "/usr/lib/libpd*.so.?.?.?"
 FILES_${PN}-libpd-staticdev = "/usr/lib/libpd*.a"
 FILES_${PN}-libpd-dev = "/usr/lib/libpd*.la /usr/lib/libpd*.so /usr/lib/libpd*.so.? /usr/lib/pkgconfig"
+FILES_${PN}-dbg = ""
+FILES_${PN}-libpd-dbg = "/usr/src/debug/"
 
 DEPENDS = "\
 	judy \
