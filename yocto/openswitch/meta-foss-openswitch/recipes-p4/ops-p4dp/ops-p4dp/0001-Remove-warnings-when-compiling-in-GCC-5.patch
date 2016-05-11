@@ -1,0 +1,33 @@
+From 9c1e41b9a3a972f024d431aef3f3d637b052e964 Mon Sep 17 00:00:00 2001
+From: Diego Dompe <dompe@hpe.com>
+Date: Wed, 11 May 2016 06:36:29 -0600
+Subject: [PATCH] Remove warnings when compiling in GCC 5
+
+Signed-off-by: Diego Dompe <dompe@hpe.com>
+---
+ modules/bm_sim/include/bm_sim/calculations.h | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/modules/bm_sim/include/bm_sim/calculations.h b/modules/bm_sim/include/bm_sim/calculations.h
+index 9e64dfc..e9f491a 100644
+--- a/modules/bm_sim/include/bm_sim/calculations.h
++++ b/modules/bm_sim/include/bm_sim/calculations.h
+@@ -396,8 +396,14 @@ class NamedCalculation : public NamedP4Object, public Calculation_<uint64_t> {
+ 
+ //! When implementing an hash operation for a target, this macro needs to be
+ //! called to make this module aware of the hash existence.
++#ifdef __GNUC__
++#define VARIABLE_IS_NOT_USED __attribute__ ((unused))
++#else
++#define VARIABLE_IS_NOT_USED
++#endif
++
+ #define REGISTER_HASH(hash_name)                                        \
+-  bool hash_name##_create_ =                                            \
++  bool VARIABLE_IS_NOT_USED hash_name##_create_ =                       \
+       bm::CalculationsMap::get_instance()->register_one(                \
+           #hash_name,                                                   \
+           std::unique_ptr<bm::CalculationsMap::MyC>(                    \
+-- 
+1.9.1
+

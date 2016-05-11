@@ -7,6 +7,7 @@ OPS_P4DP_REPO = "github.com/p4lang/behavioral-model.git"
 
 SRC_URI = "git://${OPS_P4DP_REPO};protocol=https;branch=ops \
            file://simple_switch.service \
+           file://0001-Remove-warnings-when-compiling-in-GCC-5.patch \
            "
 
 SRCREV = "2c4a6cd0d407c890ca00c898fe16c5ea5058e469"
