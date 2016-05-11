@@ -623,6 +623,8 @@ TOPOLOGY_TEST_IMAGE?=ops_$(USER)$(subst /,_,$(BUILD_ROOT))
 # In the current implementation, this directory is shared between the host and the container using Docker volumes to collect the coverage data (gcda) files.
 TOPOLOGY_TEST_COV_DIR?=$(BUILD_ROOT)/src
 
+TESTENV_REQUIRED_DRIVERS = bonding
+
 ifeq (testenv_run,$(firstword $(MAKECMDGOALS)))
   $(eval $(call PARSE_TWO_ARGUMENTS,testenv_run))
   export TESTSUITE?=$(EXTRA_ARGS_1)
@@ -644,8 +646,8 @@ testenv_run: _testenv_header
 	$(V) docker rmi $(TOPOLOGY_TEST_IMAGE) > /dev/null 2>&1 || true
 	$(V) $(MAKE) export_docker_image $(TOPOLOGY_TEST_IMAGE)
 	$(V) $(SUDO) rm -Rf $(BUILDDIR)/test/$(TESTSUITE)
+	$(V) $(SUDO) modprobe $(TESTENV_REQUIRED_DRIVERS)
 	$(V) $(MAKE) _testenv_rerun
-	$(V) $(SUDO) modprobe bonding
 
 ifeq (testenv_rerun,$(firstword $(MAKECMDGOALS)))
   $(eval $(call PARSE_TWO_ARGUMENTS,testenv_rerun))
@@ -681,7 +683,7 @@ define TESTENV_PREPARE
 	       testenv_abort = true ; \
 	     fi ; \
 	   fi ; \
-	   if [ ! testenv_abort ]; then \
+	   if ! $$testenv_abort ; then \
 	     ln -sf $(BUILD_ROOT)/src/$(1)/$$test_source_path $(BUILDDIR)/test/$(TESTSUITE)/code_under_test/$(1) ; \
 	   fi ; \
 	 else \
@@ -706,12 +708,12 @@ define TESTENV_PREPARE
 	       testenv_abort = true ; \
 	     fi ; \
 	   fi ; \
-	   if [ ! testenv_abort ]; then \
+	   if ! $$testenv_abort ; then \
 	     ln -sf $(BUILDDIR)/test/$(TESTSUITE)/downloads/$(1)/git/$$test_source_path \
 		 $(BUILDDIR)/test/$(TESTSUITE)/code_under_test/$(1) ; \
 	   fi ; \
 	 fi ; \
-	 if [ ! testenv_abort ]; then \
+	 if ! $$testenv_abort ; then \
 	   if [ "$(TESTSUITE)" = "legacy" ] ; then \
 	     cp tools/pytest.ini $(BUILDDIR)/test/$(TESTSUITE)/pytest.ini ; \
 	   else \
