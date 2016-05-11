@@ -29,7 +29,7 @@ do_compile() {
 
 do_install() {
     install -d ${D}/srv/www/static
-    cp -Rp build/* ${D}/srv/www/static
+    cp -R build/* ${D}/srv/www/static
 }
 
 FILES_${PN} = "/srv/www/static/*"
