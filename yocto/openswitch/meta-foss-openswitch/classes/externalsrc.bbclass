@@ -25,6 +25,7 @@
 #
 
 RRECOMMENDS_${PN} += "${PN}-dbg"
+RRECOMMENDS_${PN}_class-native = ""
 
 SRCTREECOVEREDTASKS ?= "do_patch do_unpack do_fetch"
 
