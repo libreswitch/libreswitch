@@ -1,0 +1,85 @@
+From a8206257bdae0a8f8f99e21ba9dc542abbe9f38c Mon Sep 17 00:00:00 2001
+From: Diego Dompe <dompe@hpe.com>
+Date: Thu, 12 May 2016 08:50:08 -0600
+Subject: [PATCH 2/2] Correct i2c bus address
+
+Change-Id: I6e6fa91e279b5acb7a18105b272105f1063e7fef
+Signed-off-by: Diego Dompe <dompe@hpe.com>
+---
+ Accton/AS5712-54X/devices.yaml | 4 ++--
+ Accton/AS5812-54T/devices.yaml | 4 ++--
+ Accton/AS6712-32X/devices.yaml | 4 ++--
+ Accton/AS7512-32X/devices.yaml | 4 ++--
+ 4 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/Accton/AS5712-54X/devices.yaml b/Accton/AS5712-54X/devices.yaml
+index 1770418..bce5fdd 100644
+--- a/Accton/AS5712-54X/devices.yaml
++++ b/Accton/AS5712-54X/devices.yaml
+@@ -21,10 +21,10 @@ version:         '1'
+ 
+ buses:
+     -   name:       i2c_0
+-        dev_name:   /dev/i2c-1
++        dev_name:   /dev/i2c-0
+         smbus:      true
+     -   name:       i2c_1
+-        dev_name:   /dev/i2c-2
++        dev_name:   /dev/i2c-1
+         smbus:      true
+ 
+ devices:    # just device relevant to platform code are listed
+diff --git a/Accton/AS5812-54T/devices.yaml b/Accton/AS5812-54T/devices.yaml
+index 1770418..bce5fdd 100644
+--- a/Accton/AS5812-54T/devices.yaml
++++ b/Accton/AS5812-54T/devices.yaml
+@@ -21,10 +21,10 @@ version:         '1'
+ 
+ buses:
+     -   name:       i2c_0
+-        dev_name:   /dev/i2c-1
++        dev_name:   /dev/i2c-0
+         smbus:      true
+     -   name:       i2c_1
+-        dev_name:   /dev/i2c-2
++        dev_name:   /dev/i2c-1
+         smbus:      true
+ 
+ devices:    # just device relevant to platform code are listed
+diff --git a/Accton/AS6712-32X/devices.yaml b/Accton/AS6712-32X/devices.yaml
+index 8cef912..0f92bdd 100644
+--- a/Accton/AS6712-32X/devices.yaml
++++ b/Accton/AS6712-32X/devices.yaml
+@@ -22,10 +22,10 @@ version:         '1'
+ 
+ buses:
+     -   name:       i2c_0
+-        dev_name:   /dev/i2c-1
++        dev_name:   /dev/i2c-0
+         smbus:      true
+     -   name:       i2c_1
+-        dev_name:   /dev/i2c-2
++        dev_name:   /dev/i2c-1
+         smbus:      true
+ 
+ devices:    # just device relevant to platform code are listed
+diff --git a/Accton/AS7512-32X/devices.yaml b/Accton/AS7512-32X/devices.yaml
+index 2f88bf9..fabb98c 100644
+--- a/Accton/AS7512-32X/devices.yaml
++++ b/Accton/AS7512-32X/devices.yaml
+@@ -22,10 +22,10 @@ version:         '1'
+ 
+ buses:
+     -   name:       i2c_0
+-        dev_name:   /dev/i2c-1
++        dev_name:   /dev/i2c-0
+         smbus:      true
+     -   name:       i2c_1
+-        dev_name:   /dev/i2c-2
++        dev_name:   /dev/i2c-1
+         smbus:      true
+ 
+ devices:    # just device relevant to platform code are listed
+-- 
+1.9.1
+

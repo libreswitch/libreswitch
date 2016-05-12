@@ -24,6 +24,6 @@ do_deploy () {
 
 addtask deploy before do_build after do_compile
 
-do_deploy[depends] += "${IMAGE_NAME}:do_rootfs"
+do_deploy[depends] += "${IMAGE_NAME}:do_image_cpio"
 
 inherit deploy

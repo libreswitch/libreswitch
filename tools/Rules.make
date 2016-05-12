@@ -188,6 +188,9 @@ HOST_ARCH:=$(shell uname -m)
 .PHONY: kernel _kernel _kernel_links kernelconfig
 kernel: header _kernel
 
+kernelconfig: header
+	$(V)$(call BITBAKE,virtual/kernel -c menuconfig)
+
 _KERNEL_TARGET ?= _kernel
 
 DISTRO_KERNEL_SYMBOLS_FILE ?= $(BASE_VMLINUX_FILE)
