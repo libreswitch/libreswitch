@@ -2,12 +2,16 @@ def pypi_package(d):
     bpn = d.getVar('BPN', True)
     if bpn.startswith('python-'):
         return bpn[7:]
+    elif bpn.startswith('python3-'):
+        return bpn[8:]
     return bpn
 
 PYPI_PACKAGE ?= "${@pypi_package(d)}"
+PYPI_PACKAGE_EXT ?= "tar.gz"
 
 def pypi_src_uri(d):
     package = d.getVar('PYPI_PACKAGE', True)
+    package_ext = d.getVar('PYPI_PACKAGE_EXT', True)
     pv = d.getVar('PV', True)
     return 'https://pypi.python.org/packages/source/%s/%s/%s-%s.tar.gz' % (package[0], package, package, pv)
 

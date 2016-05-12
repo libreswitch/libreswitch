@@ -1,7 +1,8 @@
 BPV ?= "${PV}"
 
-DEPENDS_prepend = "ruby-native "
-
+DEPENDS += " \
+    ruby-native \
+"
 RDEPENDS_${PN} += " \
     ruby \
 "
@@ -72,7 +73,7 @@ RUBY_VERSION ?= "${@get_rubyversion("${STAGING_BINDIR_NATIVE}")}"
 RUBY_GEM_DIRECTORY ?= "${@get_rubygemslocation("${STAGING_BINDIR_NATIVE}")}"
 RUBY_GEM_VERSION ?= "${@get_rubygemsversion("${STAGING_BINDIR_NATIVE}")}"
 
-export GEM_HOME = "${STAGING_LIBDIR_NATIVE}/ruby/gems/${RUBY_GEM_VERSION}"
+export GEM_HOME = "${STAGING_DIR_NATIVE}/usr/lib/ruby/gems/${RUBY_GEM_VERSION}"
 
 RUBY_BUILD_GEMS ?= "${BPN}.gemspec"
 RUBY_INSTALL_GEMS ?= "${BPN}-${BPV}.gem"
