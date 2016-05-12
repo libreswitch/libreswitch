@@ -21,3 +21,15 @@ BUILD_ID .= "-${METADATA_BRANCH}-${DATETIME}-dev"
 
 # BUILD_ID will be updated by the build process through build_info.conf.
 include build_info.conf
+
+# Customize our version of the file to avoid the quotes around the values
+python do_compile () {
+    import shutil
+    with open(d.expand('${B}/os-release'), 'w') as f:
+        for field in d.getVar('OS_RELEASE_FIELDS', True).split():
+            value = d.getVar(field, True)
+            if value and field == 'VERSION_ID':
+                value = sanitise_version(value)
+            if value:
+                f.write('{0}={1}\n'.format(field, value))
+}
