@@ -4,17 +4,16 @@ DEPENDS = "ncurses gettext-native"
 # vimdiff doesn't like busybox diff
 RSUGGESTS_${PN} = "diffutils"
 LICENSE = "vim"
-LIC_FILES_CHKSUM = "file://../runtime/doc/uganda.txt;md5=b779e18be6ed77facc770691c967b8f8"
+LIC_FILES_CHKSUM = "file://../runtime/doc/uganda.txt;md5=c74ec0ada9a68354f9461e81d3596f61"
 
-SRC_URI = "hg://vim.googlecode.com/hg/;protocol=https;module=vim \
+SRC_URI = "git://github.com/vim/vim.git \
            file://disable_acl_header_check.patch;patchdir=.. \
            file://vim-add-knob-whether-elf.h-are-checked.patch;patchdir=.. \
+           file://0001-patch-7.4.1733.patch;patchdir=.. \
 "
-SRCREV = "v7-4-481"
-SRC_URI[md5sum] = "02ba0a3e89b40323970590f6a4f9fc0f"
-SRC_URI[sha256sum] = "8958c00a77d7f3e6500b0e727b6d0e6efedcfba9af10f01cf4637e8ffe46a96f"
+SRCREV = "758535a1df4c5e86b45dddf12db2a54dea28ca40"
 
-S = "${WORKDIR}/vim/src"
+S = "${WORKDIR}/git/src"
 
 VIMDIR = "vim${@d.getVar('PV',1).split('.')[0]}${@d.getVar('PV',1).split('.')[1]}"
 
@@ -34,8 +33,8 @@ do_configure () {
 
 #Available PACKAGECONFIG options are gtkgui, acl, x11, tiny
 PACKAGECONFIG ??= ""
-PACKAGECONFIG += "${@base_contains('DISTRO_FEATURES', 'acl', 'acl', '', d)}"
-PACKAGECONFIG += "${@base_contains('DISTRO_FEATURES', 'selinux', 'selinux', '', d)}"
+PACKAGECONFIG += "${@bb.utils.contains('DISTRO_FEATURES', 'acl', 'acl', '', d)}"
+PACKAGECONFIG += "${@bb.utils.contains('DISTRO_FEATURES', 'selinux', 'selinux', '', d)}"
 
 PACKAGECONFIG[gtkgui] = "--enable-gtk2-test --enable-gui=gtk2,--enable-gui=no,gtk+,"
 PACKAGECONFIG[acl] = "--enable-acl,--disable-acl,acl,"
@@ -64,10 +63,11 @@ EXTRA_OECONF = " \
 do_install() {
     autotools_do_install
 
-    # Work around rpm picking up csh or awk or perl as a dep
+    # Work around file-rdeps picking up csh, awk, perl or python as a dep
     chmod -x ${D}${datadir}/${BPN}/${VIMDIR}/tools/vim132
     chmod -x ${D}${datadir}/${BPN}/${VIMDIR}/tools/mve.awk
     chmod -x ${D}${datadir}/${BPN}/${VIMDIR}/tools/*.pl
+    chmod -x ${D}${datadir}/${BPN}/${VIMDIR}/tools/*.py
 
     # Install example vimrc from runtime files
     install -m 0644 ../runtime/vimrc_example.vim ${D}/${datadir}/${BPN}/vimrc

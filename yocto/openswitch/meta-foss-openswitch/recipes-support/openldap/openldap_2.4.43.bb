@@ -1,5 +1,6 @@
 # OpenLDAP, a license free (see http://www.OpenLDAP.org/license.html)
 #
+SUMMARY = "OpenLDAP Directory Service"
 DESCRIPTION = "OpenLDAP Software is an open source implementation of the Lightweight Directory Access Protocol."
 HOMEPAGE = "http://www.OpenLDAP.org/license.html"
 # The OpenLDAP Public License - see the HOMEPAGE - defines
@@ -8,27 +9,34 @@ HOMEPAGE = "http://www.OpenLDAP.org/license.html"
 # basically BSD.  opensource.org does not record this license
 # at present (so it is apparently not OSI certified).
 LICENSE = "OpenLDAP"
-LIC_FILES_CHKSUM = "file://COPYRIGHT;md5=3d82d3085f228af211a6502c7ea7c3c7"
+LIC_FILES_CHKSUM = "file://COPYRIGHT;md5=9d845a25aef97da753144f1dacbf680c \
+                    file://LICENSE;md5=153d07ef052c4a37a8fac23bc6031972 \
+"
 SECTION = "libs"
 
 LDAP_VER = "${@'.'.join(d.getVar('PV',1).split('.')[0:2])}"
 
-SRC_URI = "ftp://ftp.openldap.org/pub/OpenLDAP/openldap-release/${P}.tgz"
-SRC_URI += "file://openldap-m4-pthread.patch"
-SRC_URI += "file://kill-icu.patch"
-SRC_URI += "file://initscript"
-SRC_URI[md5sum] = "90150b8c0d0192e10b30157e68844ddf"
-SRC_URI[sha256sum] = "5a5ede91d5e8ab3c7f637620aa29a3b96eb34318a8b26c8eef2d2c789fc055e3"
+SRC_URI = "ftp://ftp.openldap.org/pub/OpenLDAP/openldap-release/${BP}.tgz \
+    file://openldap-m4-pthread.patch \
+    file://kill-icu.patch \
+    file://openldap-2.4.28-gnutls-gcrypt.patch \
+    file://use-urandom.patch \
+    file://initscript \
+    file://slapd.service \
+    file://thread_stub.patch \
+"
 
-DEPENDS = "util-linux"
+SRC_URI[md5sum] = "49ca65e27891fcf977d78c10f073c705"
+SRC_URI[sha256sum] = "34d78e5598a2b0360d26a9050fcdbbe198c65493b013bb607839d5598b6978c8"
 
-PR = "r1"
+DEPENDS = "util-linux groff-native"
+
 # The original top.mk used INSTALL, not INSTALL_STRIP_PROGRAM when
 # installing .so and executables, this fails in cross compilation
 # environments
 SRC_URI += "file://install-strip.patch"
 
-inherit autotools
+inherit autotools-brokensep update-rc.d systemd
 
 # CV SETTINGS
 # Required to work round AC_FUNC_MEMCMP which gets the wrong answer
@@ -45,13 +53,15 @@ EXTRA_OECONF += "--enable-dynamic"
 
 PACKAGECONFIG ??= "gnutls modules \
                    ldap meta monitor null passwd shell proxycache dnssrv \
+                   ${@bb.utils.contains('DISTRO_FEATURES', 'ipv6', 'ipv6', '', d)} \
 "
 #--with-tls              with TLS/SSL support auto|openssl|gnutls [auto]
-PACKAGECONFIG[gnutls] = "--with-tls=gnutls,,gnutls"
+PACKAGECONFIG[gnutls] = "--with-tls=gnutls,,gnutls libgcrypt"
 PACKAGECONFIG[openssl] = "--with-tls=openssl,,openssl"
 
 PACKAGECONFIG[sasl] = "--with-cyrus-sasl,--without-cyrus-sasl,cyrus-sasl"
 PACKAGECONFIG[modules] = "lt_cv_dlopen_self=yes --enable-modules,--disable-modules,libtool"
+PACKAGECONFIG[ipv6] = "--enable-ipv6,--disable-ipv6"
 
 # SLAPD options
 #
@@ -61,14 +71,9 @@ EXTRA_OECONF += "--enable-crypt"
 # SLAPD BACKEND
 #
 # The backend must be set by the configuration.  This controls the
-# required database, the default database, bdb, is turned off but
-# can be turned back on again and it *is* below!  The monitor backend
-# is also disabled.  If you try to change the backends but fail to
-# enable a single one the build will fail in an obvious way.
+# required database. 
 #
-EXTRA_OECONF += "--disable-bdb --disable-hdb --disable-monitor"
-#
-# Backends="bdb dnssrv hdb ldap ldbm meta monitor null passwd perl shell sql"
+# Backends="bdb dnssrv hdb ldap mdb meta monitor ndb null passwd perl relay shell sock sql"
 #
 # Note that multiple backends can be built.  The ldbm backend requires a
 # build-time choice of database API.  The bdb backend forces this to be
@@ -79,33 +84,28 @@ md = "${libexecdir}/openldap"
 #--enable-bdb          enable Berkeley DB backend no|yes|mod yes
 # The Berkely DB is the standard choice.  This version of OpenLDAP requires
 # the version 4 implementation or better.
-PACKAGECONFIG[bdb] = "--enable-bdb=mod,--enable-bdb=no,db"
+PACKAGECONFIG[bdb] = "--enable-bdb=yes,--enable-bdb=no,db"
 
 #--enable-dnssrv       enable dnssrv backend no|yes|mod no
 PACKAGECONFIG[dnssrv] = "--enable-dnssrv=mod,--enable-dnssrv=no"
 
 #--enable-hdb          enable Hierarchical DB backend no|yes|mod no
-# This forces ldbm to use Berkeley too, remove to use gdbm
-PACKAGECONFIG[hdb] = "--enable-hdb=mod,--enable-hdb=no,db"
+PACKAGECONFIG[hdb] = "--enable-hdb=yes,--enable-hdb=no,db"
 
 #--enable-ldap         enable ldap backend no|yes|mod no
 PACKAGECONFIG[ldap] = "--enable-ldap=mod,--enable-ldap=no,"
 
-#--enable-ldbm         enable ldbm backend no|yes|mod no
-# ldbm requires further specification of the underlying database API, because
-# bdb is enabled above this must be set to berkeley, however the config
-# defaults this correctly so --with-ldbm-api is *not* set.  The build will
-# fail if bdb is removed, but no database is built to provide the
-# support for ldbm
-# guide.html:<P>back-ldbm was both slow and unreliable. Its byzantine indexing code was prone to spontaneous corruption, as were the underlying database libraries that were commonly used (e.g. GDBM or NDBM). back-bdb and back-hdb are superior in every aspect, with simplified indexing to avoid index corruption, fine-grained locking for greater concurrency, hierarchical caching for greater performance, streamlined on-disk format for greater efficiency and portability, and full transaction support for greater reliability.</P>
-# configure: WARNING: unrecognized options: --disable-silent-rules, --enable-ldbm, --with-ldbm-api
-#PACKAGECONFIG[ldbm] = "--enable-ldbm=mod --with-ldbm-api=gdbm,--enable-ldbm-no,gdbm"
+#--enable-mdb          enable mdb database backend no|yes|mod [yes]
+PACKAGECONFIG[mdb] = "--enable-mdb=mod,--enable-mdb=no,"
 
 #--enable-meta         enable metadirectory backend no|yes|mod no
 PACKAGECONFIG[meta] = "--enable-meta=mod,--enable-meta=no,"
 
 #--enable-monitor      enable monitor backend no|yes|mod yes
 PACKAGECONFIG[monitor] = "--enable-monitor=mod,--enable-monitor=no,"
+
+#--enable-ndb          enable MySQL NDB Cluster backend no|yes|mod [no]
+PACKAGECONFIG[ndb] = "--enable-ndb=mod,--enable-ndb=no,"
 
 #--enable-null         enable null backend no|yes|mod no
 PACKAGECONFIG[null] = "--enable-null=mod,--enable-null=no,"
@@ -119,9 +119,15 @@ PACKAGECONFIG[passwd] = "--enable-passwd=mod,--enable-passwd=no,"
 #  up the build machine perl - not good (inherit perlnative?)
 PACKAGECONFIG[perl] = "--enable-perl=mod,--enable-perl=no,perl"
 
+#--enable-relay        enable relay backend no|yes|mod [yes]
+PACKAGECONFIG[relay] = "--enable-relay=mod,--enable-relay=no,"
+
 #--enable-shell        enable shell backend no|yes|mod no
 # configure: WARNING: Use of --without-threads is recommended with back-shell
 PACKAGECONFIG[shell] = "--enable-shell=mod --without-threads,--enable-shell=no,"
+
+#--enable-sock         enable sock backend no|yes|mod [no]
+PACKAGECONFIG[sock] = "--enable-sock=mod,--enable-sock=no,"
 
 #--enable-sql          enable sql backend no|yes|mod no
 # sql requires some sql backend which provides sql.h, sqlite* provides
@@ -138,30 +144,21 @@ PACKAGECONFIG[proxycache] = "--enable-proxycache=mod,--enable-proxycache=no,"
 FILES_${PN}-overlay-proxycache = "${md}/pcache-*.so.*"
 PACKAGES += "${PN}-overlay-proxycache"
 
-CPPFLAGS_append = " -D_GNU_SOURCE"
+# Append URANDOM_DEVICE='/dev/urandom' to CPPFLAGS:
+# This allows tls to obtain random bits from /dev/urandom, by default
+# it was disabled for cross-compiling.
+CPPFLAGS_append = " -D_GNU_SOURCE -DURANDOM_DEVICE=\'/dev/urandom\'"
+
+LDFLAGS += "-pthread"
 
 do_configure() {
-    cp ${STAGING_DATADIR_NATIVE}/libtool/config/ltmain.sh ${S}/build
+    cp ${STAGING_DATADIR_NATIVE}/libtool/build-aux/ltmain.sh ${S}/build
     rm -f ${S}/libtool
     aclocal
     libtoolize --force --copy
     gnu-configize
     autoconf
     oe_runconf
-}
-
-#FIXME: this is a hack, at present an openldap build will pick up the header
-# files from staging rather than the local ones (bad -I order), so remove
-# the headers (from openldap-old.x) before compiling...
-do_compile_prepend() {
-    (
-        cd ${STAGING_INCDIR}
-        rm -f ldap.h ldap_*.h
-    )
-    (
-        cd ${STAGING_LIBDIR}
-        rm -f libldap* liblber*
-    )
 }
 
 LEAD_SONAME = "libldap-${LDAP_VER}.so.*"
@@ -172,10 +169,10 @@ LEAD_SONAME = "libldap-${LDAP_VER}.so.*"
 PACKAGES += "${PN}-slapd ${PN}-slurpd ${PN}-bin"
 
 # Package contents - shift most standard contents to -bin
-FILES_${PN} = "${libdir}/lib*.so.* ${sysconfdir}/openldap/ldap.* ${localstatedir}/openldap-data"
+FILES_${PN} = "${libdir}/lib*.so.* ${sysconfdir}/openldap/ldap.* ${localstatedir}/${BPN}/data"
 FILES_${PN}-slapd = "${sysconfdir}/init.d ${libexecdir}/slapd ${sbindir} ${localstatedir}/run ${localstatedir}/volatile/run \
     ${sysconfdir}/openldap/slapd.* ${sysconfdir}/openldap/schema \
-    ${sysconfdir}/openldap/DB_CONFIG.example"
+    ${sysconfdir}/openldap/DB_CONFIG.example ${systemd_unitdir}/system/*"
 FILES_${PN}-slurpd = "${libexecdir}/slurpd ${localstatedir}/openldap-slurp ${localstatedir}/run ${localstatedir}/volatile/run"
 FILES_${PN}-bin = "${bindir}"
 FILES_${PN}-dev = "${includedir} ${libdir}/lib*.so ${libdir}/*.la ${libdir}/*.a ${libexecdir}/openldap/*.a ${libexecdir}/openldap/*.la ${libexecdir}/openldap/*.so"
@@ -187,31 +184,60 @@ do_install_append() {
     chmod 755 ${D}${sysconfdir}/init.d/openldap
     # This is duplicated in /etc/openldap and is for slapd
     rm -f ${D}${localstatedir}/openldap-data/DB_CONFIG.example
+
+    # Installing slapd under ${sbin} is more FHS and LSB compliance
+    mv ${D}${libexecdir}/slapd ${D}/${sbindir}/slapd
+    SLAPTOOLS="slapadd slapcat slapdn slapindex slappasswd slaptest slapauth slapacl slapschema"
+    cd ${D}/${sbindir}/
+    rm -f ${SLAPTOOLS}
+    for i in ${SLAPTOOLS}; do ln -sf slapd $i; done
+
     rmdir "${D}${localstatedir}/run"
     rmdir --ignore-fail-on-non-empty "${D}${localstatedir}"
+
+    install -d ${D}${systemd_unitdir}/system/
+    install -m 0644 ${WORKDIR}/slapd.service ${D}${systemd_unitdir}/system/
+    sed -i -e 's,@SBINDIR@,${sbindir},g' ${D}${systemd_unitdir}/system/*.service
+
+    # Uses mdm as the database
+    #  and localstatedir as data directory ...
+    sed -e 's/# modulepath/modulepath/' \
+        -e 's/# moduleload\s*back_bdb.*/moduleload    back_mdb/' \
+        -e 's/database\s*bdb/database        mdb/' \
+        -e 's%^directory\s*.*%directory   ${localstatedir}/${BPN}/data/%' \
+        -i ${D}${sysconfdir}/openldap/slapd.conf
+
+    mkdir -p ${D}${localstatedir}/${BPN}/data
+
+
 }
 
-pkg_postinst_${PN}-slapd () {
-    if test -n "${D}"; then
-        D="-r $D"
-    fi
-    update-rc.d $D openldap defaults
-}
+INITSCRIPT_PACKAGES = "${PN}-slapd"
+INITSCRIPT_NAME_${PN}-slapd = "openldap"
+INITSCRIPT_PARAMS_${PN}-slapd = "defaults"
+SYSTEMD_SERVICE_${PN}-slapd = "hostapd.service"
+SYSTEMD_AUTO_ENABLE_${PN}-slapd ?= "disable"
 
-pkg_prerm_${PN}-slapd () {
-    if test -n "${D}"; then
-        D="-r $D"
-    fi
-    update-rc.d $D openldap remove
-}
 
-PACKAGES_DYNAMIC += "^openldap-backends.* ^openldap-backend-.*"
+PACKAGES_DYNAMIC += "^${PN}-backends.* ^${PN}-backend-.*"
+
+# The modules require their .so to be dynamicaly loaded
+INSANE_SKIP_${PN}-backend-dnssrv  += "dev-so"
+INSANE_SKIP_${PN}-backend-ldap    += "dev-so"
+INSANE_SKIP_${PN}-backend-meta    += "dev-so"
+INSANE_SKIP_${PN}-backend-mdb     += "dev-so"
+INSANE_SKIP_${PN}-backend-monitor += "dev-so"
+INSANE_SKIP_${PN}-backend-null    += "dev-so"
+INSANE_SKIP_${PN}-backend-passwd  += "dev-so"
+INSANE_SKIP_${PN}-backend-shell   += "dev-so"
+
 
 python populate_packages_prepend () {
     backend_dir    = d.expand('${libexecdir}/openldap')
+    do_split_packages(d, backend_dir, 'back_([a-z]*)\.so$', 'openldap-backend-%s', 'OpenLDAP %s backend', prepend=True, extra_depends='', allow_links=True)
     do_split_packages(d, backend_dir, 'back_([a-z]*)\-.*\.so\..*$', 'openldap-backend-%s', 'OpenLDAP %s backend', extra_depends='', allow_links=True)
 
-    metapkg = "openldap-backends"
+    metapkg = "${PN}-backends"
     d.setVar('ALLOW_EMPTY_' + metapkg, "1")
     d.setVar('FILES_' + metapkg, "")
     metapkg_rdepends = []
@@ -224,3 +250,5 @@ python populate_packages_prepend () {
     packages.append(metapkg)
     d.setVar('PACKAGES', ' '.join(packages))
 }
+
+BBCLASSEXTEND = "native"

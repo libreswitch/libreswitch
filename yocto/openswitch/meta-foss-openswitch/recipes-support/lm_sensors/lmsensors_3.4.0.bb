@@ -11,10 +11,10 @@ SRC_URI = "http://dl.lm-sensors.org/lm-sensors/releases/lm_sensors-${PV}.tar.bz2
            file://fancontrol.init \
            file://sensord.init \
 "
-SRC_URI[md5sum] = "73c2fcccdab6049d289c5e0c596192a1"
-SRC_URI[sha256sum] = "ecc91ba3d918e96fb7d5eb9acce978af803b130e0b33b08d5ea05b2bfca84955"
+SRC_URI[md5sum] = "c03675ae9d43d60322110c679416901a"
+SRC_URI[sha256sum] = "e0579016081a262dd23eafe1d22b41ebde78921e73a1dcef71e05e424340061f"
 
-inherit update-rc.d
+inherit update-rc.d systemd
 
 RDEPENDS_${PN}-dev = ""
 
@@ -23,6 +23,10 @@ INITSCRIPT_NAME_${PN}-fancontrol = "fancontrol"
 INITSCRIPT_NAME_${PN}-sensord = "sensord"
 INITSCRIPT_PARAMS_${PN}-fancontrol = "defaults 66"
 INITSCRIPT_PARAMS_${PN}-sensord = "defaults 67"
+
+SYSTEMD_PACKAGES = "${PN}-sensord"
+SYSTEMD_SERVICE_${PN}-sensord = "sensord.service lm_sensors.service fancontrol.service"
+SYSTEMD_AUTO_ENABLE = "disable"
 
 S = "${WORKDIR}/lm_sensors-${PV}"
 
@@ -37,7 +41,7 @@ do_compile() {
 
 do_install() {
     oe_runmake user_install DESTDIR=${D}
-    install -m 0755 ${S}/prog/sensord/sensord ${D}${bindir}
+    install -m 0755 ${S}/prog/sensord/sensord ${D}${sbindir}
     install -m 0644 ${S}/prog/sensord/sensord.8 ${D}${mandir}/man8
 
     # Install directory
@@ -49,6 +53,12 @@ do_install() {
 
     # Install sensord init script
     install -m 0755 ${WORKDIR}/sensord.init ${D}${sysconfdir}/init.d/sensord
+
+    # Insall sensord service script
+    if ${@bb.utils.contains('DISTRO_FEATURES','systemd','true','false',d)}; then
+        install -d ${D}${systemd_unitdir}/system
+        install -m 0644 ${S}/prog/init/*.service ${D}${systemd_unitdir}/system
+    fi
 }
 
 # libsensors packages
@@ -67,7 +77,7 @@ PACKAGES =+ "${PN}-fancontrol ${PN}-fancontrol-doc"
 PACKAGES =+ "${PN}-sensorsdetect ${PN}-sensorsdetect-doc"
 
 # sensors-conf-convert script
-PACKAGES =+ "${PN}-sensorsconfconvert"
+PACKAGES =+ "${PN}-sensorsconfconvert ${PN}-sensorsconfconvert-doc"
 
 # pwmconfig script
 PACKAGES =+ "${PN}-pwmconfig ${PN}-pwmconfig-doc"
@@ -90,7 +100,7 @@ FILES_${PN}-sensors-doc = "${mandir}/man1 ${mandir}/man5"
 RDEPENDS_${PN}-sensors = "${PN}-libsensors"
 
 # sensord logging daemon
-FILES_${PN}-sensord = "${bindir}/sensord ${sysconfdir}/init.d/sensord"
+FILES_${PN}-sensord = "${sbindir}/sensord ${sysconfdir}/init.d/sensord ${systemd_unitdir}/system/sensord.service"
 FILES_${PN}-sensord-dbg = "${bindir}/.debug/sensord"
 FILES_${PN}-sensord-doc = "${mandir}/man8/sensord.8"
 RDEPENDS_${PN}-sensord = "${PN}-sensors rrdtool"
@@ -109,6 +119,7 @@ RDEPENDS_${PN}-sensorsdetect = "${PN}-sensors perl perl-modules"
 
 # sensors-conf-convert script files
 FILES_${PN}-sensorsconfconvert = "${bindir}/sensors-conf-convert"
+FILES_${PN}-sensorsconfconvert-doc = "${mandir}/man8/sensors-conf-convert.8"
 RDEPENDS_${PN}-sensorsconfconvert = "${PN}-sensors perl perl-modules"
 
 # pwmconfig script files
