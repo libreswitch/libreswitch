@@ -20,6 +20,7 @@ SRC_URI = "http://www.skbuff.net/iputils/${BPN}-${PV}.tar.bz2 \
            file://nsgmls-path-fix.patch \
            file://fix-build-command-line-argument-with-gnutls.patch \
            file://iputils-s20121221-fix-traceroute6.patch \
+           file://iputils-s20121221-0001-traceroute6.patch \
           "
 
 SRC_URI[md5sum] = "6072aef64205720dd1893b375e184171"

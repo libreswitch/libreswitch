@@ -1,0 +1,26 @@
+--- iputils-s20121221.org/traceroute6.c	2016-04-11 02:13:38.000000000 -0700
++++ iputils-s20121221/traceroute6.c	2016-05-11 23:49:52.510931406 -0700
+@@ -375,9 +375,9 @@
+ 			break;
+ 		case 'm':
+ 			max_ttl = atoi(optarg);
+-			if (max_ttl <= 1) {
++			if (max_ttl < 1) {
+ 				Fprintf(stderr,
+-				    "traceroute: max ttl must be >1.\n");
++				    "traceroute: max ttl must be >0.\n");
+ 				exit(1);
+ 			}
+ 			break;
+@@ -421,9 +421,9 @@
+ 			break;
+ 		case 'w':
+ 			waittime = atoi(optarg);
+-			if (waittime <= 1) {
++			if (waittime < 1) {
+ 				Fprintf(stderr,
+-				    "traceroute: wait must be >1 sec.\n");
++				    "traceroute: wait must be >0 sec.\n");
+ 				exit(1);
+ 			}
+ 			break;
