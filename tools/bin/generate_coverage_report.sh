@@ -54,7 +54,7 @@ then
     exit 0
   fi
   # Run the Feature Tests
-  make testenv_run feature $COV_MODULE
+  make testenv_run feature $COV_MODULE TESTENV_ABORT_IF_NOT_FOUND=false
   # Run the Component Tests
   make testenv_rerun component $COV_MODULE TESTENV_ABORT_IF_NOT_FOUND=false
   # Capture the coverage raw data and check that coverage data was generated
