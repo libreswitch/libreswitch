@@ -40,6 +40,8 @@ then
   # Compile the moduler under test, which causes the gcno files to be generated.
   # The gcno files are needed prior to running the tests so that a baseline can be created
   make $COV_MODULE-build
+  # Remove the file so that subsequent runs won't automatically generate coverage data
+  rm -f build/devenv-coverage-enabled
   mkdir -p $COV_REPORT_DIR
   # Clear any previous coverage data
   rm -rf $COV_REPORT_DIR/*
