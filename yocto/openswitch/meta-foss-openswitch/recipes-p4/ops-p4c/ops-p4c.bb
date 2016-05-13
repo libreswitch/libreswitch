@@ -18,7 +18,7 @@ FILES_${PN}-libpd = "/usr/lib/libpd*.so.?.?.?"
 FILES_${PN}-libpd-staticdev = "/usr/lib/libpd*.a"
 FILES_${PN}-libpd-dev = "/usr/lib/libpd*.la /usr/lib/libpd*.so /usr/lib/libpd*.so.? /usr/lib/pkgconfig"
 FILES_${PN}-dbg = ""
-FILES_${PN}-libpd-dbg = "/usr/src/debug/"
+FILES_${PN}-libpd-dbg = "/usr/src/debug/ /usr/lib/.debug"
 
 DEPENDS = "\
 	judy \
