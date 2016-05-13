@@ -1,0 +1,11 @@
+# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+
+prefix=/usr
+exec_prefix=${prefix}
+includedir=${prefix}/include
+
+Name: Broadcom OpenNSL
+Description: Broadcom OpenNSL
+Version: @VERSION@
+Libs: -lopennsl -lpthread -lm -lrt
+Cflags:
