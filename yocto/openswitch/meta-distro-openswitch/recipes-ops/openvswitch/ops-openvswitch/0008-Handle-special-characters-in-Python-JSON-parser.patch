@@ -1,3 +1,14 @@
+From 66c43270888dfc5a5899833337afba98d33d9db8 Mon Sep 17 00:00:00 2001
+From: "Marcelo E. Magallon" <marcelo.magallon@hpe.com>
+Date: Fri, 13 May 2016 13:34:55 -0600
+Subject: [PATCH 5/5] Handle special characters in Python JSON parser
+
+Change-Id: I2048c91f155b73562c1498ce68b52cf89d33d730
+
+---
+ python/ovs/json.py | 25 +++++++++++++++++++------
+ 1 file changed, 19 insertions(+), 6 deletions(-)
+
 diff --git a/python/ovs/json.py b/python/ovs/json.py
 index d329ee4..0c41fc0 100644
 --- a/python/ovs/json.py
@@ -85,3 +96,6 @@ index d329ee4..0c41fc0 100644
  
      def is_done(self):
          return self.done
+-- 
+2.1.4
+

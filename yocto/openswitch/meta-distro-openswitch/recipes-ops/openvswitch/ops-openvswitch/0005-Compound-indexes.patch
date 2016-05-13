@@ -1,8 +1,35 @@
+From f12ac59efd856733c0c6119c13c92fee115cacd0 Mon Sep 17 00:00:00 2001
+From: "Marcelo E. Magallon" <marcelo.magallon@hpe.com>
+Date: Fri, 13 May 2016 13:31:20 -0600
+Subject: [PATCH 2/5] Compound indexes
+
+Change-Id: I51f85a430789a15a1c4e074a52fd9b9a96e13088
+
+---
+ Makefile.am                |   1 +
+ README-compound-indexes.md | 321 ++++++++++++++++++++++++++++++++++++++
+ lib/automake.mk            |   4 +
+ lib/ovsdb-idl-provider.h   |   2 +
+ lib/ovsdb-idl.c            | 377 +++++++++++++++++++++++++++++++++++++++++++++
+ lib/ovsdb-idl.h            |  63 ++++++++
+ lib/skiplist.c             | 292 +++++++++++++++++++++++++++++++++++
+ lib/skiplist.h             |  53 +++++++
+ ovsdb/ovsdb-idlc.in        | 118 ++++++++++++++
+ tests/.gitignore           |   1 +
+ tests/automake.mk          |   2 +
+ tests/library.at           |  11 ++
+ tests/test-skiplist.c      | 212 +++++++++++++++++++++++++
+ 13 files changed, 1457 insertions(+)
+ create mode 100644 README-compound-indexes.md
+ create mode 100644 lib/skiplist.c
+ create mode 100644 lib/skiplist.h
+ create mode 100644 tests/test-skiplist.c
+
 diff --git a/Makefile.am b/Makefile.am
-index 02cc7b6..7531df0 100644
+index a2b2a35..4395840 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -95,6 +95,7 @@ docs = \
+@@ -93,6 +93,7 @@ docs = \
  	OPENFLOW-1.1+.md \
  	PORTING.md \
  	README.md \
@@ -338,7 +365,7 @@ index 0000000..054d965
 +`ovsrec_<table>_index_get_data` returns a pointer to the replica's row that is
 +pointed by the cursor, or NULL.
 diff --git a/lib/automake.mk b/lib/automake.mk
-index 2d2ee5f..924e62d 100644
+index 41944a8..e49f26f 100644
 --- a/lib/automake.mk
 +++ b/lib/automake.mk
 @@ -138,6 +138,8 @@ ovslibinclude_HEADERS = \
@@ -360,10 +387,10 @@ index 2d2ee5f..924e62d 100644
          lib/smap.h \
          lib/socket-util.c \
 diff --git a/lib/ovsdb-idl-provider.h b/lib/ovsdb-idl-provider.h
-index 399343e..c04632c 100644
+index e651c19..446e357 100644
 --- a/lib/ovsdb-idl-provider.h
 +++ b/lib/ovsdb-idl-provider.h
-@@ -56,6 +56,7 @@ struct ovsdb_idl_column {
+@@ -61,6 +61,7 @@ struct ovsdb_idl_column {
      bool mutable;
      void (*parse)(struct ovsdb_idl_row *, const struct ovsdb_datum *);
      void (*unparse)(struct ovsdb_idl_row *);
@@ -371,16 +398,16 @@ index 399343e..c04632c 100644
  #ifdef OPS
      unsigned int modify_seqno;
  #endif
-@@ -84,6 +85,7 @@ struct ovsdb_idl_table {
+@@ -89,6 +90,7 @@ struct ovsdb_idl_table {
      unsigned int delete_seqno;
  #endif
      unsigned int change_seqno[OVSDB_IDL_CHANGE_MAX];
 +    struct shash indexes;    /* Contains "struct ovsdb_idl_index"s */
      struct ovs_list track_list; /* Tracked rows (ovsdb_idl_row.track_node). */
- };
  
+     bool has_pending_fetch;  /* Indicates if the table has a pending fetch
 diff --git a/lib/ovsdb-idl.c b/lib/ovsdb-idl.c
-index c1f98f3..9f01b03 100644
+index dc09a2e..efcb99c 100644
 --- a/lib/ovsdb-idl.c
 +++ b/lib/ovsdb-idl.c
 @@ -37,8 +37,10 @@
@@ -394,9 +421,9 @@ index c1f98f3..9f01b03 100644
  #include "openvswitch/vlog.h"
  
  VLOG_DEFINE_THIS_MODULE(ovsdb_idl);
-@@ -189,6 +191,15 @@ ovsdb_idl_table_from_class(const struct ovsdb_idl *,
-                            const struct ovsdb_idl_table_class *);
+@@ -210,6 +212,15 @@ ovsdb_idl_table_from_class(const struct ovsdb_idl *,
  static bool ovsdb_idl_track_is_set(struct ovsdb_idl_table *table);
+ static struct json *where_uuid_equals(const struct uuid *uuid);
  
 +static int
 +ovsdb_idl_index_generic_comparer(const void *, const void *, const void *);
@@ -410,7 +437,7 @@ index c1f98f3..9f01b03 100644
  /* Creates and returns a connection to database 'remote', which should be in a
   * form acceptable to jsonrpc_session_open().  The connection will maintain an
   * in-memory replica of the remote database whose schema is described by
-@@ -235,6 +246,7 @@ ovsdb_idl_create(const char *remote, const struct ovsdb_idl_class *class,
+@@ -256,6 +267,7 @@ ovsdb_idl_create(const char *remote, const struct ovsdb_idl_class *class,
          memset(table->modes, default_mode, tc->n_columns);
          table->need_table = false;
          shash_init(&table->columns);
@@ -418,15 +445,15 @@ index c1f98f3..9f01b03 100644
          for (j = 0; j < tc->n_columns; j++) {
              const struct ovsdb_idl_column *column = &tc->columns[j];
  
-@@ -272,6 +284,7 @@ ovsdb_idl_destroy(struct ovsdb_idl *idl)
+@@ -295,6 +307,7 @@ ovsdb_idl_destroy(struct ovsdb_idl *idl)
  
          for (i = 0; i < idl->class->n_tables; i++) {
              struct ovsdb_idl_table *table = &idl->tables[i];
 +            ovsdb_idl_destroy_indexes(table);
              shash_destroy(&table->columns);
              hmap_destroy(&table->rows);
-             free(table->modes);
-@@ -305,6 +318,7 @@ ovsdb_idl_clear(struct ovsdb_idl *idl)
+             shash_destroy(&table->outstanding_col_fetch_reqs);
+@@ -330,6 +343,7 @@ ovsdb_idl_clear(struct ovsdb_idl *idl)
              struct ovsdb_idl_arc *arc, *next_arc;
  
              if (!ovsdb_idl_row_is_orphan(row)) {
@@ -434,7 +461,7 @@ index c1f98f3..9f01b03 100644
                  ovsdb_idl_row_unparse(row);
              }
              LIST_FOR_EACH_SAFE (arc, next_arc, src_node, &row->src_arcs) {
-@@ -1210,6 +1224,364 @@ ovsdb_idl_row_unparse(struct ovsdb_idl_row *row)
+@@ -1439,6 +1453,364 @@ ovsdb_idl_row_unparse(struct ovsdb_idl_row *row)
      }
  }
  
@@ -799,7 +826,7 @@ index c1f98f3..9f01b03 100644
  static void
  ovsdb_idl_row_clear_old(struct ovsdb_idl_row *row)
  {
-@@ -1398,11 +1770,14 @@ ovsdb_idl_insert_row(struct ovsdb_idl_row *row, const struct json *row_json)
+@@ -1628,11 +2000,14 @@ ovsdb_idl_insert_row(struct ovsdb_idl_row *row, const struct json *row_json)
                        = row->table->modify_seqno
                        = (row->table->idl->change_seqno + 1);
  #endif
@@ -814,7 +841,7 @@ index c1f98f3..9f01b03 100644
      ovsdb_idl_row_unparse(row);
      ovsdb_idl_row_clear_arcs(row, true);
      ovsdb_idl_row_clear_old(row);
-@@ -1423,10 +1798,12 @@ ovsdb_idl_modify_row(struct ovsdb_idl_row *row, const struct json *row_json)
+@@ -1653,10 +2028,12 @@ ovsdb_idl_modify_row(struct ovsdb_idl_row *row, const struct json *row_json)
  {
      bool changed;
  
@@ -828,7 +855,7 @@ index c1f98f3..9f01b03 100644
  #ifdef OPS
      if( changed )
 diff --git a/lib/ovsdb-idl.h b/lib/ovsdb-idl.h
-index 80f499a..7070e19 100644
+index c37fcc5..214e5bd 100644
 --- a/lib/ovsdb-idl.h
 +++ b/lib/ovsdb-idl.h
 @@ -1,4 +1,5 @@
@@ -845,7 +872,7 @@ index 80f499a..7070e19 100644
  
  struct json;
  struct ovsdb_datum;
-@@ -280,4 +282,65 @@ void ovsdb_idl_loop_destroy(struct ovsdb_idl_loop *);
+@@ -313,4 +315,65 @@ void ovsdb_idl_loop_destroy(struct ovsdb_idl_loop *);
  struct ovsdb_idl_txn *ovsdb_idl_loop_run(struct ovsdb_idl_loop *);
  void ovsdb_idl_loop_commit_and_wait(struct ovsdb_idl_loop *);
  
@@ -1269,7 +1296,7 @@ index 0000000..23e7e93
 +
 +#endif /* LIB_SKIPLIST_H_ */
 diff --git a/ovsdb/ovsdb-idlc.in b/ovsdb/ovsdb-idlc.in
-index 88b1ec3..f99496f 100755
+index b5f7079..4bada77 100755
 --- a/ovsdb/ovsdb-idlc.in
 +++ b/ovsdb/ovsdb-idlc.in
 @@ -8,9 +8,15 @@ import sys
@@ -1314,7 +1341,7 @@ index 88b1ec3..f99496f 100755
  void %(s)s_init(struct %(s)s *);
  void %(s)s_delete(const struct %(s)s *);
  struct %(s)s *%(s)s_insert(struct ovsdb_idl_txn *);
-@@ -305,6 +330,11 @@ struct %(s)s *%(s)s_insert(struct ovsdb_idl_txn *);
+@@ -322,6 +347,11 @@ bool %(s)s_is_updated(const struct %(s)s *, enum %(s)s_column_id);
                  print '%(coltype)s);' % {'coltype':column.type.key.toCType(prefix)}
          print
  
@@ -1326,7 +1353,7 @@ index 88b1ec3..f99496f 100755
      # Table indexes.
      printEnum("%stable_id" % prefix.lower(), ["%sTABLE_%s" % (prefix.upper(), tableName.upper()) for tableName in sorted(schema.tables)] + ["%sN_TABLES" % prefix.upper()])
      print
-@@ -898,6 +928,90 @@ void
+@@ -1005,6 +1035,90 @@ void
          'C': columnName.upper()}
          # End Update/Delete of partial maps
  
@@ -1417,7 +1444,7 @@ index 88b1ec3..f99496f 100755
          # Table columns.
          print "\nstruct ovsdb_idl_column %s_columns[%s_N_COLUMNS];" % (
              structName, structName.upper())
-@@ -921,6 +1035,10 @@ static void\n%s_columns_init(void)
+@@ -1028,6 +1142,10 @@ static void\n%s_columns_init(void)
              print "    c->mutable = %s;" % mutable
              print "    c->parse = %(s)s_parse_%(c)s;" % d
              print "    c->unparse = %(s)s_unparse_%(c)s;" % d
@@ -1700,3 +1727,6 @@ index 0000000..291ff26
 +}
 +
 +OVSTEST_REGISTER("test-skiplist", test_skiplist_main);
+-- 
+2.1.4
+

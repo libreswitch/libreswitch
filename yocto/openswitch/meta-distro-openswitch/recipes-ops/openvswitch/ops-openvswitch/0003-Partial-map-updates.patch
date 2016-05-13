@@ -1,3 +1,21 @@
+From 2d2e9acd99ed772f79990b2a8442dc7161860f72 Mon Sep 17 00:00:00 2001
+From: "Marcelo E. Magallon" <marcelo.magallon@hpe.com>
+Date: Fri, 13 May 2016 13:26:09 -0600
+Subject: [PATCH 3/8] Partial map updates
+
+Change-Id: Ie3b48dbdb53cafc895540c7366fdd4547fc4f631
+---
+ lib/automake.mk          |   4 +-
+ lib/ovsdb-idl-provider.h |   4 +
+ lib/ovsdb-idl.c          | 285 +++++++++++++++++++++++++++++++++++++++++++++++
+ lib/ovsdb-idl.h          |   6 +
+ lib/ovsdb-map-op.c       | 171 ++++++++++++++++++++++++++++
+ lib/ovsdb-map-op.h       |  53 +++++++++
+ ovsdb/ovsdb-idlc.in      |  69 ++++++++++++
+ 7 files changed, 591 insertions(+), 1 deletion(-)
+ create mode 100644 lib/ovsdb-map-op.c
+ create mode 100644 lib/ovsdb-map-op.h
+
 diff --git a/lib/automake.mk b/lib/automake.mk
 index e0a981d..41944a8 100644
 --- a/lib/automake.mk
@@ -25,7 +43,7 @@ index e0a981d..41944a8 100644
  	$(MKDIR_P) $(DESTDIR)$(DBDIR)
 -
 diff --git a/lib/ovsdb-idl-provider.h b/lib/ovsdb-idl-provider.h
-index dd35e5a..399343e 100644
+index 2dbf805..de22691 100644
 --- a/lib/ovsdb-idl-provider.h
 +++ b/lib/ovsdb-idl-provider.h
 @@ -20,6 +20,7 @@
@@ -47,7 +65,7 @@ index dd35e5a..399343e 100644
      unsigned int insert_seqno;
      unsigned int modify_seqno;
 diff --git a/lib/ovsdb-idl.c b/lib/ovsdb-idl.c
-index ccbb449..b3225f6 100644
+index 4db29b1..82e109e 100644
 --- a/lib/ovsdb-idl.c
 +++ b/lib/ovsdb-idl.c
 @@ -159,6 +159,7 @@ static struct ovsdb_idl_row *ovsdb_idl_row_create(struct ovsdb_idl_table *,
@@ -71,7 +89,7 @@ index ccbb449..b3225f6 100644
  
  static void ovsdb_idl_send_lock_request(struct ovsdb_idl *);
  static void ovsdb_idl_send_unlock_request(struct ovsdb_idl *);
-@@ -1306,15 +1313,38 @@ ovsdb_idl_row_create(struct ovsdb_idl_table *table, const struct uuid *uuid)
+@@ -1338,15 +1345,38 @@ ovsdb_idl_row_create(struct ovsdb_idl_table *table, const struct uuid *uuid)
      hmap_insert(&table->rows, &row->hmap_node, uuid_hash(uuid));
      row->uuid = *uuid;
      row->table = table;
@@ -110,7 +128,7 @@ index ccbb449..b3225f6 100644
          if (ovsdb_idl_track_is_set(row->table)) {
              row->change_seqno[OVSDB_IDL_CHANGE_DELETE]
                  = row->table->change_seqno[OVSDB_IDL_CHANGE_DELETE]
-@@ -1859,6 +1889,7 @@ ovsdb_idl_txn_disassemble(struct ovsdb_idl_txn *txn)
+@@ -1891,6 +1921,7 @@ ovsdb_idl_txn_disassemble(struct ovsdb_idl_txn *txn)
      txn->idl->txn = NULL;
  
      HMAP_FOR_EACH_SAFE (row, next, txn_node, &txn->txn_rows) {
@@ -118,7 +136,7 @@ index ccbb449..b3225f6 100644
          if (row->old) {
              if (row->written) {
                  ovsdb_idl_row_unparse(row);
-@@ -1887,6 +1918,116 @@ ovsdb_idl_txn_disassemble(struct ovsdb_idl_txn *txn)
+@@ -1919,6 +1950,116 @@ ovsdb_idl_txn_disassemble(struct ovsdb_idl_txn *txn)
      hmap_init(&txn->txn_rows);
  }
  
@@ -235,7 +253,7 @@ index ccbb449..b3225f6 100644
  /* Attempts to commit 'txn'.  Returns the status of the commit operation, one
   * of the following TXN_* constants:
   *
-@@ -2073,6 +2214,28 @@ ovsdb_idl_txn_commit(struct ovsdb_idl_txn *txn)
+@@ -2105,6 +2246,28 @@ ovsdb_idl_txn_commit(struct ovsdb_idl_txn *txn)
                  json_destroy(op);
              }
          }
@@ -264,7 +282,7 @@ index ccbb449..b3225f6 100644
      }
  
      /* Add increment. */
-@@ -2880,6 +3043,128 @@ ovsdb_idl_parse_lock_notify(struct ovsdb_idl *idl,
+@@ -2912,6 +3075,128 @@ ovsdb_idl_parse_lock_notify(struct ovsdb_idl *idl,
      }
  }
  
@@ -394,10 +412,10 @@ index ccbb449..b3225f6 100644
  ovsdb_idl_loop_destroy(struct ovsdb_idl_loop *loop)
  {
 diff --git a/lib/ovsdb-idl.h b/lib/ovsdb-idl.h
-index 4c66ae0..80f499a 100644
+index 136c38c..2f12b19 100644
 --- a/lib/ovsdb-idl.h
 +++ b/lib/ovsdb-idl.h
-@@ -247,6 +247,12 @@ void ovsdb_idl_txn_write(const struct ovsdb_idl_row *,
+@@ -249,6 +249,12 @@ void ovsdb_idl_txn_write(const struct ovsdb_idl_row *,
  void ovsdb_idl_txn_write_clone(const struct ovsdb_idl_row *,
                                 const struct ovsdb_idl_column *,
                                 const struct ovsdb_datum *);
@@ -647,10 +665,10 @@ index 0000000..d70748b
 +
 +#endif /* ovsdb-map-op.h */
 diff --git a/ovsdb/ovsdb-idlc.in b/ovsdb/ovsdb-idlc.in
-index 6f52c40..88b1ec3 100755
+index 22c0efe..e3503d3 100755
 --- a/ovsdb/ovsdb-idlc.in
 +++ b/ovsdb/ovsdb-idlc.in
-@@ -297,6 +297,13 @@ struct %(s)s *%(s)s_insert(struct ovsdb_idl_txn *);
+@@ -298,6 +298,13 @@ bool %(s)s_is_updated(const struct %(s)s *, enum %(s)s_column_id);
                                                               structName.lower(), columnName)
  
          print
@@ -664,7 +682,7 @@ index 6f52c40..88b1ec3 100755
  
      # Table indexes.
      printEnum("%stable_id" % prefix.lower(), ["%sTABLE_%s" % (prefix.upper(), tableName.upper()) for tableName in sorted(schema.tables)] + ["%sN_TABLES" % prefix.upper()])
-@@ -828,6 +835,68 @@ const struct ovsdb_datum *
+@@ -835,6 +842,68 @@ const struct ovsdb_datum *
                     'S': structName.upper(),
                     'C': columnName.upper()}
              print "}"
@@ -733,3 +751,6 @@ index 6f52c40..88b1ec3 100755
  
          # Table columns.
          print "\nstruct ovsdb_idl_column %s_columns[%s_N_COLUMNS];" % (
+-- 
+2.1.4
+

@@ -7,16 +7,16 @@ DEPENDS = "openssl python perl systemd libtool libyaml jemalloc ops"
 BRANCH ?= "${OPS_REPO_BRANCH}"
 
 SRC_URI = "${OPS_REPO_BASE_URL}/ops-openvswitch;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
-   file://ovsdb-server.service \
-   file://partial-map-updates.patch \
-   file://on-demand-fetching.patch \
-   file://compound-indexes.patch \
-   file://idl_tracking_python.patch \
-   file://smap-shash-add-numeric-and-flexible-sort.patch \
-   file://json.py.patch \
-"
+           file://ovsdb-server.service \
+           file://0003-Partial-map-updates.patch \
+           file://0004-On-demand-fetching.patch \
+           file://0005-Compound-indexes.patch \
+           file://0006-Python-IDL-tracking.patch \
+           file://0007-smap-shash-add-numeric-and-flexible-sort.patch \
+           file://0008-Handle-special-characters-in-Python-JSON-parser.patch \
+           "
 
-SRCREV = "a01fdf45b7ae1fbbc0857086074a15a4dbe4b17d"
+SRCREV = "eb01560c4a8192c31c88a754aa5c70db88d14197"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
