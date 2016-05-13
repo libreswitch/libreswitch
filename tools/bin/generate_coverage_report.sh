@@ -55,6 +55,8 @@ then
   fi
   # Run the Feature Tests
   make testenv_run feature $COV_MODULE
+  # Run the Component Tests
+  make testenv_rerun component $COV_MODULE TESTENV_ABORT_IF_NOT_FOUND=false
   # Capture the coverage raw data and check that coverage data was generated
   COV_RAW_DATA=`lcov --capture --directory $COV_DATA_DIR --output-file $COV_REPORT_DIR/app_test.info 2>&1`
   if grep -q "ERROR: no \.gcda files found" <<< $COV_RAW_DATA; then
