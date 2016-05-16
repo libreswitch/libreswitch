@@ -16,7 +16,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-openvswitch;protocol=${OPS_REPO_PROTOCOL};br
            file://0008-Handle-special-characters-in-Python-JSON-parser.patch \
            "
 
-SRCREV = "eb01560c4a8192c31c88a754aa5c70db88d14197"
+SRCREV = "80640cc6394f699842f5f7446ceecb4ae50fa19e"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
