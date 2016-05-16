@@ -9,6 +9,7 @@ Type=simple
 ExecStartPre=/bin/rm -f /var/run/restd.pid
 ExecStart=/usr/bin/restd
 PIDFile=/var/run/restd.pid
+Restart=always
 
 [Install]
 WantedBy=multi-user.target
