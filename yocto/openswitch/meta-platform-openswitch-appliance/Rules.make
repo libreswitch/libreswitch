@@ -16,5 +16,5 @@ LXC_MACHINE_CONFIG_SCRIPT=$(BUILD_ROOT)/yocto/openswitch/meta-platform-$(DISTRO)
 export LXC_MACHINE_CONFIG_SCRIPT
 
 # For this platform we create a itb image that includes a kernel, fs and dtb
-all:: kernel fs
+all:: fs _kernel_links
 

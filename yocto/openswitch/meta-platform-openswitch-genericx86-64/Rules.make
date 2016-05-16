@@ -13,5 +13,5 @@ DISTRO_FS_FILE = $(BASE_TARGZ_FS_FILE)
 DISTRO_FS_TARGET = openswitch-disk-image
 
 # For this platform we create a itb image that includes a kernel, fs and dtb
-all:: kernel fs
+all:: fs _kernel_links
 

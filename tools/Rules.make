@@ -377,12 +377,12 @@ images/$(CONFIGURED_PLATFORM).itb:: $(DISTRO_PLATFORM_ITS_FILE) $(MKIMAGE)
 
 # ONIE installer
 .PHONY: onie-installer
-onie-installer: header _kernel_links _fs _onie-installer
+onie-installer: header _onie-installer _kernel_links _fs_links
 
 DISTRO_ONIE_INSTALLER_FILE?= $(BASE_ONIE_INSTALLER_FILE)
 _onie-installer::
 	$(V) $(ECHO) "$(BLUE)Building ONIE Installer file ($(ONIE_INSTALLER_RECIPE))...$(GRAY)\n"
-	$(V)$(call BITBAKE,$(ONIE_INSTALLER_RECIPE))
+	$(V)$(call BITBAKE,$(ONIE_INSTALLER_RECIPE) $(DISTRO_FS_TARGET))
 	$(V)ln -sf $(DISTRO_ONIE_INSTALLER_FILE) images/`basename $(DISTRO_ONIE_INSTALLER_FILE)`
 
 ifneq ($(findstring onie-installer,$(MAKECMDGOALS)),)
