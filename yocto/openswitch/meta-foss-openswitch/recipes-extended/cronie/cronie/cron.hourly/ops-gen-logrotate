@@ -20,6 +20,9 @@ import os
 import re
 
 import ovs.db.idl
+from os import system
+from commands import getoutput
+import os
 
 # OPENSWITCH_TODO: Need to pull this from the build env
 OVSDB_CONN = 'unix:/var/run/openvswitch/db.sock'
@@ -29,9 +32,20 @@ OVSDB_SCHEMA = '/usr/share/openvswitch/vswitch.ovsschema'
 
 CONFIG_FILE = '/etc/logrotate-ops.conf'
 
+target = "local"
+retry_max_count = 3
+rotate_max_count = 3
+remoteIP = "0"
+protocol = "tftp"
+uri = "tftp://"
+
 
 # period, maxsize, target
 def read_ovsdb():
+    global target
+    global protocol
+    global uri
+
     results = {}
     try:
         schema_helper = ovs.db.idl.SchemaHelper(location=OVSDB_SCHEMA)
@@ -44,6 +58,11 @@ def read_ovsdb():
         if idl.tables['System'].rows:
             for ovs_rec in idl.tables['System'].rows.itervalues():
                 results = dict(ovs_rec.logrotate_config)
+                target = results.get('target', 'local')
+            uri = target
+            offset = uri.find(':')
+            protocol = uri[0:offset]
+            remoteIP = uri[offset+3:len(uri)]
 
         idl.close()
     except Exception as e:
@@ -66,8 +85,10 @@ def generate_config_file(config):
             if m.group(2) != config['period']:
                 new_file[-1] = "%s%s" % (m.group(1), config['period'])
                 changed = True
-        elif m.group(2) in config and m.group(3) != str(config[m.group(2)]):
-            ln = "%s%s %s" % (m.group(1), m.group(2), str(config[m.group(2)]))
+        elif (m.group(2) in config) and \
+             ((m.group(3).strip('M')) != str(config[m.group(2)])):
+            ln = "%s%s %s%s" % \
+                 (m.group(1), m.group(2), str(config[m.group(2)]), 'M')
             new_file[-1] = ln
             changed = True
 
@@ -77,6 +98,99 @@ def generate_config_file(config):
         os.rename(CONFIG_FILE + '.new', CONFIG_FILE)
 
 
+# Removes old rotated log files if number of files are morethan
+# rotate_max_count
+def removeRotatedLogfiles(path, filename):
+    global rotate_max_count
+
+    count = 0
+    out = getoutput("cd " + path + "; ls -c " + filename + "-*")
+    out_lines = out.split(" ")
+    lines = out.split("\n")
+
+    for line in lines:
+        count = count + 1
+        if (count >= rotate_max_count):
+            print("Removing old rotated file " + line)
+            system("cd " + path + ";rm -f " + line)
+
+
+# clear old compressed logs and renames rotated log files with time extension
+
+def cleanLogfiles(path):
+    if(system("cd " + path +
+              "; ls *.1.gz > /tmp/compressed_files 2>/dev/null")):
+        print("No log files rotated")
+        return False
+    try:
+        with open('/tmp/compressed_files', 'r') as compress_file, \
+                open('/tmp/tftp_files', 'w') as tftp_file:
+            for line in compress_file:
+                offset = line.find('.1.gz')
+                fileName = line[0:offset]
+                removeRotatedLogfiles(path, fileName)
+                timeSuffix = getoutput('date +"%Y%m%d%H"')
+                system("cd " + path + ";mv " + fileName +
+                       ".1.gz " + fileName + "-" + timeSuffix + ".gz")
+                target_file = fileName + "-" + timeSuffix + ".gz"
+                tftp_file.write(target_file + "\n")
+                print("Rotated log file:" + target_file)
+            tftp_file.close()
+            compress_file.close()
+        system("rm -f /tmp/compressed_files")
+    except IOError:
+        print("compressed file (/tmp/compressed_files): open failed")
+        return False
+    else:
+        return True
+
+
+# Send tftp with retry mechanism
+def sendTftp(command):
+    global retry_max_count
+    retry = True
+    retry_count = 1
+    while (retry):
+        output = getoutput(command)
+        if 'Transfer timed out' in output:
+            print("Tftp Retry: iteration " + str(retry_count) + " failed")
+            if (retry_count >= retry_max_count):
+                retry = False
+            retry_count = retry_count + 1
+        else:
+            print("Tftp transfer iteration " + str(retry_count) + ": success")
+            retry = False
+
+
+def sendLogFilesTftp(path):
+    global remoteIP
+    global uri
+
+    try:
+        with open('/tmp/tftp_files', 'r') as tftp_file:
+            for line in tftp_file:
+                with open('/tmp/tftp_put', 'w') as tftp_command:
+                    tftp_command.write("binary\n")
+                    tftp_command.write("timeout 5\n")
+                    tftp_command.write("put " + line + "\n")
+                    tftp_command.write("quit\n")
+                    tftp_command.close()
+                offset = line.find('\n')
+                log_file = line[0:offset]
+                print("Sending compressed log " + log_file +
+                      " to remote host " + uri)
+                tftp_string = "cd " + path + ";" + "tftp " + remoteIP + \
+                              "< /tmp/tftp_put"
+                sendTftp(tftp_string)
+                system("rm -f /tmp/tftp_put")
+            tftp_file.close()
+        system("rm -f /tmp/tftp_files")
+    except IOError:
+        print("TFTP files (/tmp/tftp_put,/tmp/tftp_files): file open failed")
+        return False
+    else:
+        return True
+
 #
 # main
 #
@@ -84,5 +198,13 @@ def generate_config_file(config):
 try:
     config = read_ovsdb()
     generate_config_file(config)
+    system("logrotate /etc/logrotate-ops.conf")
+
+    if cleanLogfiles("/var/log/") and target != "local":
+        if protocol == 'tftp':
+            sendLogFilesTftp("/var/log/")
+        else:
+            print("Remote transfer protocol not supported")
+
 except Exception as e:
     print "Error: %s" % e
