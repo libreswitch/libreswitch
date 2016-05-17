@@ -49,7 +49,6 @@ RDEPENDS_packagegroup-ops-base = "\
     libcap-bin \
     ops-init \
     virtual/switchd \
-    virtual/ops-switchd-switch-api-plugin \
     ops-ovsdb \
     ops-hw-config \
     ops-cfgd ops-fand ops-ledd ops-pmd ops-powerd ops-sysd ops-tempd \
