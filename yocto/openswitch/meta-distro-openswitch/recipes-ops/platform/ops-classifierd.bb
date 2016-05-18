@@ -11,7 +11,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-classifierd;protocol=${OPS_REPO_PROTOCOL};br
            file://ops-classifierd.service \
 "
 
-SRCREV = "93b546860b8f71c23e6d81a84f3602b8c3acca22"
+SRCREV = "4fbb670a483b100cc6c31545f3ab2165af92c4f8"
 
 FILES_${PN} = "${libdir}/openvswitch/plugins ${includedir}/plugins/* ${bindir} ${bindir}/ops-classifierd"
 
