@@ -1,0 +1,135 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+<title>openswitch/ops-build - OpenSwitch Build System</title>
+<meta name='generator' content='cgit v0.12'/>
+<meta name='robots' content='index, nofollow'/>
+<link rel='stylesheet' type='text/css' href='/static/openstack.css'/>
+<link rel='shortcut icon' href='/static/favicon.ico'/>
+<link rel='alternate' title='Atom feed' href='http://git.openswitch.net/cgit/openswitch/ops-build/atom/yocto/poky/meta/recipes-devtools/subversion/subversion/serf.m4-Regex-modified-to-allow-D-in-paths.patch?h=feature/yocto_2.1' type='application/atom+xml'/>
+<link rel='vcs-git' href='git://git.openswitch.net/openswitch/ops-build' title='openswitch/ops-build Git repository'/>
+<link rel='vcs-git' href='https://git.openswitch.net/openswitch/ops-build' title='openswitch/ops-build Git repository'/>
+</head>
+<body>
+<div id='cgit'><table id='header'>
+<tr>
+<td class='logo' rowspan='2'><a href='/cgit/'><img src='/static/openswitch.png' alt='cgit logo'/></a></td>
+<td class='main'><a href='/cgit/'>index</a> : <a title='openswitch/ops-build' href='/cgit/openswitch/ops-build/'>openswitch/ops-build</a></td><td class='form'><form method='get' action=''>
+<select name='h' onchange='this.form.submit();'>
+<option value='REL_0.1.0'>REL_0.1.0</option>
+<option value='branch_specs'>branch_specs</option>
+<option value='feature/LAG'>feature/LAG</option>
+<option value='feature/atomic'>feature/atomic</option>
+<option value='feature/benchmark'>feature/benchmark</option>
+<option value='feature/bgp'>feature/bgp</option>
+<option value='feature/bgpclidev'>feature/bgpclidev</option>
+<option value='feature/bgpd'>feature/bgpd</option>
+<option value='feature/https'>feature/https</option>
+<option value='feature/l3_ecmp'>feature/l3_ecmp</option>
+<option value='feature/l3_subif_lpbk'>feature/l3_subif_lpbk</option>
+<option value='feature/mirror'>feature/mirror</option>
+<option value='feature/openflow'>feature/openflow</option>
+<option value='feature/ops-passwd-srv'>feature/ops-passwd-srv</option>
+<option value='feature/ops_config'>feature/ops_config</option>
+<option value='feature/ospf'>feature/ospf</option>
+<option value='feature/ovsdb-replication'>feature/ovsdb-replication</option>
+<option value='feature/p4'>feature/p4</option>
+<option value='feature/patch'>feature/patch</option>
+<option value='feature/sflow'>feature/sflow</option>
+<option value='feature/stackd'>feature/stackd</option>
+<option value='feature/validators'>feature/validators</option>
+<option value='feature/versioning'>feature/versioning</option>
+<option value='feature/vxlan'>feature/vxlan</option>
+<option value='feature/yocto_2.1' selected='selected'>feature/yocto_2.1</option>
+<option value='master'>master</option>
+<option value='rel/cilantro'>rel/cilantro</option>
+<option value='rel/dill'>rel/dill</option>
+<option value='release'>release</option>
+</select> <input type='submit' name='' value='switch'/></form></td></tr>
+<tr><td class='sub'>OpenSwitch Build System</td><td class='sub right'></td></tr></table>
+<table class='tabs'><tr><td>
+<a href='/cgit/openswitch/ops-build/?h=feature/yocto_2.1'>summary</a><a href='/cgit/openswitch/ops-build/refs/?h=feature/yocto_2.1'>refs</a><a href='/cgit/openswitch/ops-build/log/yocto/poky/meta/recipes-devtools/subversion/subversion/serf.m4-Regex-modified-to-allow-D-in-paths.patch?h=feature/yocto_2.1'>log</a><a class='active' href='/cgit/openswitch/ops-build/tree/yocto/poky/meta/recipes-devtools/subversion/subversion/serf.m4-Regex-modified-to-allow-D-in-paths.patch?h=feature/yocto_2.1'>tree</a><a href='/cgit/openswitch/ops-build/commit/yocto/poky/meta/recipes-devtools/subversion/subversion/serf.m4-Regex-modified-to-allow-D-in-paths.patch?h=feature/yocto_2.1'>commit</a><a href='/cgit/openswitch/ops-build/diff/yocto/poky/meta/recipes-devtools/subversion/subversion/serf.m4-Regex-modified-to-allow-D-in-paths.patch?h=feature/yocto_2.1'>diff</a><a href='/cgit/openswitch/ops-build/stats/yocto/poky/meta/recipes-devtools/subversion/subversion/serf.m4-Regex-modified-to-allow-D-in-paths.patch?h=feature/yocto_2.1'>stats</a></td><td class='form'><form class='right' method='get' action='/cgit/openswitch/ops-build/log/yocto/poky/meta/recipes-devtools/subversion/subversion/serf.m4-Regex-modified-to-allow-D-in-paths.patch'>
+<input type='hidden' name='h' value='feature/yocto_2.1'/><select name='qt'>
+<option value='grep'>log msg</option>
+<option value='author'>author</option>
+<option value='committer'>committer</option>
+<option value='range'>range</option>
+</select>
+<input class='txt' type='text' size='10' name='q' value=''/>
+<input type='submit' value='search'/>
+</form>
+</td></tr></table>
+<div class='path'>path: <a href='/cgit/openswitch/ops-build/tree/?h=feature/yocto_2.1'>root</a>/<a href='/cgit/openswitch/ops-build/tree/yocto?h=feature/yocto_2.1'>yocto</a>/<a href='/cgit/openswitch/ops-build/tree/yocto/poky?h=feature/yocto_2.1'>poky</a>/<a href='/cgit/openswitch/ops-build/tree/yocto/poky/meta?h=feature/yocto_2.1'>meta</a>/<a href='/cgit/openswitch/ops-build/tree/yocto/poky/meta/recipes-devtools?h=feature/yocto_2.1'>recipes-devtools</a>/<a href='/cgit/openswitch/ops-build/tree/yocto/poky/meta/recipes-devtools/subversion?h=feature/yocto_2.1'>subversion</a>/<a href='/cgit/openswitch/ops-build/tree/yocto/poky/meta/recipes-devtools/subversion/subversion?h=feature/yocto_2.1'>subversion</a>/<a href='/cgit/openswitch/ops-build/tree/yocto/poky/meta/recipes-devtools/subversion/subversion/serf.m4-Regex-modified-to-allow-D-in-paths.patch?h=feature/yocto_2.1'>serf.m4-Regex-modified-to-allow-D-in-paths.patch</a></div><div class='content'>blob: 9fed3cf6c8ad02ca5f8265f93a30c48495b235e6 (<a href='/cgit/openswitch/ops-build/plain/yocto/poky/meta/recipes-devtools/subversion/subversion/serf.m4-Regex-modified-to-allow-D-in-paths.patch?h=feature/yocto_2.1'>plain</a>)
+<table summary='blob content' class='blob'>
+<tr><td class='linenumbers'><pre><a id='n1' href='#n1'>1</a>
+<a id='n2' href='#n2'>2</a>
+<a id='n3' href='#n3'>3</a>
+<a id='n4' href='#n4'>4</a>
+<a id='n5' href='#n5'>5</a>
+<a id='n6' href='#n6'>6</a>
+<a id='n7' href='#n7'>7</a>
+<a id='n8' href='#n8'>8</a>
+<a id='n9' href='#n9'>9</a>
+<a id='n10' href='#n10'>10</a>
+<a id='n11' href='#n11'>11</a>
+<a id='n12' href='#n12'>12</a>
+<a id='n13' href='#n13'>13</a>
+<a id='n14' href='#n14'>14</a>
+<a id='n15' href='#n15'>15</a>
+<a id='n16' href='#n16'>16</a>
+<a id='n17' href='#n17'>17</a>
+<a id='n18' href='#n18'>18</a>
+<a id='n19' href='#n19'>19</a>
+<a id='n20' href='#n20'>20</a>
+<a id='n21' href='#n21'>21</a>
+<a id='n22' href='#n22'>22</a>
+<a id='n23' href='#n23'>23</a>
+<a id='n24' href='#n24'>24</a>
+<a id='n25' href='#n25'>25</a>
+<a id='n26' href='#n26'>26</a>
+<a id='n27' href='#n27'>27</a>
+<a id='n28' href='#n28'>28</a>
+<a id='n29' href='#n29'>29</a>
+<a id='n30' href='#n30'>30</a>
+<a id='n31' href='#n31'>31</a>
+<a id='n32' href='#n32'>32</a>
+</pre></td>
+<td class='lines'><pre><code>From f1b6e49f12a18eabe88eb732b578a16281d09499 Mon Sep 17 00:00:00 2001
+From: Jose Lamego &lt;jose.a.lamego&#64;linux.intel.com&gt;
+Date: Thu, 2 Jul 2015 11:37:43 +0000
+Subject: [PATCH] serf.m4: Regex modified to allow '-D' in paths
+
+Upstream-Status: Accepted
+
+The patch is merged by subversion upstream with replacing '[[:space:]]' with ' '.
+
+http://svn.apache.org/viewvc/subversion/trunk/build/ac-macros/serf.m4?r1=1594156&amp;r2=1689824  
+
+Signed-off-by: Jose Lamego &lt;jose.a.lamego&#64;linux.intel.com&gt;
+<span class="hl kwb">---</span>
+ build/ac-macros/serf.m4 | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/build/ac-macros/serf.m4 b/build/ac-macros/serf.m4
+index ae11e75..ff8cbae 100644
+<span class="hl kwb">--- a/build/ac-macros/serf.m4</span>
+<span class="hl kwa">+++ b/build/ac-macros/serf.m4</span>
+<span class="hl kwd">&#64;&#64; -168,7 +168,7 &#64;&#64;</span>
+         if $PKG_CONFIG $serf_pc_arg --atleast-version=$serf_check_version; then
+           AC_MSG_RESULT([yes])
+           serf_found=yes
+<span class="hl kwb">-          SVN_SERF_INCLUDES=[`$PKG_CONFIG $serf_pc_arg --cflags | $SED -e 's/-D[^ ]*//g'`]</span>
+<span class="hl kwa">+          SVN_SERF_INCLUDES=[`$PKG_CONFIG $serf_pc_arg --cflags | $SED -e 's/ -D[^ ]*//g' -e 's/^-D[^ ]*//g'`]</span>
+           SVN_SERF_LIBS=`$PKG_CONFIG $serf_pc_arg --libs-only-l` 
+           dnl don't use --libs-only-L because then we might miss some options
+           LDFLAGS=[&quot;$LDFLAGS `$PKG_CONFIG $serf_pc_arg --libs | $SED -e 's/-l[^ ]*//g'`&quot;]
+<span class="hl kwb">-- </span>
+1.8.4.5
+
+</code></pre></td></tr></table>
+</div> <!-- class=content -->
+<div class='footer'>generated by <a href='http://git.zx2c4.com/cgit/about/'>cgit v0.12</a> at 2016-05-18 14:49:49 (GMT)</div>
+</div> <!-- id=cgit -->
+</body>
+</html>

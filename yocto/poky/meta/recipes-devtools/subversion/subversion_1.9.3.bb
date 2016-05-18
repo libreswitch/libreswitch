@@ -10,13 +10,14 @@ BBCLASSEXTEND = "native"
 inherit gettext pythonnative
 
 SRC_URI = "${APACHE_MIRROR}/${BPN}/${BPN}-${PV}.tar.bz2 \
-           file://libtool2.patch \
            file://disable_macos.patch \
-"
-SRC_URI[md5sum] = "4413417b529d7bdf82f74e50df02e88b"
-SRC_URI[sha256sum] = "1099cc68840753b48aedb3a27ebd1e2afbcc84ddb871412e5d500e843d607579"
+           file://serf.m4-Regex-modified-to-allow-D-in-paths.patch \
+           file://0001-Fix-libtool-name-in-configure.ac.patch \
+           "
+SRC_URI[md5sum] = "243036eb28b50ce517fc228eb3250add"
+SRC_URI[sha256sum] = "8bbf6bb125003d88ee1c22935a36b7b1ab7d957e0c8b5fbfe5cb6310b6e86ae0"
 
-LIC_FILES_CHKSUM = "file://LICENSE;md5=1c2f0119e478700b5428e26386cff923"
+LIC_FILES_CHKSUM = "file://LICENSE;md5=af81ae49ba359e70626c05e9bf313709"
 
 PACKAGECONFIG[sasl] = "--with-sasl,--without-sasl,cyrus-sasl"
 PACKAGECONFIG[gnome-keyring] = "--with-gnome-keyring,--without-gnome-keyring,glib-2.0 gnome-keyring"
@@ -32,6 +33,7 @@ inherit autotools
 
 export LDFLAGS += " -L${STAGING_LIBDIR} "
 CPPFLAGS += "-P"
+BUILD_CPPFLAGS += "-P"
 
 acpaths = "-I build/ -I build/ac-macros/"
 
