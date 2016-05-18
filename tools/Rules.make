@@ -896,7 +896,7 @@ devenv_ct_clean:
 	for name in `docker ps -a -q --filter="name=$$SBOX_UUID"`; do \
 	  echo "Cleaning the docker container with id $$SBOX_UUID" ; \
 	  docker stop --time=5 $$name >/dev/null ; \
-	  docker rm -f $$name >/dev/null ; \
+	  docker rm -vf $$name >/dev/null ; \
 	done
 	$(V) rm -rf .sandbox_uuid
 
