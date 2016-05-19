@@ -19,9 +19,15 @@ inherit npm
 # Put it after the inherit NPM to override the dependency on node
 RDEPENDS_${PN} = "ops-restd"
 
-do_compile() {
+do_extract_vendored_dependencies() {
     ./tools/scripts/extract-node-tars
-    oe_runnpm run testcover
+}
+
+do_patch_append() {
+    bb.build.exec_func('do_extract_vendored_dependencies', d)
+}
+
+do_compile() {
     oe_runnpm run buildprod
 }
 
@@ -29,5 +35,15 @@ do_install() {
     install -d ${D}/srv/www/static
     cp -Rp build/* ${D}/srv/www/static
 }
+
+do_unittest() {
+    oe_runnpm run testcover
+}
+
+addtask unittest after do_patch
+do_unittest() {
+    oe_runnpm run testcover
+}
+do_unittest[nostamp] = "1"
 
 FILES_${PN} = "/srv/www/static/*"
