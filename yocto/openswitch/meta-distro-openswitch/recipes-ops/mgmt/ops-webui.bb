@@ -28,6 +28,12 @@ do_patch_append() {
 }
 
 do_compile() {
+    # When using devenv_import the patch step may have been skipped
+    # but we want to preserve the extraction as part of the fetch process
+    # for developers using devenv_add
+    if ! [ -d node_modules ] ; then
+        ./tools/scripts/extract-node-tars
+    fi
     oe_runnpm run buildprod
 }
 
