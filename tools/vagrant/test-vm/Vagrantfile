@@ -1,0 +1,65 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
+VAGRANTFILE_API_VERSION = "2"
+
+$provisioning_script = <<SCRIPT
+set -ex
+if test -n "$1" ; then
+  # Exporting the proxies for this session
+  export http_proxy=$1
+  export https_proxy=$2
+  # Exporting the proxies permanently for all the users
+  cat >> /etc/profile <<EOF
+export http_proxy=$1
+export https_proxy=$2
+EOF
+fi
+
+# System additions and upgrades
+apt-get update
+# apt-get -y dist-upgrade
+
+# Required by testenv
+apt-get -y install tox python3-dev
+
+# Clean up
+set +x
+for i in 0 1 ; do ip addr show dev eth$i ; done
+if [ -a /var/run/reboot-required ] ; then
+  echo ; echo Run \\"vagrant reload\\" to use the new machine
+  poweroff
+fi
+
+SCRIPT
+
+$user = ENV['USER']
+$workdir = ENV['PWD']
+$homemounttype = "nfs"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  config.vm.box = "geerlingguy/ubuntu1604"
+
+  # Create a private network used for NFS shared folders
+  config.vm.network "private_network", type: :dhcp
+
+  config.vm.synced_folder $workdir, "/workdir", type: $homemounttype
+
+  config.vm.provider "virtualbox" do |vb|
+     host = RbConfig::CONFIG['host_os']
+
+     # Give VM 1/4 system memory & access to all cpu cores on the host
+     cpus = `nproc`.to_i
+     # meminfo shows KB and we need to convert to MB
+     mem = `grep 'MemTotal' /proc/meminfo | sed -e 's/MemTotal://' -e 's/ kB//'`.to_i / 1024 / 4
+
+     vb.name = $user + "-testharness"
+     vb.memory = mem
+     vb.cpus = cpus
+  end
+  config.vm.provision "shell" do |s|
+    s.inline = $provisioning_script
+    s.args = ENV.has_key?('http_proxy') ? ENV['http_proxy'] : "", ENV.has_key?('https_proxy') ? ENV['https_proxy'] : ""
+  end
+end
