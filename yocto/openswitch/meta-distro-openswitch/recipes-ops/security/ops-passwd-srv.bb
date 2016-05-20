@@ -11,7 +11,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-passwd-srv;protocol=${OPS_REPO_PROTOCOL};bra
            file://ops-passwd-srv.service \
          "
 
-SRCREV="a322b0f2343568318432a26ebd192c8e8d4d6e3c"
+SRCREV="ab026c2f4b36c716c69d14366be2c00dbc4d7c6b"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
