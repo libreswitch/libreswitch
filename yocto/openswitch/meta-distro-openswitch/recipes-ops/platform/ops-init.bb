@@ -11,6 +11,7 @@ SRC_URI = "file://ops-init.service \
            file://ops-vrf-sysctl-set.conf \
            file://ops-vrf-sysctl-unset.conf \
            file://ops-arp-sysctl-set.conf\
+           file://ops-ping-sysctl-set.conf\
 "
 
 S = "${WORKDIR}"
@@ -29,6 +30,7 @@ do_install () {
     install -m 0755 ${WORKDIR}/ops-vrf-sysctl-set.conf ${D}${sysconfdir}/ops/sysctl.d/ops-vrf-sysctl-set.conf
     install -m 0755 ${WORKDIR}/ops-vrf-sysctl-unset.conf ${D}${sysconfdir}/ops/sysctl.d/ops-vrf-sysctl-unset.conf
     install -m 0644 ${WORKDIR}/ops-arp-sysctl-set.conf ${D}${sysconfdir}/sysctl.d/
+    install -m 0755 ${WORKDIR}/ops-ping-sysctl-set.conf ${D}${sysconfdir}/sysctl.d/
 }
 
 FILES_${PN} += "${sysconfdir}/ops/sysctl.d"
