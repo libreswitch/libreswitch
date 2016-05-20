@@ -3,7 +3,7 @@ LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://setup.py;beginline=1;endline=15;md5=66f387680cedd92d8e3c7a801744d54f"
 
 RDEPENDS_${PN} = "python-argparse python-json python-ops-ovsdb python-distribute"
-DEPENDS = "ops-cli"
+DEPENDS = "ops-cli ops-supportability"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-dhcp-tftp;protocol=http;branch=rel/dill \
            file://dhcp_tftp.service \
