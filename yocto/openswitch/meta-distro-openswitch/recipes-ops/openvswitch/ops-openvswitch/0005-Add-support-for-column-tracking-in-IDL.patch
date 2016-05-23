@@ -1,0 +1,288 @@
+From b7703a8bf78013404311a4176e540ce1b8186183 Mon Sep 17 00:00:00 2001
+From: Shad Ansari <shad.ansari@hpe.com>
+Date: Wed, 16 Mar 2016 23:13:46 +0000
+Subject: [PATCH 05/22] Add support for column tracking in IDL
+
+Recent IDL change tracking patches allow quick traversal of changed
+rows. This patch adds additional support to track changed columns.
+It allows an IDL client to efficiently check if a specific column
+of a row was updated by IDL.
+
+This patch has been upstreamed to OVS.
+(OVS commit id: 32d37ce8518f23309acb2e60dba891672f5de84f)
+
+Signed-off-by: Shad Ansari <shad.ansari@hpe.com>
+
+
+---
+ lib/ovsdb-idl-provider.h |  4 ++-
+ lib/ovsdb-idl.c          | 32 ++++++++++++++++++++++++
+ lib/ovsdb-idl.h          |  2 ++
+ ovsdb/ovsdb-idlc.in      |  7 ++++++
+ tests/ovsdb-idl.at       | 11 +++++++++
+ tests/test-ovsdb.c       | 63 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 6 files changed, 118 insertions(+), 1 deletion(-)
+
+diff --git a/lib/ovsdb-idl-provider.h b/lib/ovsdb-idl-provider.h
+index dd35e5a..2dbf805 100644
+--- a/lib/ovsdb-idl-provider.h
++++ b/lib/ovsdb-idl-provider.h
+@@ -42,8 +42,10 @@ struct ovsdb_idl_row {
+     unsigned int modify_seqno;
+ #endif
+ 
++    /* Tracking data */
+     unsigned int change_seqno[OVSDB_IDL_CHANGE_MAX];
+-    struct ovs_list track_node;
++    struct ovs_list track_node; /* Rows modified/added/deleted by IDL */
++    unsigned long int *updated; /* Bitmap of columns updated by IDL */
+ };
+ 
+ struct ovsdb_idl_column {
+diff --git a/lib/ovsdb-idl.c b/lib/ovsdb-idl.c
+index 0001f66..8427a4c 100644
+--- a/lib/ovsdb-idl.c
++++ b/lib/ovsdb-idl.c
+@@ -722,6 +722,29 @@ ovsdb_idl_track_get_next(const struct ovsdb_idl_row *row)
+     return NULL;
+ }
+ 
++/* Returns true if a tracked 'column' in 'row' was updated by IDL, false
++ * otherwise. The tracking data is cleared by ovsdb_idl_track_clear()
++ *
++ * Function returns false if 'column' is not tracked (see
++ * ovsdb_idl_track_add_column()).
++ */
++bool
++ovsdb_idl_track_is_updated(const struct ovsdb_idl_row *row,
++                           const struct ovsdb_idl_column *column)
++{
++    const struct ovsdb_idl_table_class *class;
++    size_t column_idx;
++
++    class = row->table->class;
++    column_idx = column - class->columns;
++
++    if (row->updated && bitmap_is_set(row->updated, column_idx)) {
++        return true;
++    } else {
++        return false;
++    }
++}
++
+ /* Flushes the tracked rows. Client calls this function after calling
+  * ovsdb_idl_run() and read all tracked rows with the ovsdb_idl_track_get_*()
+  * functions. This is usually done at the end of the client's processing
+@@ -739,6 +762,10 @@ ovsdb_idl_track_clear(const struct ovsdb_idl *idl)
+             struct ovsdb_idl_row *row, *next;
+ 
+             LIST_FOR_EACH_SAFE(row, next, track_node, &table->track_list) {
++                if (row->updated) {
++                    free(row->updated);
++                    row->updated = NULL;
++                }
+                 list_remove(&row->track_node);
+                 list_init(&row->track_node);
+                 if (ovsdb_idl_row_is_orphan(row)) {
+@@ -1082,6 +1109,7 @@ ovsdb_idl_row_update(struct ovsdb_idl_row *row, const struct json *row_json,
+                      enum ovsdb_idl_change change)
+ {
+     struct ovsdb_idl_table *table = row->table;
++    const struct ovsdb_idl_table_class *class = table->class;
+     struct shash_node *node;
+     bool changed = false;
+ 
+@@ -1122,6 +1150,10 @@ ovsdb_idl_row_update(struct ovsdb_idl_row *row, const struct json *row_json,
+                             list_push_front(&row->table->track_list,
+                                             &row->track_node);
+                         }
++                        if (!row->updated) {
++                            row->updated = bitmap_allocate(class->n_columns);
++                        }
++                        bitmap_set1(row->updated, column_idx);
+                     }
+                 }
+             } else {
+diff --git a/lib/ovsdb-idl.h b/lib/ovsdb-idl.h
+index 4c66ae0..136c38c 100644
+--- a/lib/ovsdb-idl.h
++++ b/lib/ovsdb-idl.h
+@@ -132,6 +132,8 @@ void ovsdb_idl_track_add_all(struct ovsdb_idl *idl);
+ const struct ovsdb_idl_row *ovsdb_idl_track_get_first(
+     const struct ovsdb_idl *, const struct ovsdb_idl_table_class *);
+ const struct ovsdb_idl_row *ovsdb_idl_track_get_next(const struct ovsdb_idl_row *);
++bool ovsdb_idl_track_is_updated(const struct ovsdb_idl_row *row,
++                                const struct ovsdb_idl_column *column);
+ void ovsdb_idl_track_clear(const struct ovsdb_idl *);
+ 
+ 
+diff --git a/ovsdb/ovsdb-idlc.in b/ovsdb/ovsdb-idlc.in
+index 6f52c40..22c0efe 100755
+--- a/ovsdb/ovsdb-idlc.in
++++ b/ovsdb/ovsdb-idlc.in
+@@ -243,6 +243,7 @@ const struct %(s)s *%(s)s_track_get_next(const struct %(s)s *);
+ void %(s)s_init(struct %(s)s *);
+ void %(s)s_delete(const struct %(s)s *);
+ struct %(s)s *%(s)s_insert(struct ovsdb_idl_txn *);
++bool %(s)s_is_updated(const struct %(s)s *, enum %(s)s_column_id);
+ ''' % {'s': structName, 'S': structName.upper()}
+ 
+         if structNameAlias:
+@@ -611,6 +612,12 @@ struct %(s)s *
+ %(s)s_insert(struct ovsdb_idl_txn *txn)
+ {
+     return %(s)s_cast(ovsdb_idl_txn_insert(txn, &%(p)stable_classes[%(P)sTABLE_%(T)s], NULL));
++}
++
++bool
++%(s)s_is_updated(const struct %(s)s *row, enum %(s)s_column_id column)
++{
++    return ovsdb_idl_track_is_updated(&row->header_, &%(s)s_columns[column]);
+ }''' % {'s': structName,
+         'p': prefix,
+         'P': prefix.upper(),
+diff --git a/tests/ovsdb-idl.at b/tests/ovsdb-idl.at
+index 89bbef7..0002eda 100644
+--- a/tests/ovsdb-idl.at
++++ b/tests/ovsdb-idl.at
+@@ -688,9 +688,11 @@ OVSDB_CHECK_IDL_TRACK([track, simple idl, initially populated],
+        "where": [],
+        "row": {"b": true}}]']],
+   [[000: i=1 r=2 b=true s=mystring u=<0> ia=[1 2 3] ra=[-0.5] ba=[true] sa=[abc def] ua=[<1> <2>] uuid=<3>
++000: updated columns: b ba i ia r ra s sa u ua
+ 001: {"error":null,"result":[{"count":2}]}
+ 002: i=0 r=0 b=true s= u=<4> ia=[] ra=[] ba=[] sa=[] ua=[] uuid=<5>
+ 002: i=1 r=2 b=true s=mystring u=<0> ia=[1 2 3] ra=[-0.5] ba=[true] sa=[abc def] ua=[<1> <2>] uuid=<3>
++002: updated columns: b
+ 003: done
+ ]])
+ 
+@@ -748,21 +750,30 @@ OVSDB_CHECK_IDL_TRACK([track, simple idl, initially empty, various ops],
+   [[000: empty
+ 001: {"error":null,"result":[{"uuid":["uuid","<0>"]},{"uuid":["uuid","<1>"]}]}
+ 002: i=1 r=2 b=true s=mystring u=<2> ia=[1 2 3] ra=[-0.5] ba=[true] sa=[abc def] ua=[<3> <4>] uuid=<0>
++002: updated columns: b ba i ia r ra s sa u ua
+ 003: {"error":null,"result":[{"count":2}]}
+ 004: i=0 r=0 b=true s= u=<5> ia=[] ra=[] ba=[] sa=[] ua=[] uuid=<1>
++004: updated columns: b
+ 005: {"error":null,"result":[{"count":2}]}
+ 006: i=0 r=123.5 b=true s= u=<5> ia=[] ra=[] ba=[] sa=[] ua=[] uuid=<1>
+ 006: i=1 r=123.5 b=true s=mystring u=<2> ia=[1 2 3] ra=[-0.5] ba=[true] sa=[abc def] ua=[<3> <4>] uuid=<0>
++006: updated columns: r
++006: updated columns: r
+ 007: {"error":null,"result":[{"uuid":["uuid","<6>"]}]}
+ 008: i=-1 r=125 b=false s= u=<5> ia=[1] ra=[1.5] ba=[false] sa=[] ua=[] uuid=<6>
++008: updated columns: ba i ia r ra
+ 009: {"error":null,"result":[{"count":2}]}
+ 010: i=-1 r=125 b=false s=newstring u=<5> ia=[1] ra=[1.5] ba=[false] sa=[] ua=[] uuid=<6>
+ 010: i=0 r=123.5 b=true s=newstring u=<5> ia=[] ra=[] ba=[] sa=[] ua=[] uuid=<1>
++010: updated columns: s
++010: updated columns: s
+ 011: {"error":null,"result":[{"count":1}]}
+ 012: ##deleted## uuid=<1>
+ 013: reconnect
+ 014: i=-1 r=125 b=false s=newstring u=<5> ia=[1] ra=[1.5] ba=[false] sa=[] ua=[] uuid=<6>
+ 014: i=1 r=123.5 b=true s=mystring u=<2> ia=[1 2 3] ra=[-0.5] ba=[true] sa=[abc def] ua=[<3> <4>] uuid=<0>
++014: updated columns: b ba i ia r ra s sa u ua
++014: updated columns: ba i ia r ra s
+ 015: done
+ ]])
+ 
+diff --git a/tests/test-ovsdb.c b/tests/test-ovsdb.c
+index 76c9ad9..9630244 100644
+--- a/tests/test-ovsdb.c
++++ b/tests/test-ovsdb.c
+@@ -1613,6 +1613,66 @@ compare_link1(const void *a_, const void *b_)
+ }
+ 
+ static void
++print_idl_row_updated_simple(const struct idltest_simple *s, int step)
++{
++    size_t i;
++    bool updated = false;
++
++    for (i = 0; i < IDLTEST_SIMPLE_N_COLUMNS; i++) {
++        if (idltest_simple_is_updated(s, i)) {
++            if (!updated) {
++                printf("%03d: updated columns:", step);
++                updated = true;
++            }
++            printf(" %s", idltest_simple_columns[i].name);
++        }
++    }
++    if (updated) {
++        printf("\n");
++    }
++}
++
++static void
++print_idl_row_updated_link1(const struct idltest_link1 *l1, int step)
++{
++    size_t i;
++    bool updated = false;
++
++    for (i = 0; i < IDLTEST_LINK1_N_COLUMNS; i++) {
++        if (idltest_link1_is_updated(l1, i)) {
++            if (!updated) {
++                printf("%03d: updated columns:", step);
++                updated = true;
++            }
++            printf(" %s", idltest_link1_columns[i].name);
++        }
++    }
++    if (updated) {
++        printf("\n");
++    }
++}
++
++static void
++print_idl_row_updated_link2(const struct idltest_link2 *l2, int step)
++{
++    size_t i;
++    bool updated = false;
++
++    for (i = 0; i < IDLTEST_LINK2_N_COLUMNS; i++) {
++        if (idltest_link2_is_updated(l2, i)) {
++            if (!updated) {
++                printf("%03d: updated columns:", step);
++                updated = true;
++            }
++            printf(" %s", idltest_link2_columns[i].name);
++        }
++    }
++    if (updated) {
++        printf("\n");
++    }
++}
++
++static void
+ print_idl_row_simple(const struct idltest_simple *s, int step)
+ {
+     size_t i;
+@@ -1640,6 +1700,7 @@ print_idl_row_simple(const struct idltest_simple *s, int step)
+         printf("%s"UUID_FMT, i ? " " : "", UUID_ARGS(&s->ua[i]));
+     }
+     printf("] uuid="UUID_FMT"\n", UUID_ARGS(&s->header_.uuid));
++    print_idl_row_updated_simple(s, step);
+ }
+ 
+ static void
+@@ -1664,6 +1725,7 @@ print_idl_row_link1(const struct idltest_link1 *l1, int step)
+         printf("%"PRId64, l1->l2->i);
+     }
+     printf(" uuid="UUID_FMT"\n", UUID_ARGS(&l1->header_.uuid));
++    print_idl_row_updated_link1(l1, step);
+ }
+ 
+ static void
+@@ -1674,6 +1736,7 @@ print_idl_row_link2(const struct idltest_link2 *l2, int step)
+         printf("%"PRId64, l2->l1->i);
+     }
+     printf(" uuid="UUID_FMT"\n", UUID_ARGS(&l2->header_.uuid));
++    print_idl_row_updated_link2(l2, step);
+ }
+ 
+ static void
+-- 
+2.1.4
+

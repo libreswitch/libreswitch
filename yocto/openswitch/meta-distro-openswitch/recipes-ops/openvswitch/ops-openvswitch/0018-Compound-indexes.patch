@@ -1,9 +1,10 @@
-From f12ac59efd856733c0c6119c13c92fee115cacd0 Mon Sep 17 00:00:00 2001
+From 2ac0a8dc103b0f1ce74d73a32f2ee13999c05306 Mon Sep 17 00:00:00 2001
 From: "Marcelo E. Magallon" <marcelo.magallon@hpe.com>
 Date: Fri, 13 May 2016 13:31:20 -0600
-Subject: [PATCH 2/5] Compound indexes
+Subject: [PATCH 18/22] Compound indexes
 
-Change-Id: I51f85a430789a15a1c4e074a52fd9b9a96e13088
+Signed-off-by: Marcelo E. Magallon <marcelo.magallon@hpe.com>
+
 
 ---
  Makefile.am                |   1 +
@@ -365,10 +366,10 @@ index 0000000..054d965
 +`ovsrec_<table>_index_get_data` returns a pointer to the replica's row that is
 +pointed by the cursor, or NULL.
 diff --git a/lib/automake.mk b/lib/automake.mk
-index 41944a8..e49f26f 100644
+index 08092e4..9f8e218 100644
 --- a/lib/automake.mk
 +++ b/lib/automake.mk
-@@ -138,6 +138,8 @@ ovslibinclude_HEADERS = \
+@@ -136,6 +136,8 @@ ovslibinclude_HEADERS = \
  	lib/shash.h \
  	lib/signals.h \
  	lib/simap.h \
@@ -377,7 +378,7 @@ index 41944a8..e49f26f 100644
  	lib/smap.h \
  	lib/socket-util.h \
  	lib/sort.h \
-@@ -286,6 +288,8 @@ lib_libovscommon_la_SOURCES = \
+@@ -284,6 +286,8 @@ lib_libovscommon_la_SOURCES = \
          lib/shash.h \
          lib/simap.c \
          lib/simap.h \
@@ -407,7 +408,7 @@ index e651c19..446e357 100644
  
      bool has_pending_fetch;  /* Indicates if the table has a pending fetch
 diff --git a/lib/ovsdb-idl.c b/lib/ovsdb-idl.c
-index dc09a2e..efcb99c 100644
+index 5be0f87..5363093 100644
 --- a/lib/ovsdb-idl.c
 +++ b/lib/ovsdb-idl.c
 @@ -37,8 +37,10 @@

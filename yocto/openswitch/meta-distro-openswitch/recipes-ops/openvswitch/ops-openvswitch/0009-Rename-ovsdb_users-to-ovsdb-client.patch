@@ -1,0 +1,65 @@
+From d9419b66e964193a168520b8f2469388feca7d2c Mon Sep 17 00:00:00 2001
+From: Scott Gulland <scott.gulland@hpe.com>
+Date: Mon, 8 Feb 2016 11:56:38 -0800
+Subject: [PATCH 09/22] Rename ovsdb_users to ovsdb-client
+
+Part of the changes to convert the ovsdb_users group to the ovsdb-client
+group.  Note that test_openvswitch_ct_socket_permission.py checks both
+groups so that dpendent changes in the ops_build repo can pass the
+gate tests.  Once that change is in, the reference to ovsdb_users will
+be removed.
+
+Signed-off-by: Scott Gulland <scott.gulland@hpe.com>
+
+
+---
+ lib/socket-util-unix.c            | 9 +++++----
+ ops/tests/ops-openvswitch_test.md | 2 +-
+ 2 files changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/lib/socket-util-unix.c b/lib/socket-util-unix.c
+index 8c56b63..dac1fdf 100644
+--- a/lib/socket-util-unix.c
++++ b/lib/socket-util-unix.c
+@@ -1,6 +1,7 @@
+ /*
+  * Copyright (c) 2014 Nicira, Inc.
+- * Copyright (C) 2015, 2016 Hewlett-Packard Development Company, L.P.
++ * Copyright (C) 2015 Hewlett-Packard Development Company, L.P.
++ * Copyright (C) 2016 Hewlett Packard Enterprise Development LP
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+@@ -51,8 +52,8 @@ VLOG_DEFINE_THIS_MODULE(socket_util_unix);
+ #define MAX_UN_LEN (sizeof(((struct sockaddr_un *) 0)->sun_path) - 1)
+ 
+ #ifdef OPS
+-/* Group-ID of "ovsdb_users" group */
+-#define OVSDB_USERS_GROUP_ID 1020
++/* Group-ID of "ovsdb-client" group */
++#define OVSDB_GROUP_ID 1020
+ #endif /* OPS */
+ 
+ 
+@@ -358,7 +359,7 @@ make_unix_socket(int style, bool nonblock,
+             {
+               VLOG_ERR("\nError while changing mode of socket file - %s.\n", bind_path);
+             }
+-            if(0 != chown(bind_path, -1, OVSDB_USERS_GROUP_ID))
++            if(0 != chown(bind_path, -1, OVSDB_GROUP_ID))
+             {
+               VLOG_ERR("\nError while changing group of socket file - %s.\n", bind_path);
+             }
+diff --git a/ops/tests/ops-openvswitch_test.md b/ops/tests/ops-openvswitch_test.md
+index ff4935b..bd70f28 100644
+--- a/ops/tests/ops-openvswitch_test.md
++++ b/ops/tests/ops-openvswitch_test.md
+@@ -23,4 +23,4 @@ This test case confirms that the OVSDB socket file permissions are valid.
+ ```
+ 
+ ### Description
+-Validate that the socket files in /var/run/openvswitch have file permission of type ‘srwxrw’ and has ‘ovsdb_users’ as the file owner.
++Validate that the socket files in /var/run/openvswitch have file permission of type ‘srwxrw’ and has ‘ovsdb-client’ as the file group owner.
+-- 
+2.1.4
+

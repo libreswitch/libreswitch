@@ -1,0 +1,57 @@
+From 5ace160811999fc22f61281c980e0be5135f8e38 Mon Sep 17 00:00:00 2001
+From: Suganya J S A <suganya.j-s-a@hpe.com>
+Date: Tue, 16 Feb 2016 11:14:50 -0800
+Subject: [PATCH 13/22] OSPFv2 key and default definitions
+
+Signed-off-by: Suganya J S A <suganya.j-s-a@hpe.com>
+
+
+---
+ utilities/ovs-vsctl.c | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
+
+diff --git a/utilities/ovs-vsctl.c b/utilities/ovs-vsctl.c
+index 42925a5..d404b8f 100644
+--- a/utilities/ovs-vsctl.c
++++ b/utilities/ovs-vsctl.c
+@@ -1448,6 +1448,22 @@ static struct cmd_show_table cmd_show_tables[] = {
+       &ovsrec_ospf_route_col_prefix},
+      {NULL, NULL, NULL}
+     },
++    {&ovsrec_table_route,
++     &ovsrec_route_col_address_family,
++     {
++      &ovsrec_route_col_distance,
++      &ovsrec_route_col_from,
++      &ovsrec_route_col_metric},
++     {NULL, NULL, NULL}
++    },
++    {&ovsrec_table_nexthop,
++     &ovsrec_nexthop_col_external_ids,
++     {
++      &ovsrec_nexthop_col_status,
++      &ovsrec_nexthop_col_selected,
++      &ovsrec_nexthop_col_weight},
++     {NULL, NULL, NULL}
++    },
+ #endif
+     {&ovsrec_table_manager,
+      &ovsrec_manager_col_target,
+@@ -3448,6 +3464,14 @@ static const struct ctl_table_class tables[] = {
+      {{&ovsrec_table_ospf_route,
+        &ovsrec_ospf_route_col_paths, NULL},
+      {NULL, NULL, NULL}}},
++     {&ovsrec_table_route,
++     {{&ovsrec_table_route,
++       &ovsrec_route_col_from, NULL},
++     {NULL, NULL, NULL}}},
++     {&ovsrec_table_nexthop,
++     {{&ovsrec_table_nexthop,
++       &ovsrec_nexthop_col_external_ids, NULL},
++     {NULL, NULL, NULL}}},
+ #endif
+     {&ovsrec_table_interface,
+      {{&ovsrec_table_interface, &ovsrec_interface_col_name, NULL},
+-- 
+2.1.4
+

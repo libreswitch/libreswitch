@@ -1,0 +1,59 @@
+From 62547f31dcbd47320291ff1f1a0a81f2ac56114d Mon Sep 17 00:00:00 2001
+From: Esteban Rodriguez Betancourt <estebarb@hpe.com>
+Date: Thu, 17 Mar 2016 19:26:16 -0600
+Subject: [PATCH 07/22] Make schema cksum validation consistent
+
+Fix a problem when calculating the cksum of a schema that
+has fields with the substring cksum. Now the cksum is
+calculated in a way more similar to the one used by the
+<ops>/schema/sanitizer.py.
+
+Signed-off-by: Esteban Rodriguez Betancourt <estebarb@hpe.com>
+
+
+---
+ Makefile.am                      | 1 +
+ build-aux/calculate-schema-cksum | 4 ++++
+ build-aux/cksum-schema-check     | 3 ++-
+ 3 files changed, 7 insertions(+), 1 deletion(-)
+ create mode 100755 build-aux/calculate-schema-cksum
+
+diff --git a/Makefile.am b/Makefile.am
+index 60ac9c4..a2b2a35 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -109,6 +109,7 @@ EXTRA_DIST = \
+ 	boot.sh \
+ 	build-aux/cccl \
+ 	build-aux/cksum-schema-check \
++	build-aux/calculate-schema-cksum \
+ 	build-aux/dist-docs \
+ 	build-aux/sodepends.pl \
+ 	build-aux/soexpand.pl \
+diff --git a/build-aux/calculate-schema-cksum b/build-aux/calculate-schema-cksum
+new file mode 100755
+index 0000000..4ce9bf8
+--- /dev/null
++++ b/build-aux/calculate-schema-cksum
+@@ -0,0 +1,4 @@
++#!/bin/sh
++
++schema=$1
++sed '/"cksum": *"[0-9][0-9]* [0-9][0-9]*",/d' $schema | cksum
+diff --git a/build-aux/cksum-schema-check b/build-aux/cksum-schema-check
+index 0fe37e4..52f5f48 100755
+--- a/build-aux/cksum-schema-check
++++ b/build-aux/cksum-schema-check
+@@ -3,7 +3,8 @@
+ schema=$1
+ stamp=$2
+ 
+-sum=`sed '/cksum/d' $schema | cksum`
++cksumcheckpath=`dirname $0`
++sum=`sh $cksumcheckpath/calculate-schema-cksum $schema`
+ expected=`sed -n 's/.*"cksum": "\(.*\)".*/\1/p' $schema`
+ if test "X$sum" = "X$expected"; then
+     touch $stamp
+-- 
+2.1.4
+

@@ -14,31 +14,8 @@ PV = "git${SRCPV}"
 
 S = "${WORKDIR}/git"
 
-FILES_${PN} = "/usr/share/openvswitch/ /usr/share/openvswitch/*.extschema /usr/share/openvswitch/*.xml /usr/share/openvswitch/*.ovsschema"
+FILES_${PN} += "/usr/share/openvswitch/ /usr/share/openvswitch/*.extschema /usr/share/openvswitch/*.xml /usr/share/openvswitch/*.ovsschema"
 
 OPS_SCHEMA_PATH="${S}/schema"
 
 inherit openswitch cmake
-
-# XXX: Remove this when the repo moves to cmake
-do_configure() {
-	if test -e "${S}/CMakeLists.txt" ; then
-		cmake_do_configure
-	fi
-}
-
-do_compile() {
-	if test -e "${S}/CMakeLists.txt" ; then
-		cmake_do_compile
-	else
-		oe_runmake -C "${S}"
-	fi
-}
-
-do_install() {
-	if test -e "${S}/CMakeLists.txt" ; then
-		cmake_do_install
-	else
-		oe_runmake -C "${S}" install DESTDIR=${D} PREFIX=${prefix}
-	fi
-}

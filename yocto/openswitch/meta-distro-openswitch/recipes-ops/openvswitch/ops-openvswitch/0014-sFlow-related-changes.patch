@@ -1,0 +1,200 @@
+From bff36318fad97fd28be493a247c837c44b3c4ce5 Mon Sep 17 00:00:00 2001
+From: Vasanth Viswanathan <vasanth.viswanathan@hpe.com>
+Date: Wed, 23 Mar 2016 23:29:33 -0700
+Subject: [PATCH 14/22] sFlow related changes
+
+* sFlow related changes merged from feature/sflow branch
+* Addded constants used in sFlow CLI
+
+Signed-off-by: Vasanth Viswanathan <vasanth.viswanathan@hpe.com>
+
+
+---
+ lib/automake.mk      |  4 ++++
+ lib/netdev.h         |  9 +++++++++
+ lib/sflow.h          |  4 ++++
+ lib/sflow_api.h      |  7 +++++++
+ lib/sflow_receiver.c | 36 ++++++++++++++++++++++++++++++++++++
+ ofproto/automake.mk  |  1 +
+ ofproto/ofproto.h    |  9 ++++++++-
+ 7 files changed, 69 insertions(+), 1 deletion(-)
+
+diff --git a/lib/automake.mk b/lib/automake.mk
+index 504d6bb..95175bc 100644
+--- a/lib/automake.mk
++++ b/lib/automake.mk
+@@ -578,6 +578,10 @@ lib_libsflow_la_SOURCES = \
+ 	lib/sflow_sampler.c \
+ 	lib/sflow_poller.c \
+ 	lib/sflow_receiver.c
++if OPS
++	\
++	lib/sflow_util.c
++endif
+ lib_libsflow_la_CPPFLAGS = $(AM_CPPFLAGS)
+ lib_libsflow_la_CFLAGS = $(AM_CFLAGS)
+ if HAVE_WNO_UNUSED
+diff --git a/lib/netdev.h b/lib/netdev.h
+index 68985b6..6136e62 100644
+--- a/lib/netdev.h
++++ b/lib/netdev.h
+@@ -104,6 +104,7 @@ struct netdev_stats {
+     uint64_t tx_heartbeat_errors;
+     uint64_t tx_window_errors;
+ 
++#ifdef OPS
+     /* L3 stats */
+     uint64_t l3_uc_tx_packets;
+     uint64_t l3_uc_tx_bytes;
+@@ -133,6 +134,14 @@ struct netdev_stats {
+     uint64_t ipv6_mc_tx_bytes;
+     uint64_t ipv6_mc_rx_packets;
+     uint64_t ipv6_mc_rx_bytes;
++
++    /* sFlow statistics. */
++    uint64_t sflow_ingress_packets; /* Total ingress sampled packets. */
++    uint64_t sflow_ingress_bytes;   /* Total ingress sampled bytes. */
++    uint64_t sflow_egress_packets;  /* Total egress sampled packets. */
++    uint64_t sflow_egress_bytes;    /* Total egress sampled bytes. */
++#endif
++
+ };
+ 
+ /* Configuration specific to tunnels. */
+diff --git a/lib/sflow.h b/lib/sflow.h
+index 95bedd9..dd25b3b 100644
+--- a/lib/sflow.h
++++ b/lib/sflow.h
+@@ -48,7 +48,11 @@ typedef struct _SFLAddress {
+ 
+ #define SFL_DEFAULT_HEADER_SIZE 128
+ #define SFL_DEFAULT_COLLECTOR_PORT 6343
++#ifdef OPS
++#define SFL_DEFAULT_SAMPLING_RATE 4096
++#else
+ #define SFL_DEFAULT_SAMPLING_RATE 400
++#endif
+ #define SFL_DEFAULT_POLLING_INTERVAL 30
+ 
+ /* The header protocol describes the format of the sampled header */
+diff --git a/lib/sflow_api.h b/lib/sflow_api.h
+index 2730a4c..4e33d58 100644
+--- a/lib/sflow_api.h
++++ b/lib/sflow_api.h
+@@ -157,6 +157,9 @@ typedef struct _SFLPoller {
+     /* private fields */
+     SFLReceiver *myReceiver;
+     time_t countersCountdown;
++#ifdef OPS
++    time_t lastPolled;      /* time this poller was last polled */
++#endif
+     u_int32_t countersSampleSeqNo;
+ } SFLPoller;
+ 
+@@ -259,6 +262,10 @@ SFLAddress *sfl_receiver_get_sFlowRcvrAddress(SFLReceiver *receiver);
+ void        sfl_receiver_set_sFlowRcvrAddress(SFLReceiver *receiver, SFLAddress *sFlowRcvrAddress);
+ u_int32_t   sfl_receiver_get_sFlowRcvrPort(SFLReceiver *receiver);
+ void        sfl_receiver_set_sFlowRcvrPort(SFLReceiver *receiver, u_int32_t sFlowRcvrPort);
++#ifdef OPS
++void        sfl_receiver_replaceAgentAddress(SFLReceiver *receiver, SFLAddress *addr);
++#endif
++
+ /* sampler */
+ u_int32_t sfl_sampler_get_sFlowFsReceiver(SFLSampler *sampler);
+ void      sfl_sampler_set_sFlowFsReceiver(SFLSampler *sampler, u_int32_t sFlowFsReceiver);
+diff --git a/lib/sflow_receiver.c b/lib/sflow_receiver.c
+index cde1359..59f57b0 100644
+--- a/lib/sflow_receiver.c
++++ b/lib/sflow_receiver.c
+@@ -10,6 +10,12 @@
+ #include <assert.h>
+ #include "sflow_api.h"
+ 
++#ifdef OPS
++#include <sys/types.h>
++#include <sys/socket.h>
++#include <netdb.h>
++#endif
++
+ static void resetSampleCollector(SFLReceiver *receiver);
+ static void sendSample(SFLReceiver *receiver);
+ static void sflError(SFLReceiver *receiver, char *errm);
+@@ -51,6 +57,36 @@ void sfl_receiver_init(SFLReceiver *receiver, SFLAgent *agent)
+     resetSampleCollector(receiver);
+ }
+ 
++#ifdef OPS
++/*_____________---------------------------------_______________
++  ____________ sfl_receiver_replaceAgentAddress _______________
++  -------------_________________________________---------------
++  Agent got new IP, update it in buffer containing samples.
++*/
++void sfl_receiver_replaceAgentAddress(SFLReceiver *receiver, SFLAddress *addr)
++{
++    u_int32_t   *ldatap = receiver->sampleCollector.data;
++
++    /* Agent IP is stored from byte 5 to 12 (for v4) or 5 to 24 (for v6) */
++
++    ldatap++;   /* first 4 bytes for sflow datagram version. */
++
++    if(addr->type == 0) {
++        *ldatap++ = htonl(SFLADDRESSTYPE_IP_V4);
++        *ldatap = 0;
++    }
++    else {
++        *ldatap++ = htonl(addr->type);
++        if(addr->type == SFLADDRESSTYPE_IP_V4) {
++            *ldatap = addr->address.ip_v4.addr;
++        }
++        else {
++            memcpy(ldatap, addr->address.ip_v6.addr, 16);
++        }
++    }
++}
++#endif
++
+ /*_________________---------------------------__________________
+   _________________      reset                __________________
+   -----------------___________________________------------------
+diff --git a/ofproto/automake.mk b/ofproto/automake.mk
+index 835759a..21d709a 100644
+--- a/ofproto/automake.mk
++++ b/ofproto/automake.mk
+@@ -12,6 +12,7 @@ ovsofprotolibinclude_HEADERS = \
+        ofproto/netflow.h \
+        ofproto/ofproto.h \
+        ofproto/ofproto-provider.h \
++       ofproto/collectors.h \
+        ofproto/tunnel.h
+ endif
+ 
+diff --git a/ofproto/ofproto.h b/ofproto/ofproto.h
+index 53aa127..3f29f0a 100644
+--- a/ofproto/ofproto.h
++++ b/ofproto/ofproto.h
+@@ -69,7 +69,11 @@ struct ofproto_sflow_options {
+     uint32_t polling_interval;
+     uint32_t header_len;
+     uint32_t sub_id;
+-    char *agent_device;
++    char *agent_device; /* interface name */
++#ifdef OPS
++    char agent_ip[INET6_ADDRSTRLEN];     /* ip (v4 or v6) of interface */
++    uint32_t max_datagram;               /* Maximum datagram size */
++#endif
+     char *control_ip;
+ };
+ 
+@@ -466,6 +470,9 @@ enum port_option_args {
+     /* hw_config driven mostly by l3portd */
+     PORT_HW_CONFIG,
+ 
++    /* other_config. Used by sflow */
++    PORT_OTHER_CONFIG,
++
+     /* Array size */
+     PORT_OPT_MAX
+ };
+-- 
+2.1.4
+

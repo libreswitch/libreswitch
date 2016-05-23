@@ -1,9 +1,10 @@
-From 2b6f9374e4ccb5f634bb1955c2769d9ed666b6f7 Mon Sep 17 00:00:00 2001
+From 5aa4c88e6c63d835db5a9fc3ad07de2a1d721d11 Mon Sep 17 00:00:00 2001
 From: "Marcelo E. Magallon" <marcelo.magallon@hpe.com>
 Date: Fri, 13 May 2016 13:29:19 -0600
-Subject: [PATCH 1/5] On demand fetching
+Subject: [PATCH 17/22] On demand fetching
 
-Change-Id: I29330bbfdc4fdd5b5914430041def941e9768703
+Signed-off-by: Marcelo E. Magallon <marcelo.magallon@hpe.com>
+
 
 ---
  lib/ovsdb-idl-provider.h |  11 ++
@@ -42,7 +43,7 @@ index de22691..e651c19 100644
  
  struct ovsdb_idl_class {
 diff --git a/lib/ovsdb-idl.c b/lib/ovsdb-idl.c
-index 82e109e..dc09a2e 100644
+index 8bf5ff9..5be0f87 100644
 --- a/lib/ovsdb-idl.c
 +++ b/lib/ovsdb-idl.c
 @@ -76,6 +76,15 @@ struct ovsdb_idl_arc {
@@ -336,7 +337,7 @@ index 82e109e..dc09a2e 100644
      return row;
  }
  
-@@ -1653,6 +1851,271 @@ ovsdb_idl_get(const struct ovsdb_idl_row *row,
+@@ -1649,6 +1847,271 @@ ovsdb_idl_get(const struct ovsdb_idl_row *row,
      return ovsdb_idl_read(row, column);
  }
  
@@ -608,7 +609,7 @@ index 82e109e..dc09a2e 100644
  /* Returns true if the field represented by 'column' in 'row' may be modified,
   * false if it is immutable.
   *
-@@ -2491,8 +2954,9 @@ ovsdb_idl_txn_write__(const struct ovsdb_idl_row *row_,
+@@ -2487,8 +2950,9 @@ ovsdb_idl_txn_write__(const struct ovsdb_idl_row *row_,
  
      ovs_assert(row->new != NULL);
      ovs_assert(column_idx < class->n_columns);

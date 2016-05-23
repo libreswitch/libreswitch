@@ -1,0 +1,45 @@
+From 8faba6e1c44dafabae30efc8ae64108e67935f99 Mon Sep 17 00:00:00 2001
+From: Arturo Corrales <acorvil@hpe.com>
+Date: Thu, 10 Mar 2016 12:21:28 -0800
+Subject: [PATCH 03/22] Compatibility with C++11
+
+This commit adds a conditional use of boost library
+when using C++11
+
+Signed-off-by: Arturo Corrales <acorvil@hpe.com>
+
+
+---
+ lib/util.h | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/lib/util.h b/lib/util.h
+index 2480583..7d20cc8 100644
+--- a/lib/util.h
++++ b/lib/util.h
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015 Nicira, Inc.
++ * Copyright (c) 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016 Nicira, Inc.
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+@@ -53,10 +53,14 @@
+ /* Build-time assertion for use in a declaration context. */
+ #define BUILD_ASSERT_DECL(EXPR) \
+         extern int (*build_assert(void))[BUILD_ASSERT__(EXPR)]
+-#else /* __cplusplus */
++#elif __cplusplus <= 199711L /* __cplusplus */
+ #include <boost/static_assert.hpp>
+ #define BUILD_ASSERT BOOST_STATIC_ASSERT
+ #define BUILD_ASSERT_DECL BOOST_STATIC_ASSERT
++#else
++#define BUILD_ASSERT_FAILED_MSG(EXPR) "Assertion " #EXPR " failed during compilation."
++#define BUILD_ASSERT(EXPR) static_assert(EXPR,BUILD_ASSERT_FAILED_MSG(EXPR))
++#define BUILD_ASSERT_DECL(EXPR) static_assert(EXPR,BUILD_ASSERT_FAILED_MSG(EXPR))
+ #endif /* __cplusplus */
+ 
+ #ifdef __GNUC__
+-- 
+2.1.4
+

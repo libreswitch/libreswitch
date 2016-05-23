@@ -1,0 +1,165 @@
+From 4794716144c01223ae416374b36eeb17c4d3fc4f Mon Sep 17 00:00:00 2001
+From: Shad Ansari <shad.ansari@hpe.com>
+Date: Mon, 7 Mar 2016 23:27:21 +0000
+Subject: [PATCH 10/22] Vtep IDL file generation
+
+Explaination: Modified vtep/automake.mk and lib/automake.mk to generate vtep-idl.h and vtep-idl.c
+
+Signed-off-by: Sayali Mane <sayali.p.mane@hpe.com>
+
+
+---
+ configure.ac       |  1 +
+ lib/automake.mk    | 21 +++++++++++++++++++++
+ vtep/automake.mk   | 25 +++++++++++--------------
+ vtep/libvtep.pc    | 11 +++++++++++
+ vtep/libvtep.pc.in | 11 +++++++++++
+ 5 files changed, 55 insertions(+), 14 deletions(-)
+ create mode 100644 vtep/libvtep.pc
+ create mode 100644 vtep/libvtep.pc.in
+
+diff --git a/configure.ac b/configure.ac
+index 6d2a235..c04e017 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -198,6 +198,7 @@ AC_CONFIG_FILES(lib/libopenvswitch.pc)
+ AC_CONFIG_FILES(lib/libsflow.pc)
+ AC_CONFIG_FILES(ofproto/libofproto.pc)
+ AC_CONFIG_FILES(ovsdb/libovsdb.pc)
++AC_CONFIG_FILES(vtep/libvtep.pc)
+ AC_CONFIG_FILES(include/openvswitch/version.h)
+ 
+ dnl This makes sure that include/openflow gets created in the build directory.
+diff --git a/lib/automake.mk b/lib/automake.mk
+index c9805d1..504d6bb 100644
+--- a/lib/automake.mk
++++ b/lib/automake.mk
+@@ -397,6 +397,26 @@ MAN_FRAGMENTS += \
+         ovsdb/remote-active.man \
+         ovsdb/remote-passive.man
+ 
++# libvtep
++
++lib_LTLIBRARIES += vtep/libvtep.la
++
++vtep_libvtep_la_LDFLAGS = \
++    -version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
++    -Wl,--version-script=$(top_builddir)/vtep/libvtep.sym \
++    $(AM_LDFLAGS)
++vtep_libvtep_la_SOURCES = \
++    vtep/vtep-idl.c \
++    vtep/vtep-idl.h
++
++vtep_libvtep_la_CFLAGS = $(AM_CFLAGS)
++vtep_libvtep_la_CPPFLAGS = $(AM_CPPFLAGS)
++
++pkgconfig_DATA += \
++        $(srcdir)/vtep/libvtep.pc
++
++# libopenvswitch
++
+ lib_LTLIBRARIES += lib/libopenvswitch.la
+ 
+ lib_libopenvswitch_la_LIBADD = $(SSL_LIBS) lib/libovscommon.la ovsdb/libovsdb.la
+@@ -698,6 +718,7 @@ OVSIDL_BUILT += \
+ 	$(srcdir)/lib/vswitch-idl.ovsidl
+ 
+ EXTRA_DIST += $(srcdir)/lib/vswitch-idl.ann
++
+ VSWITCH_IDL_FILES = \
+ 	$(srcdir)/vswitchd/vswitch.ovsschema \
+ 	$(srcdir)/lib/vswitch-idl.ann
+diff --git a/vtep/automake.mk b/vtep/automake.mk
+index b8c6f5a..4888ebc 100644
+--- a/vtep/automake.mk
++++ b/vtep/automake.mk
+@@ -1,4 +1,10 @@
+ # vtep IDL
++if OPS
++ovslibincludedir = $(includedir)/ovs
++ovslibinclude_HEADERS += \
++	vtep/vtep-idl.h
++endif
++
+ OVSIDL_BUILT += \
+ 	vtep/vtep-idl.c \
+ 	vtep/vtep-idl.h \
+@@ -7,19 +13,10 @@ EXTRA_DIST += vtep/vtep-idl.ann
+ VTEP_IDL_FILES = \
+ 	$(srcdir)/vtep/vtep.ovsschema \
+ 	$(srcdir)/vtep/vtep-idl.ann
+-vtep/vtep-idl.ovsidl: $(VTEP_IDL_FILES)
++    $(srcdir)/vtep/vtep-idl.ovsidl: $(VTEP_IDL_FILES)
+ 	$(AM_V_GEN)$(OVSDB_IDLC) annotate $(VTEP_IDL_FILES) > $@.tmp && \
+ 	mv $@.tmp $@
+-
+-# libvtep
+-lib_LTLIBRARIES += vtep/libvtep.la
+-vtep_libvtep_la_LDFLAGS = \
+-	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
+-	-Wl,--version-script=$(top_builddir)/vtep/libvtep.sym \
+-	$(AM_LDFLAGS)
+-nodist_vtep_libvtep_la_SOURCES = \
+-	vtep/vtep-idl.c \
+-	vtep/vtep-idl.h
++    CLEANFILES += vtep/vtep-idl.c vtep/vtep-idl.h
+ 
+ bin_PROGRAMS += \
+    vtep/vtep-ctl
+@@ -33,8 +30,8 @@ DISTCLEANFILES += \
+ man_MANS += \
+    vtep/vtep-ctl.8
+ 
+-vtep_vtep_ctl_SOURCES = $(srcdir)/vtep/vtep-ctl.c
+-vtep_vtep_ctl_LDADD = vtep/libvtep.la lib/libopenvswitch.la
++vtep_vtep_ctl_SOURCES = vtep/vtep-ctl.c
++vtep_vtep_ctl_LDADD = lib/libovscommon.la ovsdb/libovsdb.la lib/libopenvswitch.la vtep/libvtep.la
+ 
+ # ovs-vtep
+ scripts_SCRIPTS += \
+@@ -69,7 +66,7 @@ EXTRA_DIST += vtep/vtep.xml
+ DISTCLEANFILES += vtep/vtep.5
+ man_MANS += vtep/vtep.5
+ vtep/vtep.5: \
+-	ovsdb/ovsdb-doc vtep/vtep.xml $(srcdir)/vtep/vtep.ovsschema $(VTEP_PIC)
++	ovsdb/ovsdb-doc vtep/vtep.xml vtep/vtep.ovsschema $(VTEP_PIC)
+ 	$(AM_V_GEN)$(OVSDB_DOC) \
+ 		$(VTEP_DOT_DIAGRAM_ARG) \
+ 		--version=$(VERSION) \
+diff --git a/vtep/libvtep.pc b/vtep/libvtep.pc
+new file mode 100644
+index 0000000..8c9586b
+--- /dev/null
++++ b/vtep/libvtep.pc
+@@ -0,0 +1,11 @@
++prefix=@prefix@
++exec_prefix=@exec_prefix@
++libdir=@libdir@
++includedir=@includedir@
++
++Name: libvtep
++Description: VTEP library of Open vSwitch
++Version: 2.3.90
++Libs: -L${libdir} -lvtep
++Libs.private: @LIBS@
++Cflags: -I${includedir}
+diff --git a/vtep/libvtep.pc.in b/vtep/libvtep.pc.in
+new file mode 100644
+index 0000000..7eaa053
+--- /dev/null
++++ b/vtep/libvtep.pc.in
+@@ -0,0 +1,11 @@
++prefix=@prefix@
++exec_prefix=@exec_prefix@
++libdir=@libdir@
++includedir=@includedir@
++
++Name: libvtep
++Description: VTEP library of Open vSwitch
++Version: @VERSION@
++Libs: -L${libdir} -lvtep
++Libs.private: @LIBS@
++Cflags: -I${includedir}
+-- 
+2.1.4
+

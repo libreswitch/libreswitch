@@ -1,9 +1,11 @@
-From 2d2e9acd99ed772f79990b2a8442dc7161860f72 Mon Sep 17 00:00:00 2001
+From c0e65097dc70c4f121b09f6681de2db05f243d00 Mon Sep 17 00:00:00 2001
 From: "Marcelo E. Magallon" <marcelo.magallon@hpe.com>
 Date: Fri, 13 May 2016 13:26:09 -0600
-Subject: [PATCH 3/8] Partial map updates
+Subject: [PATCH 16/22] Partial map updates
 
-Change-Id: Ie3b48dbdb53cafc895540c7366fdd4547fc4f631
+Signed-off-by: Marcelo E. Magallon <marcelo.magallon@hpe.com>
+
+
 ---
  lib/automake.mk          |   4 +-
  lib/ovsdb-idl-provider.h |   4 +
@@ -17,10 +19,10 @@ Change-Id: Ie3b48dbdb53cafc895540c7366fdd4547fc4f631
  create mode 100644 lib/ovsdb-map-op.h
 
 diff --git a/lib/automake.mk b/lib/automake.mk
-index e0a981d..41944a8 100644
+index 95175bc..08092e4 100644
 --- a/lib/automake.mk
 +++ b/lib/automake.mk
-@@ -106,6 +106,7 @@ ovslibinclude_HEADERS = \
+@@ -104,6 +104,7 @@ ovslibinclude_HEADERS = \
  	lib/ovsdb-error.h \
  	lib/ovsdb-idl.h \
  	lib/ovsdb-idl-provider.h \
@@ -28,7 +30,7 @@ index e0a981d..41944a8 100644
  	lib/ovsdb-parser.h \
  	lib/ovsdb-types.h \
  	lib/ovs-lldp.h \
-@@ -343,6 +344,8 @@ lib_libovscommon_la_SOURCES = \
+@@ -341,6 +342,8 @@ lib_libovscommon_la_SOURCES = \
          lib/ovsdb-error.c \
          lib/ovsdb-error.h \
          lib/ovsdb-idl-provider.h \
@@ -37,7 +39,7 @@ index e0a981d..41944a8 100644
          lib/ovsdb-types.c \
          lib/ovsdb-types.h \
          lib/table.c \
-@@ -785,4 +788,3 @@ lib-install-data-local:
+@@ -783,4 +786,3 @@ lib-install-data-local:
  	$(MKDIR_P) $(DESTDIR)$(PKIDIR)
  	$(MKDIR_P) $(DESTDIR)$(LOGDIR)
  	$(MKDIR_P) $(DESTDIR)$(DBDIR)
@@ -65,7 +67,7 @@ index 2dbf805..de22691 100644
      unsigned int insert_seqno;
      unsigned int modify_seqno;
 diff --git a/lib/ovsdb-idl.c b/lib/ovsdb-idl.c
-index 4db29b1..82e109e 100644
+index 8427a4c..8bf5ff9 100644
 --- a/lib/ovsdb-idl.c
 +++ b/lib/ovsdb-idl.c
 @@ -159,6 +159,7 @@ static struct ovsdb_idl_row *ovsdb_idl_row_create(struct ovsdb_idl_table *,
@@ -128,7 +130,7 @@ index 4db29b1..82e109e 100644
          if (ovsdb_idl_track_is_set(row->table)) {
              row->change_seqno[OVSDB_IDL_CHANGE_DELETE]
                  = row->table->change_seqno[OVSDB_IDL_CHANGE_DELETE]
-@@ -1891,6 +1921,7 @@ ovsdb_idl_txn_disassemble(struct ovsdb_idl_txn *txn)
+@@ -1887,6 +1917,7 @@ ovsdb_idl_txn_disassemble(struct ovsdb_idl_txn *txn)
      txn->idl->txn = NULL;
  
      HMAP_FOR_EACH_SAFE (row, next, txn_node, &txn->txn_rows) {
@@ -136,7 +138,7 @@ index 4db29b1..82e109e 100644
          if (row->old) {
              if (row->written) {
                  ovsdb_idl_row_unparse(row);
-@@ -1919,6 +1950,116 @@ ovsdb_idl_txn_disassemble(struct ovsdb_idl_txn *txn)
+@@ -1915,6 +1946,116 @@ ovsdb_idl_txn_disassemble(struct ovsdb_idl_txn *txn)
      hmap_init(&txn->txn_rows);
  }
  
@@ -253,7 +255,7 @@ index 4db29b1..82e109e 100644
  /* Attempts to commit 'txn'.  Returns the status of the commit operation, one
   * of the following TXN_* constants:
   *
-@@ -2105,6 +2246,28 @@ ovsdb_idl_txn_commit(struct ovsdb_idl_txn *txn)
+@@ -2101,6 +2242,28 @@ ovsdb_idl_txn_commit(struct ovsdb_idl_txn *txn)
                  json_destroy(op);
              }
          }
@@ -282,7 +284,7 @@ index 4db29b1..82e109e 100644
      }
  
      /* Add increment. */
-@@ -2912,6 +3075,128 @@ ovsdb_idl_parse_lock_notify(struct ovsdb_idl *idl,
+@@ -2908,6 +3071,128 @@ ovsdb_idl_parse_lock_notify(struct ovsdb_idl *idl,
      }
  }
  

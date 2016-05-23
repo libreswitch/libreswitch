@@ -1,0 +1,33 @@
+From 3da9e405c3a8ce8ce10c771eb7d02f88e918ff05 Mon Sep 17 00:00:00 2001
+From: Shad Ansari <shad.ansari@hpe.com>
+Date: Fri, 26 Feb 2016 06:22:57 +0000
+Subject: [PATCH 02/22] Fix compile error in opennsl-plugin
+
+odp-netlink.h:465:11: error: expected ':', ',', ';', '}' or
+'__attribute__' before '.' token | ovs_be16 arp_op;
+
+Signed-off-by: Shad Ansari <shad.ansari@hpe.com>
+
+
+---
+ datapath/linux/compat/include/linux/openvswitch.h | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/datapath/linux/compat/include/linux/openvswitch.h b/datapath/linux/compat/include/linux/openvswitch.h
+index d26052a..fb687e2 100644
+--- a/datapath/linux/compat/include/linux/openvswitch.h
++++ b/datapath/linux/compat/include/linux/openvswitch.h
+@@ -44,6 +44,10 @@
+ #include <linux/types.h>
+ #include <linux/if_ether.h>
+ 
++#if defined (OPS) && defined (arp_op)
++#undef arp_op
++#endif
++
+ /**
+  * struct ovs_header - header for OVS Generic Netlink messages.
+  * @dp_ifindex: ifindex of local port for datapath (0 to make a request not
+-- 
+2.1.4
+

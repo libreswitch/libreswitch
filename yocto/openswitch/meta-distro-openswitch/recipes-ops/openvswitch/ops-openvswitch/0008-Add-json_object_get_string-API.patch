@@ -1,0 +1,53 @@
+From 257df1fd715d5e9a21b1f203d8fd7a11bb3effa0 Mon Sep 17 00:00:00 2001
+From: Kevin Worth <kevin.worth@hpe.com>
+Date: Tue, 2 Feb 2016 20:35:49 -0800
+Subject: [PATCH 08/22] Add json_object_get_string() API
+
+Signed-off-by: Kevin Worth <kevin.worth@hpe.com>
+
+
+---
+ lib/json.c | 12 ++++++++++++
+ lib/json.h |  3 +++
+ 2 files changed, 15 insertions(+)
+
+diff --git a/lib/json.c b/lib/json.c
+index dd85213..e2e0eaf 100644
+--- a/lib/json.c
++++ b/lib/json.c
+@@ -284,6 +284,18 @@ json_object_put_string(struct json *json, const char *name, const char *value)
+     json_object_put(json, name, json_string_create(value));
+ }
+ 
++#ifdef OPS
++const char *
++json_object_get_string(const struct json *json, const char *name)
++{
++    void *data = shash_find_data(json_object(json), name);
++    if (data)
++        return json_string(data);
++    else
++        return NULL;
++}
++#endif /* OPS */
++
+ const char *
+ json_string(const struct json *json)
+ {
+diff --git a/lib/json.h b/lib/json.h
+index 3497035..00bfe7e 100644
+--- a/lib/json.h
++++ b/lib/json.h
+@@ -90,6 +90,9 @@ struct json *json_object_create(void);
+ void json_object_put(struct json *, const char *name, struct json *value);
+ void json_object_put_string(struct json *,
+                             const char *name, const char *value);
++#ifdef OPS
++const char *json_object_get_string(const struct json *json, const char *name);
++#endif /* OPS */
+ 
+ const char *json_string(const struct json *);
+ struct json_array *json_array(const struct json *);
+-- 
+2.1.4
+

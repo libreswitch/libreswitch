@@ -4,20 +4,33 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda
 
 DEPENDS = "openssl python perl systemd libtool libyaml jemalloc ops"
 
-BRANCH ?= "${OPS_REPO_BRANCH}"
-
-SRC_URI = "${OPS_REPO_BASE_URL}/ops-openvswitch;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
+SRC_URI = "git://github.com/openvswitch/ovs.git;protocol=https;branch=branch-2.5 \
            file://ovsdb-server.service \
-           file://0003-Partial-map-updates.patch \
-           file://0004-On-demand-fetching.patch \
-           file://0005-Compound-indexes.patch \
-           file://0006-Python-IDL-tracking.patch \
-           file://0007-smap-shash-add-numeric-and-flexible-sort.patch \
-           file://0008-Handle-special-characters-in-Python-JSON-parser.patch \
-           file://0010-Populate-value-for-key-value-pair-of-max1.patch \
+           file://0001-Sync-OVS-2.5-to-OPS.patch \
+           file://0002-Fix-compile-error-in-opennsl-plugin.patch \
+           file://0003-Compatibility-with-C-11.patch \
+           file://0004-Fix-IDL-generation-to-emit-enums-with-a-single-optio.patch \
+           file://0005-Add-support-for-column-tracking-in-IDL.patch \
+           file://0006-Ignore-build-artifacts.patch \
+           file://0007-Make-schema-cksum-validation-consistent.patch \
+           file://0008-Add-json_object_get_string-API.patch \
+           file://0009-Rename-ovsdb_users-to-ovsdb-client.patch \
+           file://0010-Vtep-IDL-file-generation.patch \
+           file://0011-vswitchd-changes-for-L3-statistics.patch \
+           file://0012-Add-Resilient-ECMP-CLI.patch \
+           file://0013-OSPFv2-key-and-default-definitions.patch \
+           file://0014-sFlow-related-changes.patch \
+           file://0015-Converted-tests.patch \
+           file://0016-Partial-map-updates.patch \
+           file://0017-On-demand-fetching.patch \
+           file://0018-Compound-indexes.patch \
+           file://0019-Python-IDL-tracking.patch \
+           file://0020-smap-shash-add-numeric-and-flexible-sort.patch \
+           file://0021-Handle-special-characters-in-Python-JSON-parser.patch \
+           file://0022-Populate-value-for-key-value-pair-of-max1.patch \
            "
 
-SRCREV = "66c7ab9872067cb3b742dcb3110af0fca9e30cd9"
+SRCREV = "976b441345df85dd7adb973f8ae208f588d764a0"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.

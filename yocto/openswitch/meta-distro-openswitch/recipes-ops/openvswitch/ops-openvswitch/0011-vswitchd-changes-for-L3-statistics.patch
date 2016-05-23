@@ -1,0 +1,58 @@
+From 81e74935eacab7abfabc8257df3272990011d6c0 Mon Sep 17 00:00:00 2001
+From: Surya Tatapudi <surya.tatapudi@hpe.com>
+Date: Wed, 16 Mar 2016 12:12:19 -0700
+Subject: [PATCH 11/22] vswitchd changes for L3 statistics
+
+-- Add L3 statistics fields
+
+Signed-off-by: Surya Tatapudi <surya.tatapudi@hpe.com>
+
+
+---
+ lib/netdev.h | 30 ++++++++++++++++++++++++++++++
+ 1 file changed, 30 insertions(+)
+
+diff --git a/lib/netdev.h b/lib/netdev.h
+index 824dad6..68985b6 100644
+--- a/lib/netdev.h
++++ b/lib/netdev.h
+@@ -103,6 +103,36 @@ struct netdev_stats {
+     uint64_t tx_fifo_errors;
+     uint64_t tx_heartbeat_errors;
+     uint64_t tx_window_errors;
++
++    /* L3 stats */
++    uint64_t l3_uc_tx_packets;
++    uint64_t l3_uc_tx_bytes;
++    uint64_t l3_uc_rx_packets;
++    uint64_t l3_uc_rx_bytes;
++    uint64_t l3_mc_tx_packets;
++    uint64_t l3_mc_tx_bytes;
++    uint64_t l3_mc_rx_packets;
++    uint64_t l3_mc_rx_bytes;
++
++    /* IPv4 L3 stats */
++    uint64_t ipv4_uc_tx_packets;
++    uint64_t ipv4_uc_tx_bytes;
++    uint64_t ipv4_uc_rx_packets;
++    uint64_t ipv4_uc_rx_bytes;
++    uint64_t ipv4_mc_tx_packets;
++    uint64_t ipv4_mc_tx_bytes;
++    uint64_t ipv4_mc_rx_packets;
++    uint64_t ipv4_mc_rx_bytes;
++
++    /* IPv6 L3 stats */
++    uint64_t ipv6_uc_tx_packets;
++    uint64_t ipv6_uc_tx_bytes;
++    uint64_t ipv6_uc_rx_packets;
++    uint64_t ipv6_uc_rx_bytes;
++    uint64_t ipv6_mc_tx_packets;
++    uint64_t ipv6_mc_tx_bytes;
++    uint64_t ipv6_mc_rx_packets;
++    uint64_t ipv6_mc_rx_bytes;
+ };
+ 
+ /* Configuration specific to tunnels. */
+-- 
+2.1.4
+
