@@ -18,6 +18,27 @@ FILES_${PN} = "/usr/share/openvswitch/ /usr/share/openvswitch/*.extschema /usr/s
 
 OPS_SCHEMA_PATH="${S}/schema"
 
+inherit openswitch cmake
+
+# XXX: Remove this when the repo moves to cmake
+do_configure() {
+	if test -e "${S}/CMakeLists.txt" ; then
+		cmake_do_configure
+	fi
+}
+
+do_compile() {
+	if test -e "${S}/CMakeLists.txt" ; then
+		cmake_do_compile
+	else
+		oe_runmake -C "${S}"
+	fi
+}
+
 do_install() {
-	oe_runmake install DESTDIR=${D} PREFIX=${prefix}
+	if test -e "${S}/CMakeLists.txt" ; then
+		cmake_do_install
+	else
+		oe_runmake -C "${S}" install DESTDIR=${D} PREFIX=${prefix}
+	fi
 }
