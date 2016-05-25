@@ -8,6 +8,7 @@ Type=simple
 ExecStartPre=/bin/rm -f /var/run/ops_ntpd.pid
 ExecStart=/usr/bin/ops_ntpd
 PIDFile=/var/run/ops_ntpd.pid
+Restart=always
 
 [Install]
 WantedBy=multi-user.target
