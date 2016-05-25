@@ -1,0 +1,14 @@
+
+[Unit]
+Description=OpenSwitch BroadView Daemon
+After=ovsdb-server.service ops-init.service
+
+[Service]
+Type=forking
+ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-broadview.pid
+ExecStart= /usr/sbin/ops-broadview --detach --pidfile -vSYSLOG:INFO
+PIDFile=/var/run/openvswitch/ops-broadview.pid
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target

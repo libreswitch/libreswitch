@@ -4,9 +4,11 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 
 DEPENDS = "ops-openvswitch ops-ovsdb ops-cli"
 
-SRC_URI = "git://git.openswitch.net/openswitch/ops-broadview;protocol=https;branch=rel/dill"
+SRC_URI = "git://git.openswitch.net/openswitch/ops-broadview;protocol=https;branch=rel/dill \
+    file://ops-broadview.service"
 
-SRCREV="823de5463e735642fc3154f93da0c9faa30f0866"
+
+SRCREV="b4807720666670d40c10b71131af574bfb9d0a58"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
@@ -25,12 +27,17 @@ do_compile () {
 
 do_install() {
     # Installing executable
-    install -d ${D}/usr/bin
-    install -m 0755 ${S}/output/deliverables/BroadViewAgent ${D}/usr/bin/ops-broadview
-    install -d ${D}${sysconfdir}
-    install -m 0644 ${S}/output/deliverables/broadview_config.cfg ${D}${sysconfdir}/
-    install -m 0644 ${S}/output/deliverables/broadview_ovsdb_config.cfg ${D}${sysconfdir}/
+    install -d ${D}/usr/sbin
+    install -m 0755 ${S}/output/deliverables/BroadViewAgent ${D}/usr/sbin/ops-broadview
+    install -d ${D}${systemd_unitdir}/system
+    install -m 0644 ${WORKDIR}/ops-broadview.service ${D}${systemd_unitdir}/system/
+    install -d ${D}/usr/lib/cli/plugins
+    install -m 0755 ${S}/output/deliverables/libbroadview_cli.so.1 ${D}/usr/lib/cli/plugins/libbroadview_cli.so
 }
-inherit openswitch
-FILES_${PN} +="$(sysconfdir)/ "
 
+
+SYSTEMD_PACKAGES = "${PN}"
+SYSTEMD_SERVICE_${PN} = "ops-broadview.service"
+FILES_${PN} += "/usr/lib/cli/plugins/"
+
+inherit openswitch systemd
