@@ -1,0 +1,138 @@
+From 9360d69aca93ec2e77697149f3dc276bca6a3a91 Mon Sep 17 00:00:00 2001
+From: Ligeo George <ligeo.george@hpe.com>
+Date: Wed, 25 May 2016 15:10:29 -0700
+Subject: [PATCH] fix: dev: Fix for weak-key:strong-value
+
+This fix allows the row pointed to by the strong
+value to be garbage collected when the row pointed
+to by its weak key is deleted.
+
+Change-Id: I7c84aa41d223184570e502ecd308f7f99f5f8d73
+Signed-off-by: Ligeo George <ligeo.george@hpe.com>
+---
+ ovsdb/transaction.c | 63 +++++++++++++++++++++++++++++++++++++----------------
+ 1 file changed, 44 insertions(+), 19 deletions(-)
+
+diff --git a/ovsdb/transaction.c b/ovsdb/transaction.c
+index 2c85fee..77bf46f 100644
+--- a/ovsdb/transaction.c
++++ b/ovsdb/transaction.c
+@@ -34,6 +34,7 @@ struct ovsdb_txn {
+     struct ovsdb *db;
+     struct ovs_list txn_tables; /* Contains "struct ovsdb_txn_table"s. */
+     struct ds comment;
++    bool gc_pending;
+ };
+ 
+ /* A table modified by a transaction. */
+@@ -262,6 +263,14 @@ ovsdb_txn_adjust_row_refs(struct ovsdb_txn *txn, const struct ovsdb_row *r,
+ }
+ 
+ static struct ovsdb_error * OVS_WARN_UNUSED_RESULT
++reset_row_ref_count(struct ovsdb_txn *txn OVS_UNUSED, struct ovsdb_txn_row *r)
++{
++    r->n_refs = r->old ? r->old->n_refs : 0;
++
++    return NULL;
++}
++
++static struct ovsdb_error * OVS_WARN_UNUSED_RESULT
+ update_row_ref_count(struct ovsdb_txn *txn, struct ovsdb_txn_row *r)
+ {
+     struct ovsdb_table *table = r->table;
+@@ -393,12 +402,12 @@ update_ref_counts(struct ovsdb_txn *txn)
+ {
+     struct ovsdb_error *error;
+ 
+-    error = for_each_txn_row(txn, update_row_ref_count);
++    error = for_each_txn_row(txn, reset_row_ref_count);
+     if (error) {
+         return error;
+     }
+ 
+-    return for_each_txn_row(txn, check_ref_count);
++    return for_each_txn_row(txn, update_row_ref_count);
+ }
+ 
+ static struct ovsdb_error *
+@@ -511,6 +520,9 @@ assess_weak_refs(struct ovsdb_txn *txn, struct ovsdb_txn_row *txn_row)
+                         zero = true;
+                     }
+                     ovsdb_datum_remove_unsafe(datum, i, &column->type);
++                    if (ovsdb_base_type_is_strong_ref(&column->type.value)) {
++                        txn->gc_pending = true;
++                    }
+                 }
+             }
+         }
+@@ -529,6 +541,9 @@ assess_weak_refs(struct ovsdb_txn *txn, struct ovsdb_txn_row *txn_row)
+                         zero = true;
+                     }
+                     ovsdb_datum_remove_unsafe(datum, i, &column->type);
++                    if (ovsdb_base_type_is_strong_ref(&column->type.key)) {
++                        txn->gc_pending = true;
++                    }
+                 }
+             }
+         }
+@@ -779,30 +794,40 @@ ovsdb_txn_commit_(struct ovsdb_txn *txn, bool durable)
+         return NULL;
+     }
+ 
+-    /* Update reference counts and check referential integrity. */
+-    error = update_ref_counts(txn);
+-    if (error) {
+-        ovsdb_txn_abort(txn);
+-        return error;
+-    }
++    do {
++        /* Update reference counts. */
++        error = update_ref_counts(txn);
++        if (error) {
++            ovsdb_txn_abort(txn);
++            return error;
++        }
+ 
+-    /* Delete unreferenced, non-root rows. */
+-    error = for_each_txn_row(txn, collect_garbage);
+-    if (error) {
+-        ovsdb_txn_abort(txn);
+-        return OVSDB_WRAP_BUG("can't happen", error);
+-    }
++        txn->gc_pending = false; /* updated inside assess_weak_refs */
++        /* Delete unreferenced, non-root rows. */
++        error = for_each_txn_row(txn, collect_garbage);
++        if (error) {
++            ovsdb_txn_abort(txn);
++            return OVSDB_WRAP_BUG("can't happen", error);
++        }
+ 
+-    /* Check maximum rows table constraints. */
+-    error = check_max_rows(txn);
++        /* Check reference counts and remove bad references for "weak" referential
++         * integrity. */
++        error = for_each_txn_row(txn, assess_weak_refs);
++        if (error) {
++            ovsdb_txn_abort(txn);
++            return error;
++        }
++    } while (txn->gc_pending);
++
++    /* Check referential integrity. */
++    error = for_each_txn_row(txn, check_ref_count);
+     if (error) {
+         ovsdb_txn_abort(txn);
+         return error;
+     }
+ 
+-    /* Check reference counts and remove bad references for "weak" referential
+-     * integrity. */
+-    error = for_each_txn_row(txn, assess_weak_refs);
++    /* Check maximum rows table constraints. */
++    error = check_max_rows(txn);
+     if (error) {
+         ovsdb_txn_abort(txn);
+         return error;
+-- 
+1.9.1
+

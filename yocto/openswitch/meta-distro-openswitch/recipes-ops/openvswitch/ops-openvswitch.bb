@@ -28,6 +28,7 @@ SRC_URI = "git://github.com/openvswitch/ovs.git;protocol=https;branch=branch-2.5
            file://0020-smap-shash-add-numeric-and-flexible-sort.patch \
            file://0021-Handle-special-characters-in-Python-JSON-parser.patch \
            file://0022-Populate-value-for-key-value-pair-of-max1.patch \
+           file://0023-Fix-for-weak-key-strong-value.patch \
            "
 
 SRCREV = "976b441345df85dd7adb973f8ae208f588d764a0"
