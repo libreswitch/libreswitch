@@ -1,0 +1,48 @@
+From 7318c985e6230c8d9d3c5d017ecd2635be2c80e0 Mon Sep 17 00:00:00 2001
+From: waghodeh <hemali.waghode@hpe.com>
+Date: Thu, 26 May 2016 14:24:23 -0700
+Subject: [PATCH] BGP batching changes
+
+Adding API for BGP batching change
+TG-394
+Tags: chg, dev
+
+Change-Id: I32f5ce839866ef6387df7bec7a31f4c9a8a58435
+Signed-off-by: waghodeh <hemali.waghode@hpe.com>
+---
+ lib/ovsdb-idl.c | 10 ++++++++++
+ lib/ovsdb-idl.h |  3 +++
+ 2 files changed, 13 insertions(+)
+
+diff --git a/lib/ovsdb-idl.c b/lib/ovsdb-idl.c
+index ccbb449..1651a10 100644
+--- a/lib/ovsdb-idl.c
++++ b/lib/ovsdb-idl.c
+@@ -2951,3 +2951,13 @@ ovsdb_idl_loop_commit_and_wait(struct ovsdb_idl_loop *loop)
+
+     ovsdb_idl_wait(loop->idl);
+ }
++
++struct ovsdb_idl_txn *
++get_idl_txn(struct ovsdb_idl *idl){
++    if(idl){
++        if(idl->txn){
++            return idl->txn;
++        }
++    }
++    return NULL;
++}
+diff --git a/lib/ovsdb-idl.h b/lib/ovsdb-idl.h
+index 4c66ae0..7d37dee 100644
+--- a/lib/ovsdb-idl.h
++++ b/lib/ovsdb-idl.h
+@@ -274,4 +274,7 @@ void ovsdb_idl_loop_destroy(struct ovsdb_idl_loop *);
+ struct ovsdb_idl_txn *ovsdb_idl_loop_run(struct ovsdb_idl_loop *);
+ void ovsdb_idl_loop_commit_and_wait(struct ovsdb_idl_loop *);
+
++struct ovsdb_idl_txn *
++get_idl_txn(struct ovsdb_idl *idl);
++
+ #endif /* ovsdb-idl.h */
+--
+1.9.1
