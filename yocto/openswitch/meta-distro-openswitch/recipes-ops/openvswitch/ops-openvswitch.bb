@@ -14,6 +14,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-openvswitch;protocol=${OPS_REPO_PROTOCOL};br
            file://0006-Python-IDL-tracking.patch \
            file://0007-smap-shash-add-numeric-and-flexible-sort.patch \
            file://0008-Handle-special-characters-in-Python-JSON-parser.patch \
+           file://0010-Populate-value-for-key-value-pair-of-max1.patch \
            "
 
 SRCREV = "66c7ab9872067cb3b742dcb3110af0fca9e30cd9"
