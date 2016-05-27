@@ -15,7 +15,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-aaa-utils;protocol=${OPS_REPO_PROTOCOL};bran
            file://useradd \
          "
 
-SRCREV = "6d6a9193e75fffe28dd185833f1f2412543699cf"
+SRCREV = "d270b8ad70045e313af1179f8589fda9473e98d9"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
