@@ -1,3 +1,35 @@
+From 216db6161bd5bf18bea11193a8c9d3f0335a4c94 Mon Sep 17 00:00:00 2001
+From: "arnoldo.lutz.guevara@hpe.com" <arnoldo.lutz.guevara@hpe.com>
+Date: Thu, 26 May 2016 10:30:28 -0700
+Subject: [PATCH] Add Partial Map Updates functionality
+
+Add functionality to partially update a map column, which allows to update
+key-value pairs inside the map column without updating the whole map column.
+
+For each map column in the schema, two functions are generated:
+
+ovsrec_<table_name>_update_<column_name>_setkey()
+ovsrec_<table_name>_update_<column_name>_delkey()
+
+The '_setkey()' functions can be used to insert a new key-value (if the key
+doesn't exists in the map) or to change a value (if the key already exists in
+the map). The '_delkey()' functions can be used to delete a key-value from the
+map, using just the key.
+
+Change-Id: I04fa42abc9332aa5f62b97e30634d38d6f8152db
+Signed-off-by: arnoldo.lutz.guevara@hpe.com <arnoldo.lutz.guevara@hpe.com>
+---
+ lib/automake.mk          |   4 +-
+ lib/ovsdb-idl-provider.h |   4 +
+ lib/ovsdb-idl.c          | 277 +++++++++++++++++++++++++++++++++++++++++++++++
+ lib/ovsdb-idl.h          |   6 +
+ lib/ovsdb-map-op.c       | 172 +++++++++++++++++++++++++++++
+ lib/ovsdb-map-op.h       |  53 +++++++++
+ ovsdb/ovsdb-idlc.in      |  69 ++++++++++++
+ 7 files changed, 584 insertions(+), 1 deletion(-)
+ create mode 100644 lib/ovsdb-map-op.c
+ create mode 100644 lib/ovsdb-map-op.h
+
 diff --git a/lib/automake.mk b/lib/automake.mk
 index e0a981d..41944a8 100644
 --- a/lib/automake.mk
@@ -25,7 +57,7 @@ index e0a981d..41944a8 100644
  	$(MKDIR_P) $(DESTDIR)$(DBDIR)
 -
 diff --git a/lib/ovsdb-idl-provider.h b/lib/ovsdb-idl-provider.h
-index dd35e5a..399343e 100644
+index 2dbf805..de22691 100644
 --- a/lib/ovsdb-idl-provider.h
 +++ b/lib/ovsdb-idl-provider.h
 @@ -20,6 +20,7 @@
@@ -47,7 +79,7 @@ index dd35e5a..399343e 100644
      unsigned int insert_seqno;
      unsigned int modify_seqno;
 diff --git a/lib/ovsdb-idl.c b/lib/ovsdb-idl.c
-index ccbb449..b3225f6 100644
+index 8427a4c..a572e48 100644
 --- a/lib/ovsdb-idl.c
 +++ b/lib/ovsdb-idl.c
 @@ -159,6 +159,7 @@ static struct ovsdb_idl_row *ovsdb_idl_row_create(struct ovsdb_idl_table *,
@@ -71,7 +103,7 @@ index ccbb449..b3225f6 100644
  
  static void ovsdb_idl_send_lock_request(struct ovsdb_idl *);
  static void ovsdb_idl_send_unlock_request(struct ovsdb_idl *);
-@@ -1306,15 +1313,38 @@ ovsdb_idl_row_create(struct ovsdb_idl_table *table, const struct uuid *uuid)
+@@ -1338,15 +1345,38 @@ ovsdb_idl_row_create(struct ovsdb_idl_table *table, const struct uuid *uuid)
      hmap_insert(&table->rows, &row->hmap_node, uuid_hash(uuid));
      row->uuid = *uuid;
      row->table = table;
@@ -110,7 +142,7 @@ index ccbb449..b3225f6 100644
          if (ovsdb_idl_track_is_set(row->table)) {
              row->change_seqno[OVSDB_IDL_CHANGE_DELETE]
                  = row->table->change_seqno[OVSDB_IDL_CHANGE_DELETE]
-@@ -1859,6 +1889,7 @@ ovsdb_idl_txn_disassemble(struct ovsdb_idl_txn *txn)
+@@ -1887,6 +1917,7 @@ ovsdb_idl_txn_disassemble(struct ovsdb_idl_txn *txn)
      txn->idl->txn = NULL;
  
      HMAP_FOR_EACH_SAFE (row, next, txn_node, &txn->txn_rows) {
@@ -118,7 +150,7 @@ index ccbb449..b3225f6 100644
          if (row->old) {
              if (row->written) {
                  ovsdb_idl_row_unparse(row);
-@@ -1887,6 +1918,116 @@ ovsdb_idl_txn_disassemble(struct ovsdb_idl_txn *txn)
+@@ -1915,6 +1946,116 @@ ovsdb_idl_txn_disassemble(struct ovsdb_idl_txn *txn)
      hmap_init(&txn->txn_rows);
  }
  
@@ -235,12 +267,12 @@ index ccbb449..b3225f6 100644
  /* Attempts to commit 'txn'.  Returns the status of the commit operation, one
   * of the following TXN_* constants:
   *
-@@ -2073,6 +2214,28 @@ ovsdb_idl_txn_commit(struct ovsdb_idl_txn *txn)
+@@ -2101,6 +2242,28 @@ ovsdb_idl_txn_commit(struct ovsdb_idl_txn *txn)
                  json_destroy(op);
              }
          }
 +
-+        /* Add Map Operation (Partial Map Updates). */
++        /* Add mutate operation, for partial map updates. */
 +        if (row->map_op_written) {
 +            struct json *op, *mutations;
 +            bool any_mutations;
@@ -264,7 +296,7 @@ index ccbb449..b3225f6 100644
      }
  
      /* Add increment. */
-@@ -2880,6 +3043,128 @@ ovsdb_idl_parse_lock_notify(struct ovsdb_idl *idl,
+@@ -2908,6 +3071,120 @@ ovsdb_idl_parse_lock_notify(struct ovsdb_idl *idl,
      }
  }
  
@@ -282,7 +314,7 @@ index ccbb449..b3225f6 100644
 +    class = row->table->class;
 +    column_idx = column - class->columns;
 +
-+    /* Check if a Map Operation List exist for this column */
++    /* Check if a map operation list exists for this column. */
 +    if (!row->map_op_written) {
 +        row->map_op_written = bitmap_allocate(class->n_columns);
 +        row->map_op_lists = xzalloc(class->n_columns *
@@ -292,16 +324,37 @@ index ccbb449..b3225f6 100644
 +        row->map_op_lists[column_idx] = map_op_list_create();
 +    }
 +
-+    /* Add a Map Operation to the corresponding list */
++    /* Add a map operation to the corresponding list. */
 +    map_op = map_op_create(datum, op_type);
 +    bitmap_set1(row->map_op_written, column_idx);
 +    map_op_list_add(row->map_op_lists[column_idx], map_op, &column->type);
 +
-+    /* Add this row to transaction's list of rows */
++    /* Add this row to transaction's list of rows. */
 +    if (hmap_node_is_null(&row->txn_node)) {
 +        hmap_insert(&row->table->idl->txn->txn_rows, &row->txn_node,
 +                    uuid_hash(&row->uuid));
 +    }
++}
++
++static bool
++is_valid_partial_update(const struct ovsdb_idl_row *row,
++                        const struct ovsdb_idl_column *column,
++                        struct ovsdb_datum *datum)
++{
++    /* Verify that this column is being monitored. */
++    unsigned int column_idx = column - row->table->class->columns;
++    if (!(row->table->modes[column_idx] & OVSDB_IDL_MONITOR)) {
++        VLOG_WARN("cannot partially update non-monitored column");
++        return false;
++    }
++
++    /* Verify that the update affects a single element. */
++    if (datum->n != 1) {
++        VLOG_WARN("invalid datum for partial update");
++        return false;
++    }
++
++    return true;
 +}
 +
 +/* Inserts the key-value specified in 'datum' into the map in 'column' in
@@ -319,36 +372,21 @@ index ccbb449..b3225f6 100644
 +    struct ovsdb_idl_row *row = CONST_CAST(struct ovsdb_idl_row *, row_);
 +    enum ovsdb_atomic_type key_type;
 +    enum map_op_type op_type;
-+    unsigned int column_idx, pos;
-+    struct ovsdb_datum *old_datum;
++    unsigned int pos;
++    const struct ovsdb_datum *old_datum;
 +
-+    /* Verify that this column is being monitored */
-+    column_idx = column - row->table->class->columns;
-+    if (!(row->table->modes[column_idx] & OVSDB_IDL_MONITOR)) {
-+        VLOG_WARN("ovsdb_idl_txn_write_partial_map(): Trying to update a non"
-+                  "-monitored column.");
++    if (!is_valid_partial_update(row, column, datum)) {
 +        ovsdb_datum_destroy(datum, &column->type);
++        free(datum);
 +        return;
 +    }
 +
-+    if (datum->n != 1) {
-+        VLOG_WARN("ovsdb_idl_txn_write_partial_map(): Trying to set an invalid"
-+                  " datum.");
-+        ovsdb_datum_destroy(datum, &column->type);
-+        return;
-+    }
-+
-+    /* Find out if this is an insert or an update */
++    /* Find out if this is an insert or an update. */
 +    key_type = column->type.key.type;
 +    old_datum = ovsdb_idl_read(row, column);
 +    pos = ovsdb_datum_find_key(old_datum, &datum->keys[0], key_type);
-+    if (pos == UINT_MAX) {
-+        /* Insert operation */
-+        op_type = MAP_OP_INSERT;
-+    } else {
-+        /* Update operation */
-+        op_type = MAP_OP_UPDATE;
-+    }
++    op_type = pos == UINT_MAX ? MAP_OP_INSERT : MAP_OP_UPDATE;
++
 +    ovsdb_idl_txn_add_map_op(row, column, datum, op_type);
 +}
 +
@@ -365,28 +403,14 @@ index ccbb449..b3225f6 100644
 +                                 struct ovsdb_datum *datum)
 +{
 +    struct ovsdb_idl_row *row = CONST_CAST(struct ovsdb_idl_row *, row_);
-+    unsigned int column_idx;
 +
-+    /* Verify that this column is being monitored */
-+    column_idx = column - row->table->class->columns;
-+    if (!(row->table->modes[column_idx] & OVSDB_IDL_MONITOR)) {
-+        VLOG_WARN("ovsdb_idl_txn_delete_partial_map(): Trying to update a non"
-+                  "-monitored column.");
++    if (!is_valid_partial_update(row, column, datum)) {
 +        struct ovsdb_type type_ = column->type;
 +        type_.value.type = OVSDB_TYPE_VOID;
 +        ovsdb_datum_destroy(datum, &type_);
++        free(datum);
 +        return;
 +    }
-+
-+    if (datum->n != 1) {
-+        VLOG_WARN("ovsdb_idl_txn_delete_partial_map(): Trying to delete using"
-+                  " an invalid datum.");
-+        struct ovsdb_type type_ = column->type;
-+        type_.value.type = OVSDB_TYPE_VOID;
-+        ovsdb_datum_destroy(datum, &type_);
-+        return;
-+    }
-+
 +    ovsdb_idl_txn_add_map_op(row, column, datum, MAP_OP_DELETE);
 +}
 +
@@ -394,10 +418,10 @@ index ccbb449..b3225f6 100644
  ovsdb_idl_loop_destroy(struct ovsdb_idl_loop *loop)
  {
 diff --git a/lib/ovsdb-idl.h b/lib/ovsdb-idl.h
-index 4c66ae0..80f499a 100644
+index 136c38c..2f12b19 100644
 --- a/lib/ovsdb-idl.h
 +++ b/lib/ovsdb-idl.h
-@@ -247,6 +247,12 @@ void ovsdb_idl_txn_write(const struct ovsdb_idl_row *,
+@@ -249,6 +249,12 @@ void ovsdb_idl_txn_write(const struct ovsdb_idl_row *,
  void ovsdb_idl_txn_write_clone(const struct ovsdb_idl_row *,
                                 const struct ovsdb_idl_column *,
                                 const struct ovsdb_datum *);
@@ -412,10 +436,10 @@ index 4c66ae0..80f499a 100644
      struct ovsdb_idl_txn *, const struct ovsdb_idl_table_class *,
 diff --git a/lib/ovsdb-map-op.c b/lib/ovsdb-map-op.c
 new file mode 100644
-index 0000000..6d39122
+index 0000000..23fc5f5
 --- /dev/null
 +++ b/lib/ovsdb-map-op.c
-@@ -0,0 +1,171 @@
+@@ -0,0 +1,172 @@
 +/* Copyright (C) 2016 Hewlett Packard Enterprise Development LP
 + * All Rights Reserved.
 + *
@@ -451,7 +475,7 @@ index 0000000..6d39122
 +};
 +
 +static void map_op_destroy_datum(struct map_op *, const struct ovsdb_type *);
-+static struct map_op* map_op_list_find(struct map_op_list *, struct map_op *,
++static struct map_op *map_op_list_find(struct map_op_list *, struct map_op *,
 +                                       const struct ovsdb_type *, size_t);
 +
 +struct map_op*
@@ -475,6 +499,7 @@ index 0000000..6d39122
 +    } else {
 +        ovsdb_datum_destroy(map_op->datum, type);
 +    }
++    free(map_op->datum);
 +    map_op->datum = NULL;
 +}
 +
@@ -498,7 +523,7 @@ index 0000000..6d39122
 +}
 +
 +struct map_op_list*
-+map_op_list_create()
++map_op_list_create(void)
 +{
 +    struct map_op_list *list = xmalloc(sizeof *list);
 +    hmap_init(&list->hmap);
@@ -589,7 +614,7 @@ index 0000000..6d39122
 +}
 diff --git a/lib/ovsdb-map-op.h b/lib/ovsdb-map-op.h
 new file mode 100644
-index 0000000..d70748b
+index 0000000..dfcd9a8
 --- /dev/null
 +++ b/lib/ovsdb-map-op.h
 @@ -0,0 +1,53 @@
@@ -628,18 +653,18 @@ index 0000000..d70748b
 +struct map_op_list; /* List of Map Operations */
 +
 +/* Map Operation functions */
-+struct map_op* map_op_create(struct ovsdb_datum *, enum map_op_type);
++struct map_op *map_op_create(struct ovsdb_datum *, enum map_op_type);
 +void map_op_destroy(struct map_op *, const struct ovsdb_type *);
-+struct ovsdb_datum* map_op_datum(const struct map_op*);
++struct ovsdb_datum *map_op_datum(const struct map_op*);
 +enum map_op_type map_op_type(const struct map_op*);
 +
 +/* Map Operation List functions */
-+struct map_op_list* map_op_list_create(void);
++struct map_op_list *map_op_list_create(void);
 +void map_op_list_destroy(struct map_op_list *, const struct ovsdb_type *);
 +void map_op_list_add(struct map_op_list *, struct map_op *,
 +                     const struct ovsdb_type *);
-+struct map_op* map_op_list_first(struct map_op_list *);
-+struct map_op* map_op_list_next(struct map_op_list *, struct map_op *);
++struct map_op *map_op_list_first(struct map_op_list *);
++struct map_op *map_op_list_next(struct map_op_list *, struct map_op *);
 +
 +#ifdef  __cplusplus
 +}
@@ -647,10 +672,10 @@ index 0000000..d70748b
 +
 +#endif /* ovsdb-map-op.h */
 diff --git a/ovsdb/ovsdb-idlc.in b/ovsdb/ovsdb-idlc.in
-index 6f52c40..88b1ec3 100755
+index 22c0efe..e3503d3 100755
 --- a/ovsdb/ovsdb-idlc.in
 +++ b/ovsdb/ovsdb-idlc.in
-@@ -297,6 +297,13 @@ struct %(s)s *%(s)s_insert(struct ovsdb_idl_txn *);
+@@ -298,6 +298,13 @@ bool %(s)s_is_updated(const struct %(s)s *, enum %(s)s_column_id);
                                                               structName.lower(), columnName)
  
          print
@@ -664,7 +689,7 @@ index 6f52c40..88b1ec3 100755
  
      # Table indexes.
      printEnum("%stable_id" % prefix.lower(), ["%sTABLE_%s" % (prefix.upper(), tableName.upper()) for tableName in sorted(schema.tables)] + ["%sN_TABLES" % prefix.upper()])
-@@ -828,6 +835,68 @@ const struct ovsdb_datum *
+@@ -835,6 +842,68 @@ const struct ovsdb_datum *
                     'S': structName.upper(),
                     'C': columnName.upper()}
              print "}"
@@ -733,3 +758,5 @@ index 6f52c40..88b1ec3 100755
  
          # Table columns.
          print "\nstruct ovsdb_idl_column %s_columns[%s_N_COLUMNS];" % (
+--
+1.9.1
