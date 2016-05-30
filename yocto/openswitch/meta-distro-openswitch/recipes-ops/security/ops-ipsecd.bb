@@ -3,7 +3,7 @@ LICENSE = "Apache-2.0"
 
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
-DEPENDS = "ops-ovsdb doxygen-native gtest gmock strongswan libmnl boost"
+DEPENDS = "ops-ovsdb ops-cli doxygen-native gtest gmock strongswan libmnl boost"
 
 BRANCH ?= "${OPS_REPO_BRANCH}"
 
@@ -19,6 +19,7 @@ PV = "git${SRCPV}"
 
 S = "${WORKDIR}/git"
 
+FILES_${PN} += "/usr/lib/cli/plugins/"
 SYSTEMD_PACKAGES = "${PN}"
 SYSTEMD_SERVICE_${PN} = "${BPN}.service"
 
