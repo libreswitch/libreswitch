@@ -2,6 +2,29 @@ Index: linux-3.9.6/drivers/i2c/busses/i2c-ismt.c
 ===================================================================
 --- linux-3.9.6.orig/drivers/i2c/busses/i2c-ismt.c	2014-07-18 18:14:44.931826515 -0500
 +++ linux-3.9.6/drivers/i2c/busses/i2c-ismt.c	2014-07-18 14:07:50.647839122 -0500
+@@ -71,6 +71,7 @@
+ #include <linux/i2c.h>
+ #include <linux/acpi.h>
+ #include <linux/interrupt.h>
++#include <linux/delay.h>
+
+ #include <asm-generic/io-64-nonatomic-lo-hi.h>
+
+@@ -193,9 +194,12 @@ static const DEFINE_PCI_DEVICE_TABLE(ism
+ MODULE_DEVICE_TABLE(pci, ismt_ids);
+
+ /* Bus speed control bits for slow debuggers - refer to the docs for usage */
+-static unsigned int bus_speed;
++static unsigned int bus_speed = 100;
++static unsigned int delay = 1000;
+ module_param(bus_speed, uint, S_IRUGO);
+-MODULE_PARM_DESC(bus_speed, "Bus Speed in kHz (0 = BIOS default)");
++MODULE_PARM_DESC(bus_speed, "Bus Speed in kHz (1000 by default)");
++module_param(delay, uint, S_IRUGO);
++MODULE_PARM_DESC(delay, "Delay in microsecs before access (1000 by default)");
+
+
+ /**
 @@ -344,6 +344,7 @@
  			data->word = dma_buffer[0] | (dma_buffer[1] << 8);
  			break;
@@ -10,6 +33,16 @@ Index: linux-3.9.6/drivers/i2c/busses/i2c-ismt.c
  			memcpy(&data->block[1], dma_buffer, desc->rxbytes);
  			data->block[0] = desc->rxbytes;
  			break;
+@@ -393,6 +397,9 @@ static int ismt_access(struct i2c_adapte
+	struct ismt_priv *priv = i2c_get_adapdata(adap);
+	struct device *dev = &priv->pci_dev->dev;
+
++        if (delay > 0)
++            udelay(delay);
++
+	desc = &priv->hw[priv->head];
+
+	/* Initialize the descriptor */
 @@ -505,7 +506,40 @@
  			desc->control |= (ISMT_DESC_BLK | ISMT_DESC_CWRL);
  		}
@@ -58,4 +91,3 @@ Index: linux-3.9.6/drivers/i2c/busses/i2c-ismt.c
 +	       I2C_FUNC_SMBUS_I2C_BLOCK |
  	       I2C_FUNC_SMBUS_PEC;
  }
- 
