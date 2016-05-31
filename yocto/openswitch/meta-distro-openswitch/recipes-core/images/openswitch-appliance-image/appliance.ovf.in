@@ -55,7 +55,7 @@
         <vmw:Config ovf:required="false" vmw:key="ehciEnabled" vmw:value="true"/>
       </Item>
       <Item>
-        <rasd:Address>0</rasd:Address>
+        <rasd:Address>1</rasd:Address>
         <rasd:Description>IDE Controller</rasd:Description>
         <rasd:ElementName>ideController0</rasd:ElementName>
         <rasd:InstanceID>4</rasd:InstanceID>
@@ -148,7 +148,7 @@
         <vmw:Config ovf:required="false" vmw:key="wakeOnLanEnabled" vmw:value="false"/>
       </Item>
       <Item>
-        <rasd:AddressOnParent>8</rasd:AddressOnParent>
+        <rasd:AddressOnParent>9</rasd:AddressOnParent>
         <rasd:AutomaticAllocation>true</rasd:AutomaticAllocation>
         <rasd:Connection>Null</rasd:Connection>
         <rasd:Description>Port 7</rasd:Description>
