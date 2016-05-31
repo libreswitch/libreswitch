@@ -13,35 +13,15 @@ SRCREV = "2c4a6cd0d407c890ca00c898fe16c5ea5058e469"
 PV = "git${SRCPV}"
 S = "${WORKDIR}/git"
 
-DEPENDS = "\
-	judy \
-	libedit \
-	nanomsg \
-	p4-hlir \
-	python-pyyaml \
-	python-tenjin \
-	thrift \
-	python-thrift \
-	gmp \
-	libpcap \
+DEPENDS = " judy libedit nanomsg p4-hlir thrift gmp libpcap \
+"
+DEPENDS_class-native = "judy-native libedit-native nanomsg-native \
+  p4-hlir-native thrift-native gmp-native libpcap-native \
 "
 
 # C libraries are automatically calculated by Yocto
 RDEPENDS_${PN} = "\
-	python-thrift \
-"
-
-DEPENDS_class-native = "\
-	judy-native \
-	libedit-native \
-	nanomsg-native \
-	p4-hlir-native \
-	python-pyyaml-native \
-	python-tenjin-native \
-	thrift-native \
-	python-thrift-native \
-    gmp-native \
-    libpcap-native \
+	python-thrift python-pyyaml python-tenjin \
 "
 
 do_install_append() {

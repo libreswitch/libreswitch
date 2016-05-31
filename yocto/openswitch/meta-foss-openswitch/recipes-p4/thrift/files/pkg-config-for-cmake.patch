@@ -1,0 +1,161 @@
+Index: thrift-0.9.3/lib/cpp/CMakeLists.txt
+===================================================================
+--- thrift-0.9.3.orig/lib/cpp/CMakeLists.txt	2015-08-18 12:49:52.000000000 -0600
++++ thrift-0.9.3/lib/cpp/CMakeLists.txt	2016-05-31 15:39:00.218494464 -0600
+@@ -160,6 +160,27 @@
+ ADD_LIBRARY_THRIFT(thrift ${thriftcpp_SOURCES} ${thriftcpp_threads_SOURCES})
+ TARGET_LINK_LIBRARIES_THRIFT(thrift ${SYSLIBS})
+ 
++SET(PKG_CONFIG_LIBDIR
++    "\${prefix}/lib"
++)
++SET(PKG_CONFIG_INCLUDEDIR
++    "\${prefix}/include/"
++)
++
++CONFIGURE_FILE("${CMAKE_CURRENT_SOURCE_DIR}/thrift.pc.in"
++               "${CMAKE_CURRENT_BINARY_DIR}/thrift.pc" @ONLY)
++CONFIGURE_FILE("${CMAKE_CURRENT_SOURCE_DIR}/thrift-nb.pc.in"
++               "${CMAKE_CURRENT_BINARY_DIR}/thrift-nb.pc" @ONLY)
++CONFIGURE_FILE("${CMAKE_CURRENT_SOURCE_DIR}/thrift-z.pc.in"
++               "${CMAKE_CURRENT_BINARY_DIR}/thrift-z.pc" @ONLY)
++CONFIGURE_FILE("${CMAKE_CURRENT_SOURCE_DIR}/thrift-qt.pc.in"
++               "${CMAKE_CURRENT_BINARY_DIR}/thrift-qt.pc" @ONLY)
++CONFIGURE_FILE("${CMAKE_CURRENT_SOURCE_DIR}/thrift-qt5.pc.in"
++               "${CMAKE_CURRENT_BINARY_DIR}/thrift-qt5.pc" @ONLY)
++
++INSTALL(FILES "${CMAKE_CURRENT_BINARY_DIR}/thrift.pc"
++        DESTINATION lib/pkgconfig)
++
+ if(WITH_LIBEVENT)
+     find_package(Libevent REQUIRED)  # Libevent comes with CMake support form upstream
+     include_directories(SYSTEM ${LIBEVENT_INCLUDE_DIRS})
+@@ -167,6 +188,8 @@
+     ADD_LIBRARY_THRIFT(thriftnb ${thriftcppnb_SOURCES})
+     TARGET_LINK_LIBRARIES_THRIFT(thriftnb ${SYSLIBS} ${LIBEVENT_LIBRARIES})
+     TARGET_LINK_LIBRARIES_THRIFT_AGAINST_THRIFT_LIBRARY(thriftnb thrift)
++    INSTALL(FILES "${CMAKE_CURRENT_BINARY_DIR}/thrift-nb.pc"
++        DESTINATION lib/pkgconfig)
+ endif()
+ 
+ if(WITH_ZLIB)
+@@ -176,6 +199,8 @@
+     ADD_LIBRARY_THRIFT(thriftz ${thriftcppz_SOURCES})
+     TARGET_LINK_LIBRARIES_THRIFT(thriftz ${SYSLIBS} ${ZLIB_LIBRARIES})
+     TARGET_LINK_LIBRARIES_THRIFT_AGAINST_THRIFT_LIBRARY(thriftz thrift)
++    INSTALL(FILES "${CMAKE_CURRENT_BINARY_DIR}/thrift-z.pc"
++        DESTINATION lib/pkgconfig)
+ endif()
+ 
+ if(WITH_QT4)
+@@ -184,11 +209,15 @@
+     ADD_LIBRARY_THRIFT(thriftqt ${thriftcppqt_SOURCES})
+     TARGET_LINK_LIBRARIES_THRIFT(thriftqt ${SYSLIBS} Qt4::QtCore Qt4::QtNetwork)
+     TARGET_LINK_LIBRARIES_THRIFT_AGAINST_THRIFT_LIBRARY(thriftqt thrift)
++    INSTALL(FILES "${CMAKE_CURRENT_BINARY_DIR}/thrift-qt.pc"
++        DESTINATION lib/pkgconfig)
+ endif()
+ 
+ if(WITH_QT5)
+     # Qt5 has its own directory to avoid conflict with Qt4 caused by CMAKE_AUTOMOC
+     add_subdirectory(src/thrift/qt)
++    INSTALL(FILES "${CMAKE_CURRENT_BINARY_DIR}/thrift-qt5.pc"
++        DESTINATION lib/pkgconfig)
+ endif()
+ 
+ if(MSVC)
+Index: thrift-0.9.3/lib/cpp/thrift-nb.pc.in
+===================================================================
+--- thrift-0.9.3.orig/lib/cpp/thrift-nb.pc.in	2015-01-25 20:06:23.000000000 -0600
++++ thrift-0.9.3/lib/cpp/thrift-nb.pc.in	2016-05-31 15:37:21.202493610 -0600
+@@ -17,10 +17,10 @@
+ # under the License.
+ #
+ 
+-prefix=@prefix@
+-exec_prefix=@exec_prefix@
+-libdir=@libdir@
+-includedir=@includedir@
++prefix=@CMAKE_INSTALL_PREFIX@
++exec_prefix=@CMAKE_INSTALL_PREFIX@
++libdir=@PKG_CONFIG_LIBDIR@
++includedir=@PKG_CONFIG_INCLUDEDIR@
+ 
+ Name: Thrift
+ Description: Thrift Nonblocking API
+Index: thrift-0.9.3/lib/cpp/thrift.pc.in
+===================================================================
+--- thrift-0.9.3.orig/lib/cpp/thrift.pc.in	2015-01-25 20:06:23.000000000 -0600
++++ thrift-0.9.3/lib/cpp/thrift.pc.in	2016-05-31 15:37:21.202493610 -0600
+@@ -17,10 +17,10 @@
+ # under the License.
+ #
+ 
+-prefix=@prefix@
+-exec_prefix=@exec_prefix@
+-libdir=@libdir@
+-includedir=@includedir@
++prefix=@CMAKE_INSTALL_PREFIX@
++exec_prefix=@CMAKE_INSTALL_PREFIX@
++libdir=@PKG_CONFIG_LIBDIR@
++includedir=@PKG_CONFIG_INCLUDEDIR@
+ 
+ Name: Thrift
+ Description: Thrift C++ API
+Index: thrift-0.9.3/lib/cpp/thrift-qt5.pc.in
+===================================================================
+--- thrift-0.9.3.orig/lib/cpp/thrift-qt5.pc.in	2015-01-25 20:06:23.000000000 -0600
++++ thrift-0.9.3/lib/cpp/thrift-qt5.pc.in	2016-05-31 15:37:21.202493610 -0600
+@@ -17,10 +17,10 @@
+ # under the License.
+ #
+ 
+-prefix=@prefix@
+-exec_prefix=@exec_prefix@
+-libdir=@libdir@
+-includedir=@includedir@
++prefix=@CMAKE_INSTALL_PREFIX@
++exec_prefix=@CMAKE_INSTALL_PREFIX@
++libdir=@PKG_CONFIG_LIBDIR@
++includedir=@PKG_CONFIG_INCLUDEDIR@
+ 
+ Name: Thrift
+ Description: Thrift Qt5 API
+Index: thrift-0.9.3/lib/cpp/thrift-qt.pc.in
+===================================================================
+--- thrift-0.9.3.orig/lib/cpp/thrift-qt.pc.in	2015-01-25 20:06:23.000000000 -0600
++++ thrift-0.9.3/lib/cpp/thrift-qt.pc.in	2016-05-31 15:37:21.202493610 -0600
+@@ -17,10 +17,10 @@
+ # under the License.
+ #
+ 
+-prefix=@prefix@
+-exec_prefix=@exec_prefix@
+-libdir=@libdir@
+-includedir=@includedir@
++prefix=@CMAKE_INSTALL_PREFIX@
++exec_prefix=@CMAKE_INSTALL_PREFIX@
++libdir=@PKG_CONFIG_LIBDIR@
++includedir=@PKG_CONFIG_INCLUDEDIR@
+ 
+ Name: Thrift
+ Description: Thrift Qt API
+Index: thrift-0.9.3/lib/cpp/thrift-z.pc.in
+===================================================================
+--- thrift-0.9.3.orig/lib/cpp/thrift-z.pc.in	2015-01-25 20:06:23.000000000 -0600
++++ thrift-0.9.3/lib/cpp/thrift-z.pc.in	2016-05-31 15:37:21.202493610 -0600
+@@ -17,10 +17,10 @@
+ # under the License.
+ #
+ 
+-prefix=@prefix@
+-exec_prefix=@exec_prefix@
+-libdir=@libdir@
+-includedir=@includedir@
++prefix=@CMAKE_INSTALL_PREFIX@
++exec_prefix=@CMAKE_INSTALL_PREFIX@
++libdir=@PKG_CONFIG_LIBDIR@
++includedir=@PKG_CONFIG_INCLUDEDIR@
+ 
+ Name: Thrift
+ Description: Thrift Zlib API
