@@ -735,6 +735,7 @@ define TESTENV_PREPARE
 	     if [ -f $(BUILDDIR)/test/$(TESTSUITE)/code_under_test/$(1)/attributes.json.in ] ; then \
 		 $(call WARNING, Overriding the global attributes.json with the one from $(1)) ; \
 		 sed -e 's?@TEST_IMAGE@?$(TOPOLOGY_TEST_IMAGE):latest?' \
+			-e 's?@BUILD_ROOT@?$(BUILD_ROOT)?g' \
 		   $(BUILDDIR)/test/$(TESTSUITE)/code_under_test/$(1)/attributes.json.in \
 		   > $$output_attr_json ; \
 		 sed -i 's?@TEST_COV_DIR@?$(TOPOLOGY_TEST_COV_DIR)?g' $$output_attr_json ; \
