@@ -96,6 +96,7 @@ RDEPENDS_packagegroup-ops-min = "\
     libevent \
     util-linux \
     iptables \
+    arptables \
     "
 
 RDEPENDS_packagegroup-ops-min-debug = "\
