@@ -17,7 +17,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-openvswitch;protocol=http;bra
    file://bond_status_speed.patch \
 "
 
-SRCREV = "168822522aab9f13e68e8e5247ce2d7a928832f8"
+SRCREV = "ae74c6e7d4086bdc9942b33f2410ef87403e336e"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
