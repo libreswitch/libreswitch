@@ -22,7 +22,7 @@ DEPENDS = "tar-native qemu-native"
 IMAGE_FSTYPES = "vmdk tar.gz"
 
 CORE_NUMBER ??= "2"
-RAM_SIZE ??= "512"
+RAM_SIZE ??= "768"
 OVA_PRODUCT ??= "${DISTRO_NAME}"
 OVA_VENDOR ??= "${DISTRO_NAME}"
 OVA_VENDOR_URL ??= "http://www.openswitch.net"
