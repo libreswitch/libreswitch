@@ -8,7 +8,7 @@ BRANCH ?= "${OPS_REPO_BRANCH}"
 
 SRC_URI = "${OPS_REPO_BASE_URL}/ops-ansible;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH}"
 
-SRCREV = "75be9263b96a7fdc3e70c0030bd499e48cd7541a"
+SRCREV = "731bac108a59806709d0e44a57d5a5681aef32da"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
