@@ -15,6 +15,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-openvswitch;protocol=http;bra
    file://get_idl_txn.patch \
    file://ovsdb_json_error_msgs.patch \
    file://bond_status_speed.patch \
+   file://Populate-value-for-key-value-pair-of-max1.patch \
 "
 
 SRCREV = "ae74c6e7d4086bdc9942b33f2410ef87403e336e"
