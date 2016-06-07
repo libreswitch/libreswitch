@@ -1,4 +1,4 @@
-From 012f5582d8c05900a08d0e40fbfb41a96371f255 Mon Sep 17 00:00:00 2001
+From 1f9a255ebd5bac67f1d41a6533038953d382d1c9 Mon Sep 17 00:00:00 2001
 From: "Marcelo E. Magallon" <marcelo.magallon@hpe.com>
 Date: Mon, 23 May 2016 13:19:39 -0600
 Subject: [PATCH 01/22] Sync OVS 2.5 to OPS
@@ -7,8 +7,6 @@ Starting commit is 976b441345df85dd7adb973f8ae208f588d764a0
 
 Signed-off-by: Marcelo E. Magallon <marcelo.magallon@hpe.com>
 Signed-off-by: Javier Albornoz <javier.albornoz@hpe.com>
-
-
 ---
  .gitignore                                        |    6 +-
  Makefile.am                                       |  121 +-
@@ -82,11 +80,11 @@ Signed-off-by: Javier Albornoz <javier.albornoz@hpe.com>
  utilities/ovs-ofctl.8.in                          |    2 +-
  utilities/ovs-sim.1.xml                           |    4 +-
  utilities/ovs-sim.in                              |    2 +-
- utilities/ovs-vsctl.c                             | 1254 +++++-
+ utilities/ovs-vsctl.c                             | 1255 +++++-
  vswitchd/vswitch.ovsschema                        |  610 ---
  vswitchd/vswitch.xml                              | 4724 ---------------------
  vtep/automake.mk                                  |    2 +-
- 76 files changed, 3108 insertions(+), 5840 deletions(-)
+ 76 files changed, 3109 insertions(+), 5840 deletions(-)
  create mode 100644 lib/libovscommon.pc
  create mode 100644 lib/libovscommon.pc.in
  create mode 100644 lib/libovscommon.sym.in
@@ -4285,7 +4283,7 @@ index 1702f0e..fce6273 100755
  		sim_setvars $1
  	    else
 diff --git a/utilities/ovs-vsctl.c b/utilities/ovs-vsctl.c
-index 36290db..42925a5 100644
+index 36290db..6524fa1 100644
 --- a/utilities/ovs-vsctl.c
 +++ b/utilities/ovs-vsctl.c
 @@ -1,5 +1,6 @@
@@ -4397,7 +4395,7 @@ index 36290db..42925a5 100644
  
  static struct vsctl_bridge *
  find_vlan_bridge(struct vsctl_bridge *parent, int vlan)
-@@ -621,6 +670,37 @@ find_vlan_bridge(struct vsctl_bridge *parent, int vlan)
+@@ -621,6 +670,38 @@ find_vlan_bridge(struct vsctl_bridge *parent, int vlan)
      return NULL;
  }
  
@@ -4409,13 +4407,14 @@ index 36290db..42925a5 100644
 +    struct vsctl_vrf *vrf = xmalloc(sizeof *vrf);
 +    vrf->vrf_cfg = vrf_cfg;
 +    vrf->name = xstrdup(name);
++    ovs_assert(vrf->name);
 +    list_init(&vrf->ports);
 +    shash_add(&ctx->vrfs, vrf->name, vrf);
 +    return vrf;
 +}
 +
 +static struct vsctl_port *
-+add_vrf_port_to_cache(struct vsctl_context *ctx, struct vsctl_vrf *parent_vrf, 
++add_vrf_port_to_cache(struct vsctl_context *ctx, struct vsctl_vrf *parent_vrf,
 +                      struct ovsrec_port *port_cfg)
 +{
 +    struct vsctl_port *port;
@@ -4435,7 +4434,7 @@ index 36290db..42925a5 100644
  static struct vsctl_port *
  add_port_to_cache(struct vsctl_context *vsctl_ctx, struct vsctl_bridge *parent,
                    struct ovsrec_port *port_cfg)
-@@ -642,6 +722,9 @@ add_port_to_cache(struct vsctl_context *vsctl_ctx, struct vsctl_bridge *parent,
+@@ -642,6 +723,9 @@ add_port_to_cache(struct vsctl_context *vsctl_ctx, struct vsctl_bridge *parent,
      list_init(&port->ifaces);
      port->port_cfg = port_cfg;
      port->bridge = parent;
@@ -4445,7 +4444,7 @@ index 36290db..42925a5 100644
      shash_add(&vsctl_ctx->ports, port_cfg->name, port);
  
      return port;
-@@ -657,6 +740,36 @@ del_cached_port(struct vsctl_context *vsctl_ctx, struct vsctl_port *port)
+@@ -657,6 +741,36 @@ del_cached_port(struct vsctl_context *vsctl_ctx, struct vsctl_port *port)
      free(port);
  }
  
@@ -4482,7 +4481,7 @@ index 36290db..42925a5 100644
  static struct vsctl_iface *
  add_iface_to_cache(struct vsctl_context *vsctl_ctx, struct vsctl_port *parent,
                     struct ovsrec_interface *iface_cfg)
-@@ -700,8 +813,20 @@ vsctl_context_invalidate_cache(struct ctl_context *ctx)
+@@ -700,8 +814,20 @@ vsctl_context_invalidate_cache(struct ctl_context *ctx)
      }
      shash_destroy(&vsctl_ctx->bridges);
  
@@ -4503,7 +4502,7 @@ index 36290db..42925a5 100644
  }
  
  static void
-@@ -710,18 +835,31 @@ pre_get_info(struct ctl_context *ctx)
+@@ -710,18 +836,31 @@ pre_get_info(struct ctl_context *ctx)
      ovsdb_idl_add_column(ctx->idl, &ovsrec_open_vswitch_col_bridges);
  
      ovsdb_idl_add_column(ctx->idl, &ovsrec_bridge_col_name);
@@ -4536,7 +4535,7 @@ index 36290db..42925a5 100644
  }
  
  static void
-@@ -730,6 +868,9 @@ vsctl_context_populate_cache(struct ctl_context *ctx)
+@@ -730,6 +869,9 @@ vsctl_context_populate_cache(struct ctl_context *ctx)
      struct vsctl_context *vsctl_ctx = vsctl_context_cast(ctx);
      const struct ovsrec_open_vswitch *ovs = vsctl_ctx->ovs;
      struct sset bridges, ports;
@@ -4546,7 +4545,7 @@ index 36290db..42925a5 100644
      size_t i;
  
      if (vsctl_ctx->cache_valid) {
-@@ -740,6 +881,15 @@ vsctl_context_populate_cache(struct ctl_context *ctx)
+@@ -740,6 +882,15 @@ vsctl_context_populate_cache(struct ctl_context *ctx)
      shash_init(&vsctl_ctx->bridges);
      shash_init(&vsctl_ctx->ports);
      shash_init(&vsctl_ctx->ifaces);
@@ -4562,7 +4561,7 @@ index 36290db..42925a5 100644
  
      sset_init(&bridges);
      sset_init(&ports);
-@@ -755,6 +905,10 @@ vsctl_context_populate_cache(struct ctl_context *ctx)
+@@ -755,6 +906,10 @@ vsctl_context_populate_cache(struct ctl_context *ctx)
          }
          br = add_bridge_to_cache(vsctl_ctx, br_cfg, br_cfg->name, NULL, 0);
  
@@ -4573,7 +4572,7 @@ index 36290db..42925a5 100644
          for (j = 0; j < br_cfg->n_ports; j++) {
              struct ovsrec_port *port_cfg = br_cfg->ports[j];
  
-@@ -763,11 +917,13 @@ vsctl_context_populate_cache(struct ctl_context *ctx)
+@@ -763,11 +918,13 @@ vsctl_context_populate_cache(struct ctl_context *ctx)
                  continue;
              }
  
@@ -4587,7 +4586,7 @@ index 36290db..42925a5 100644
          }
      }
      sset_destroy(&bridges);
-@@ -803,11 +959,12 @@ vsctl_context_populate_cache(struct ctl_context *ctx)
+@@ -803,11 +960,12 @@ vsctl_context_populate_cache(struct ctl_context *ctx)
                  continue;
              }
  
@@ -4601,7 +4600,7 @@ index 36290db..42925a5 100644
              port = add_port_to_cache(vsctl_ctx, br, port_cfg);
              for (k = 0; k < port_cfg->n_interfaces; k++) {
                  struct ovsrec_interface *iface_cfg = port_cfg->interfaces[k];
-@@ -835,7 +992,113 @@ vsctl_context_populate_cache(struct ctl_context *ctx)
+@@ -835,7 +993,113 @@ vsctl_context_populate_cache(struct ctl_context *ctx)
              }
          }
      }
@@ -4715,7 +4714,7 @@ index 36290db..42925a5 100644
  }
  
  static void
-@@ -858,6 +1121,12 @@ check_conflicts(struct vsctl_context *vsctl_ctx, const char *name,
+@@ -858,6 +1122,12 @@ check_conflicts(struct vsctl_context *vsctl_ctx, const char *name,
                      "bridge %s", msg, name, port->bridge->name);
      }
  
@@ -4728,7 +4727,7 @@ index 36290db..42925a5 100644
      iface = shash_find_data(&vsctl_ctx->ifaces, name);
      if (iface) {
          ctl_fatal("%s because an interface named %s already exists "
-@@ -882,6 +1151,7 @@ find_bridge(struct vsctl_context *vsctl_ctx, const char *name, bool must_exist)
+@@ -882,6 +1152,7 @@ find_bridge(struct vsctl_context *vsctl_ctx, const char *name, bool must_exist)
      return br;
  }
  
@@ -4736,7 +4735,7 @@ index 36290db..42925a5 100644
  static struct vsctl_bridge *
  find_real_bridge(struct vsctl_context *vsctl_ctx,
                   const char *name, bool must_exist)
-@@ -892,7 +1162,7 @@ find_real_bridge(struct vsctl_context *vsctl_ctx,
+@@ -892,7 +1163,7 @@ find_real_bridge(struct vsctl_context *vsctl_ctx,
      }
      return br;
  }
@@ -4745,7 +4744,7 @@ index 36290db..42925a5 100644
  static struct vsctl_port *
  find_port(struct vsctl_context *vsctl_ctx, const char *name, bool must_exist)
  {
-@@ -911,6 +1181,23 @@ find_port(struct vsctl_context *vsctl_ctx, const char *name, bool must_exist)
+@@ -911,6 +1182,23 @@ find_port(struct vsctl_context *vsctl_ctx, const char *name, bool must_exist)
      return port;
  }
  
@@ -4769,7 +4768,7 @@ index 36290db..42925a5 100644
  static struct vsctl_iface *
  find_iface(struct vsctl_context *vsctl_ctx, const char *name, bool must_exist)
  {
-@@ -986,18 +1273,45 @@ static struct cmd_show_table cmd_show_tables[] = {
+@@ -986,18 +1274,45 @@ static struct cmd_show_table cmd_show_tables[] = {
       NULL,
       {&ovsrec_open_vswitch_col_manager_options,
        &ovsrec_open_vswitch_col_bridges,
@@ -4816,7 +4815,7 @@ index 36290db..42925a5 100644
      {&ovsrec_table_port,
       &ovsrec_port_col_name,
       {&ovsrec_port_col_tag,
-@@ -1009,11 +1323,14 @@ static struct cmd_show_table cmd_show_tables[] = {
+@@ -1009,11 +1324,14 @@ static struct cmd_show_table cmd_show_tables[] = {
      {&ovsrec_table_interface,
       &ovsrec_interface_col_name,
       {&ovsrec_interface_col_type,
@@ -4831,7 +4830,7 @@ index 36290db..42925a5 100644
      {&ovsrec_table_controller,
       &ovsrec_controller_col_target,
       {&ovsrec_controller_col_is_connected,
-@@ -1021,7 +1338,117 @@ static struct cmd_show_table cmd_show_tables[] = {
+@@ -1021,7 +1339,117 @@ static struct cmd_show_table cmd_show_tables[] = {
        NULL},
       {NULL, NULL, NULL}
      },
@@ -4950,7 +4949,7 @@ index 36290db..42925a5 100644
      {&ovsrec_table_manager,
       &ovsrec_manager_col_target,
       {&ovsrec_manager_col_is_connected,
-@@ -1039,6 +1466,7 @@ pre_cmd_emer_reset(struct ctl_context *ctx)
+@@ -1039,6 +1467,7 @@ pre_cmd_emer_reset(struct ctl_context *ctx)
      ovsdb_idl_add_column(ctx->idl, &ovsrec_open_vswitch_col_manager_options);
      ovsdb_idl_add_column(ctx->idl, &ovsrec_open_vswitch_col_ssl);
  
@@ -4958,7 +4957,7 @@ index 36290db..42925a5 100644
      ovsdb_idl_add_column(ctx->idl, &ovsrec_bridge_col_controller);
      ovsdb_idl_add_column(ctx->idl, &ovsrec_bridge_col_fail_mode);
      ovsdb_idl_add_column(ctx->idl, &ovsrec_bridge_col_mirrors);
-@@ -1046,14 +1474,17 @@ pre_cmd_emer_reset(struct ctl_context *ctx)
+@@ -1046,14 +1475,17 @@ pre_cmd_emer_reset(struct ctl_context *ctx)
      ovsdb_idl_add_column(ctx->idl, &ovsrec_bridge_col_sflow);
      ovsdb_idl_add_column(ctx->idl, &ovsrec_bridge_col_ipfix);
      ovsdb_idl_add_column(ctx->idl, &ovsrec_bridge_col_flood_vlans);
@@ -4976,7 +4975,7 @@ index 36290db..42925a5 100644
  }
  
  static void
-@@ -1063,16 +1494,21 @@ cmd_emer_reset(struct ctl_context *ctx)
+@@ -1063,16 +1495,21 @@ cmd_emer_reset(struct ctl_context *ctx)
      const struct ovsdb_idl *idl = ctx->idl;
      const struct ovsrec_bridge *br;
      const struct ovsrec_port *port;
@@ -4999,7 +4998,7 @@ index 36290db..42925a5 100644
      /* Reset the Open_vSwitch table. */
      ovsrec_open_vswitch_set_manager_options(vsctl_ctx->ovs, NULL, 0);
      ovsrec_open_vswitch_set_ssl(vsctl_ctx->ovs, NULL);
-@@ -1080,6 +1516,7 @@ cmd_emer_reset(struct ctl_context *ctx)
+@@ -1080,6 +1517,7 @@ cmd_emer_reset(struct ctl_context *ctx)
      OVSREC_BRIDGE_FOR_EACH (br, idl) {
          const char *hwaddr;
  
@@ -5007,7 +5006,7 @@ index 36290db..42925a5 100644
          ovsrec_bridge_set_controller(br, NULL, 0);
          ovsrec_bridge_set_fail_mode(br, NULL);
          ovsrec_bridge_set_mirrors(br, NULL, 0);
-@@ -1087,6 +1524,7 @@ cmd_emer_reset(struct ctl_context *ctx)
+@@ -1087,6 +1525,7 @@ cmd_emer_reset(struct ctl_context *ctx)
          ovsrec_bridge_set_sflow(br, NULL);
          ovsrec_bridge_set_ipfix(br, NULL);
          ovsrec_bridge_set_flood_vlans(br, NULL, 0);
@@ -5015,7 +5014,7 @@ index 36290db..42925a5 100644
  
          /* We only want to save the "hwaddr" key from other_config. */
          hwaddr = smap_get(&br->other_config, "hwaddr");
-@@ -1102,6 +1540,7 @@ cmd_emer_reset(struct ctl_context *ctx)
+@@ -1102,6 +1541,7 @@ cmd_emer_reset(struct ctl_context *ctx)
          ovsrec_port_set_other_config(port, NULL);
      }
  
@@ -5023,7 +5022,7 @@ index 36290db..42925a5 100644
      OVSREC_INTERFACE_FOR_EACH (iface, idl) {
          /* xxx What do we do about gre/patch devices created by mgr? */
  
-@@ -1116,19 +1555,21 @@ cmd_emer_reset(struct ctl_context *ctx)
+@@ -1116,19 +1556,21 @@ cmd_emer_reset(struct ctl_context *ctx)
      OVSREC_CONTROLLER_FOR_EACH_SAFE (ctrl, next_ctrl, idl) {
          ovsrec_controller_delete(ctrl);
      }
@@ -5047,7 +5046,7 @@ index 36290db..42925a5 100644
      OVSREC_SFLOW_FOR_EACH_SAFE (sflow, next_sflow, idl) {
          ovsrec_sflow_delete(sflow);
      }
-@@ -1140,7 +1581,7 @@ cmd_emer_reset(struct ctl_context *ctx)
+@@ -1140,7 +1582,7 @@ cmd_emer_reset(struct ctl_context *ctx)
      OVSREC_FLOW_SAMPLE_COLLECTOR_SET_FOR_EACH_SAFE (fscset, next_fscset, idl) {
          ovsrec_flow_sample_collector_set_delete(fscset);
      }
@@ -5056,7 +5055,7 @@ index 36290db..42925a5 100644
      vsctl_context_invalidate_cache(ctx);
  }
  
-@@ -1150,21 +1591,33 @@ cmd_add_br(struct ctl_context *ctx)
+@@ -1150,21 +1592,33 @@ cmd_add_br(struct ctl_context *ctx)
      struct vsctl_context *vsctl_ctx = vsctl_context_cast(ctx);
      bool may_exist = shash_find(&ctx->options, "--may-exist") != NULL;
      const char *br_name, *parent_name;
@@ -5092,7 +5091,7 @@ index 36290db..42925a5 100644
                      ctx->argv[0]);
      }
  
-@@ -1174,6 +1627,7 @@ cmd_add_br(struct ctl_context *ctx)
+@@ -1174,6 +1628,7 @@ cmd_add_br(struct ctl_context *ctx)
  
          br = find_bridge(vsctl_ctx, br_name, false);
          if (br) {
@@ -5100,7 +5099,7 @@ index 36290db..42925a5 100644
              if (!parent_name) {
                  if (br->parent) {
                      ctl_fatal("\"--may-exist add-br %s\" but %s is "
-@@ -1196,6 +1650,7 @@ cmd_add_br(struct ctl_context *ctx)
+@@ -1196,6 +1651,7 @@ cmd_add_br(struct ctl_context *ctx)
                                  br_name, parent_name, vlan, br_name, br->vlan);
                  }
              }
@@ -5108,7 +5107,7 @@ index 36290db..42925a5 100644
              return;
          }
      }
-@@ -1203,9 +1658,12 @@ cmd_add_br(struct ctl_context *ctx)
+@@ -1203,9 +1659,12 @@ cmd_add_br(struct ctl_context *ctx)
                      xasprintf("cannot create a bridge named %s", br_name));
  
      if (!parent_name) {
@@ -5121,7 +5120,7 @@ index 36290db..42925a5 100644
          iface = ovsrec_interface_insert(ctx->txn);
          ovsrec_interface_set_name(iface, br_name);
          ovsrec_interface_set_type(iface, "internal");
-@@ -1213,13 +1671,18 @@ cmd_add_br(struct ctl_context *ctx)
+@@ -1213,13 +1672,18 @@ cmd_add_br(struct ctl_context *ctx)
          port = ovsrec_port_insert(ctx->txn);
          ovsrec_port_set_name(port, br_name);
          ovsrec_port_set_interfaces(port, &iface, 1);
@@ -5141,7 +5140,7 @@ index 36290db..42925a5 100644
          struct vsctl_bridge *conflict;
          struct vsctl_bridge *parent;
          struct ovsrec_port *port;
-@@ -1254,6 +1717,7 @@ cmd_add_br(struct ctl_context *ctx)
+@@ -1254,6 +1718,7 @@ cmd_add_br(struct ctl_context *ctx)
      }
  
      post_db_reload_expect_iface(iface);
@@ -5149,7 +5148,7 @@ index 36290db..42925a5 100644
      vsctl_context_invalidate_cache(ctx);
  }
  
-@@ -1275,25 +1739,30 @@ del_port(struct vsctl_context *vsctl_ctx, struct vsctl_port *port)
+@@ -1275,25 +1740,30 @@ del_port(struct vsctl_context *vsctl_ctx, struct vsctl_port *port)
  static void
  del_bridge(struct vsctl_context *vsctl_ctx, struct vsctl_bridge *br)
  {
@@ -5181,7 +5180,7 @@ index 36290db..42925a5 100644
      del_cached_bridge(vsctl_ctx, br);
  }
  
-@@ -1309,6 +1778,13 @@ cmd_del_br(struct ctl_context *ctx)
+@@ -1309,6 +1779,13 @@ cmd_del_br(struct ctl_context *ctx)
      if (bridge) {
          del_bridge(vsctl_ctx, bridge);
      }
@@ -5195,7 +5194,7 @@ index 36290db..42925a5 100644
  }
  
  static void
-@@ -1467,6 +1943,584 @@ cmd_br_get_external_id(struct ctl_context *ctx)
+@@ -1467,6 +1944,584 @@ cmd_br_get_external_id(struct ctl_context *ctx)
      }
  }
  
@@ -5780,7 +5779,7 @@ index 36290db..42925a5 100644
  static void
  cmd_list_ports(struct ctl_context *ctx)
  {
-@@ -1492,7 +2546,12 @@ cmd_list_ports(struct ctl_context *ctx)
+@@ -1492,7 +2547,12 @@ cmd_list_ports(struct ctl_context *ctx)
  static void
  add_port(struct ctl_context *ctx,
           const char *br_name, const char *port_name,
@@ -5794,12 +5793,12 @@ index 36290db..42925a5 100644
           char *iface_names[], int n_ifaces,
           char *settings[], int n_settings)
  {
-@@ -1524,11 +2583,24 @@ add_port(struct ctl_context *ctx,
+@@ -1524,11 +2584,24 @@ add_port(struct ctl_context *ctx,
              }
              svec_sort(&have_names);
  
 +#ifdef OPS
-+            if (vsctl_port->port_type == BR_PORT && 
++            if (vsctl_port->port_type == BR_PORT &&
 +                strcmp(vsctl_port->bridge->name, br_name)) {
 +                char *command = vsctl_context_to_string(ctx);
 +                ctl_fatal("\"%s\" but %s is actually attached to bridge %s",
@@ -5819,7 +5818,7 @@ index 36290db..42925a5 100644
  
              if (!svec_equal(&want_names, &have_names)) {
                  char *have_names_string = svec_join(&have_names, ", ", "");
-@@ -1555,15 +2627,27 @@ add_port(struct ctl_context *ctx,
+@@ -1555,15 +2628,27 @@ add_port(struct ctl_context *ctx,
  
      ifaces = xmalloc(n_ifaces * sizeof *ifaces);
      for (i = 0; i < n_ifaces; i++) {
@@ -5850,7 +5849,7 @@ index 36290db..42925a5 100644
  
      if (bridge->parent) {
          int64_t tag = bridge->vlan;
-@@ -1580,7 +2664,14 @@ add_port(struct ctl_context *ctx,
+@@ -1580,7 +2665,14 @@ add_port(struct ctl_context *ctx,
  
      vsctl_port = add_port_to_cache(vsctl_ctx, bridge, port);
      for (i = 0; i < n_ifaces; i++) {
@@ -5866,7 +5865,7 @@ index 36290db..42925a5 100644
      }
      free(ifaces);
  }
-@@ -1673,6 +2764,13 @@ cmd_del_port(struct ctl_context *ctx)
+@@ -1673,6 +2765,13 @@ cmd_del_port(struct ctl_context *ctx)
  
          del_port(vsctl_ctx, port);
      }
@@ -5880,7 +5879,7 @@ index 36290db..42925a5 100644
  }
  
  static void
-@@ -1753,6 +2851,7 @@ cmd_iface_to_br(struct ctl_context *ctx)
+@@ -1753,6 +2852,7 @@ cmd_iface_to_br(struct ctl_context *ctx)
      ds_put_format(&ctx->output, "%s\n", iface->port->bridge->name);
  }
  
@@ -5888,7 +5887,7 @@ index 36290db..42925a5 100644
  static void
  verify_controllers(struct ovsrec_bridge *bridge)
  {
-@@ -1919,7 +3018,7 @@ cmd_set_fail_mode(struct ctl_context *ctx)
+@@ -1919,7 +3019,7 @@ cmd_set_fail_mode(struct ctl_context *ctx)
  
      ovsrec_bridge_set_fail_mode(br->br_cfg, fail_mode);
  }
@@ -5897,7 +5896,7 @@ index 36290db..42925a5 100644
  static void
  verify_managers(const struct ovsrec_open_vswitch *ovs)
  {
-@@ -2100,6 +3199,7 @@ cmd_set_ssl(struct ctl_context *ctx)
+@@ -2100,6 +3200,7 @@ cmd_set_ssl(struct ctl_context *ctx)
      ovsrec_open_vswitch_set_ssl(vsctl_ctx->ovs, ssl);
  }
  
@@ -5905,7 +5904,7 @@ index 36290db..42925a5 100644
  static void
  autoattach_insert_mapping(struct ovsrec_autoattach *aa,
                            int64_t isid,
-@@ -2275,37 +3375,100 @@ cmd_get_aa_mapping(struct ctl_context *ctx)
+@@ -2275,37 +3376,100 @@ cmd_get_aa_mapping(struct ctl_context *ctx)
          }
      }
  }
@@ -6010,7 +6009,7 @@ index 36290db..42925a5 100644
      {&ovsrec_table_open_vswitch,
       {{&ovsrec_table_open_vswitch, NULL, NULL},
        {NULL, NULL, NULL}}},
-@@ -2314,6 +3477,7 @@ static const struct ctl_table_class tables[] = {
+@@ -2314,6 +3478,7 @@ static const struct ctl_table_class tables[] = {
       {{&ovsrec_table_port, &ovsrec_port_col_name, NULL},
        {NULL, NULL, NULL}}},
  
@@ -6018,7 +6017,7 @@ index 36290db..42925a5 100644
      {&ovsrec_table_qos,
       {{&ovsrec_table_port, &ovsrec_port_col_name, &ovsrec_port_col_qos},
        {NULL, NULL, NULL}}},
-@@ -2321,10 +3485,11 @@ static const struct ctl_table_class tables[] = {
+@@ -2321,10 +3486,11 @@ static const struct ctl_table_class tables[] = {
      {&ovsrec_table_queue,
       {{NULL, NULL, NULL},
        {NULL, NULL, NULL}}},
@@ -6031,7 +6030,7 @@ index 36290db..42925a5 100644
      {&ovsrec_table_sflow,
       {{&ovsrec_table_bridge,
         &ovsrec_bridge_col_name,
-@@ -2351,7 +3516,7 @@ static const struct ctl_table_class tables[] = {
+@@ -2351,7 +3517,7 @@ static const struct ctl_table_class tables[] = {
      {&ovsrec_table_flow_sample_collector_set,
       {{NULL, NULL, NULL},
        {NULL, NULL, NULL}}},
@@ -6040,7 +6039,7 @@ index 36290db..42925a5 100644
      {NULL, {{NULL, NULL, NULL}, {NULL, NULL, NULL}}}
  };
  
-@@ -2372,6 +3537,7 @@ post_db_reload_expect_iface(const struct ovsrec_interface *iface)
+@@ -2372,6 +3538,7 @@ post_db_reload_expect_iface(const struct ovsrec_interface *iface)
      neoteric_ifaces[n_neoteric_ifaces++] = iface->header_.uuid;
  }
  
@@ -6048,7 +6047,7 @@ index 36290db..42925a5 100644
  static void
  post_db_reload_do_checks(const struct vsctl_context *vsctl_ctx)
  {
-@@ -2401,6 +3567,7 @@ post_db_reload_do_checks(const struct vsctl_context *vsctl_ctx)
+@@ -2401,6 +3568,7 @@ post_db_reload_do_checks(const struct vsctl_context *vsctl_ctx)
  
      ds_destroy(&dead_ifaces);
  }
@@ -6056,7 +6055,7 @@ index 36290db..42925a5 100644
  
  
  static void
-@@ -2632,7 +3799,9 @@ do_vsctl(const char *args, struct ctl_command *commands, size_t n_commands,
+@@ -2632,7 +3800,9 @@ do_vsctl(const char *args, struct ctl_command *commands, size_t n_commands,
              ovsdb_idl_run(idl);
              OVSREC_OPEN_VSWITCH_FOR_EACH (ovs, idl) {
                  if (ovs->cur_cfg >= next_cfg) {
@@ -6066,7 +6065,7 @@ index 36290db..42925a5 100644
                      goto done;
                  }
              }
-@@ -2707,8 +3876,12 @@ static const struct ctl_command_syntax vsctl_commands[] = {
+@@ -2707,8 +3877,12 @@ static const struct ctl_command_syntax vsctl_commands[] = {
       cmd_add_br, NULL, "--may-exist", RW},
      {"del-br", 1, 1, "BRIDGE", pre_get_info, cmd_del_br,
       NULL, "--if-exists", RW},
@@ -6079,7 +6078,7 @@ index 36290db..42925a5 100644
      {"br-exists", 1, 1, "BRIDGE", pre_get_info, cmd_br_exists, NULL, "", RO},
      {"br-to-vlan", 1, 1, "BRIDGE", pre_get_info, cmd_br_to_vlan, NULL, "",
       RO},
-@@ -2719,6 +3892,31 @@ static const struct ctl_command_syntax vsctl_commands[] = {
+@@ -2719,6 +3893,31 @@ static const struct ctl_command_syntax vsctl_commands[] = {
      {"br-get-external-id", 1, 2, "BRIDGE [KEY]", pre_cmd_br_get_external_id,
       cmd_br_get_external_id, NULL, "", RO},
  
@@ -6111,7 +6110,7 @@ index 36290db..42925a5 100644
      /* Port commands. */
      {"list-ports", 1, 1, "BRIDGE", pre_get_info, cmd_list_ports, NULL, "",
       RO},
-@@ -2737,6 +3935,7 @@ static const struct ctl_command_syntax vsctl_commands[] = {
+@@ -2737,6 +3936,7 @@ static const struct ctl_command_syntax vsctl_commands[] = {
      {"iface-to-br", 1, 1, "IFACE", pre_get_info, cmd_iface_to_br, NULL, "",
       RO},
  
@@ -6119,7 +6118,7 @@ index 36290db..42925a5 100644
      /* Controller commands. */
      {"get-controller", 1, 1, "BRIDGE", pre_controller, cmd_get_controller,
       NULL, "", RO},
-@@ -2750,7 +3949,7 @@ static const struct ctl_command_syntax vsctl_commands[] = {
+@@ -2750,7 +3950,7 @@ static const struct ctl_command_syntax vsctl_commands[] = {
       "", RW},
      {"set-fail-mode", 2, 2, "BRIDGE MODE", pre_get_info, cmd_set_fail_mode,
       NULL, "", RW},
@@ -6128,7 +6127,7 @@ index 36290db..42925a5 100644
      /* Manager commands. */
      {"get-manager", 0, 0, "", pre_manager, cmd_get_manager, NULL, "", RO},
      {"del-manager", 0, 0, "", pre_manager, cmd_del_manager, NULL, "", RW},
-@@ -2763,6 +3962,7 @@ static const struct ctl_command_syntax vsctl_commands[] = {
+@@ -2763,6 +3963,7 @@ static const struct ctl_command_syntax vsctl_commands[] = {
      {"set-ssl", 3, 3, "PRIVATE-KEY CERTIFICATE CA-CERT", pre_cmd_set_ssl,
       cmd_set_ssl, NULL, "--bootstrap", RW},
  
@@ -6136,7 +6135,7 @@ index 36290db..42925a5 100644
      /* Auto Attach commands. */
      {"add-aa-mapping", 3, 3, "BRIDGE ARG ARG", pre_aa_mapping, cmd_add_aa_mapping,
       NULL, "", RW},
-@@ -2770,7 +3970,7 @@ static const struct ctl_command_syntax vsctl_commands[] = {
+@@ -2770,7 +3971,7 @@ static const struct ctl_command_syntax vsctl_commands[] = {
       NULL, "", RW},
      {"get-aa-mapping", 1, 1, "BRIDGE", pre_aa_mapping, cmd_get_aa_mapping,
       NULL, "", RO},
@@ -11505,5 +11504,5 @@ index de028b6..b8c6f5a 100644
  
  # ovs-vtep
 -- 
-2.1.4
+1.9.1
 
