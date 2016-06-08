@@ -11,6 +11,7 @@ PV = "${KERNEL_RELEASE}"
 
 SRC_URI = "http://archive.openswitch.net/linux-3.9.11.tar.xz;name=kernel \
     file://fix-make-headers-install-when-path-too-long.patch \
+    file://fix-autoneg-100mbps-igb.patch \
 "
 
 SRC_URI[kernel.md5sum] = "edbf88eb7f7d34dbd5d3887726790755"
