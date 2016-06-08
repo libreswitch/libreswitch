@@ -70,3 +70,9 @@ pyyaml==3.11
 
 # topology common library
 -e git+https://git.openswitch.net/openswitch/ops-topology-common@master#egg=topology_common
+
+# ntpd communication library:
+-e git+https://github.com/HPENetworking/topology_lib_ntpd@0.1.0#egg=topology_lib_ntpd
+
+# vlan communication library:
+-e git+https://github.com/HPENetworking/topology_lib_vlan@0.1.0#egg=topology_lib_vlan
