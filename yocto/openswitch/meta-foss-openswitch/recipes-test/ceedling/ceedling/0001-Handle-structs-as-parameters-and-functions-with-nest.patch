@@ -1,18 +1,18 @@
-From b03f33d636dea492a03a22d52f440e74c6e92763 Mon Sep 17 00:00:00 2001
+From a5e3ccefd293b5ef59f29ae990b412ee7918644a Mon Sep 17 00:00:00 2001
 From: Damien Keehn <damien.keehn@hpe.com>
 Date: Mon, 9 May 2016 11:27:10 -0700
 Subject: [PATCH 1/1] Handle structs as parameters and functions with nested
  curlys.
 
 ---
- lib/cmock_header_parser.rb | 53 ++++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 51 insertions(+), 2 deletions(-)
+ lib/cmock_header_parser.rb | 52 ++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 50 insertions(+), 2 deletions(-)
 
 diff --git a/lib/cmock_header_parser.rb b/lib/cmock_header_parser.rb
-index f53b961..bfafef3 100644
+index f53b961..56a897c 100644
 --- a/lib/cmock_header_parser.rb
 +++ b/lib/cmock_header_parser.rb
-@@ -45,6 +45,53 @@ class CMockHeaderParser
+@@ -45,6 +45,52 @@ class CMockHeaderParser
 
    private if $ThisIsOnlyATest.nil? ################
 
@@ -65,7 +65,7 @@ index f53b961..bfafef3 100644
    def import_source(source)
 
      # let's clean up the encoding in case they've done anything weird with the characters we might find
-@@ -93,8 +140,8 @@ class CMockHeaderParser
+@@ -93,8 +139,8 @@ class CMockHeaderParser
        "#{functype} #{$2.strip}(#{$3});"
      end
 
@@ -76,7 +76,7 @@ index f53b961..bfafef3 100644
 
      # remove pairs of braces because no function declarations will be inside of them
      #source.gsub!(/\{[^\}]*\}/m, '')
-@@ -159,6 +206,8 @@ class CMockHeaderParser
+@@ -159,6 +205,8 @@ class CMockHeaderParser
        return 'void'
      else
        c=0
