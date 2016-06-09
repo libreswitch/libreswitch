@@ -33,8 +33,14 @@ do_install() {
      cmake_do_install
      install -d ${D}${systemd_unitdir}/system
      install -m 0644 ${WORKDIR}/ops-ntpd.service ${D}${systemd_unitdir}/system/
+
+     # Code to copy NTP custom validators to /usr/share/opsplugins.
+     install -d ${D}/usr/share/opsplugins
+     for plugin in $(find ${S}/opsplugins -name "*.py"); do \
+         install -m 0644 ${plugin} ${D}/usr/share/opsplugins
+     done
 }
 
-FILES_${PN} += "/usr/lib/cli/plugins/"
+FILES_${PN} += "/usr/lib/cli/plugins/ /usr/share/opsplugins"
 SYSTEMD_PACKAGES = "${PN}"
 SYSTEMD_SERVICE_${PN} = "ops-ntpd.service"
