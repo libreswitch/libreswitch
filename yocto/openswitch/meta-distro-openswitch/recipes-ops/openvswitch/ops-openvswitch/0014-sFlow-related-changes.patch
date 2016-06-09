@@ -1,14 +1,14 @@
-From bff36318fad97fd28be493a247c837c44b3c4ce5 Mon Sep 17 00:00:00 2001
+From 693b73177570f47f7a8c1eec110aaac7189155da Mon Sep 17 00:00:00 2001
 From: Vasanth Viswanathan <vasanth.viswanathan@hpe.com>
 Date: Wed, 23 Mar 2016 23:29:33 -0700
-Subject: [PATCH 14/22] sFlow related changes
+Subject: [PATCH] sFlow related changes
 
 * sFlow related changes merged from feature/sflow branch
 * Addded constants used in sFlow CLI
 
 Signed-off-by: Vasanth Viswanathan <vasanth.viswanathan@hpe.com>
 
-
+%% original patch: 0014-sFlow-related-changes.patch
 ---
  lib/automake.mk      |  4 ++++
  lib/netdev.h         |  9 +++++++++
@@ -16,8 +16,8 @@ Signed-off-by: Vasanth Viswanathan <vasanth.viswanathan@hpe.com>
  lib/sflow_api.h      |  7 +++++++
  lib/sflow_receiver.c | 36 ++++++++++++++++++++++++++++++++++++
  ofproto/automake.mk  |  1 +
- ofproto/ofproto.h    |  9 ++++++++-
- 7 files changed, 69 insertions(+), 1 deletion(-)
+ ofproto/ofproto.h    | 10 +++++++++-
+ 7 files changed, 70 insertions(+), 1 deletion(-)
 
 diff --git a/lib/automake.mk b/lib/automake.mk
 index 504d6bb..95175bc 100644
@@ -169,10 +169,10 @@ index 835759a..21d709a 100644
  endif
  
 diff --git a/ofproto/ofproto.h b/ofproto/ofproto.h
-index 53aa127..3f29f0a 100644
+index 53aa127..a0b4a70 100644
 --- a/ofproto/ofproto.h
 +++ b/ofproto/ofproto.h
-@@ -69,7 +69,11 @@ struct ofproto_sflow_options {
+@@ -69,7 +69,12 @@ struct ofproto_sflow_options {
      uint32_t polling_interval;
      uint32_t header_len;
      uint32_t sub_id;
@@ -181,11 +181,12 @@ index 53aa127..3f29f0a 100644
 +#ifdef OPS
 +    char agent_ip[INET6_ADDRSTRLEN];     /* ip (v4 or v6) of interface */
 +    uint32_t max_datagram;               /* Maximum datagram size */
++    struct sset ports; /* port names on which sFlow is disabled */
 +#endif
      char *control_ip;
  };
  
-@@ -466,6 +470,9 @@ enum port_option_args {
+@@ -466,6 +471,9 @@ enum port_option_args {
      /* hw_config driven mostly by l3portd */
      PORT_HW_CONFIG,
  
@@ -196,5 +197,5 @@ index 53aa127..3f29f0a 100644
      PORT_OPT_MAX
  };
 -- 
-2.1.4
+1.9.1
 
