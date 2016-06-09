@@ -1,6 +1,6 @@
-From 216db6161bd5bf18bea11193a8c9d3f0335a4c94 Mon Sep 17 00:00:00 2001
+From 475b8712bf59ba0c11c3df3c73478642bb6b563d Mon Sep 17 00:00:00 2001
 From: "arnoldo.lutz.guevara@hpe.com" <arnoldo.lutz.guevara@hpe.com>
-Date: Thu, 26 May 2016 10:30:28 -0700
+Date: Thu, 9 Jun 2016 16:31:20 -0700
 Subject: [PATCH] Add Partial Map Updates functionality
 
 Add functionality to partially update a map column, which allows to update
@@ -16,17 +16,17 @@ doesn't exists in the map) or to change a value (if the key already exists in
 the map). The '_delkey()' functions can be used to delete a key-value from the
 map, using just the key.
 
-Change-Id: I04fa42abc9332aa5f62b97e30634d38d6f8152db
+Change-Id: I7504654f5e0321a9cb7cef577ceab4f7d200339f
 Signed-off-by: arnoldo.lutz.guevara@hpe.com <arnoldo.lutz.guevara@hpe.com>
 ---
  lib/automake.mk          |   4 +-
  lib/ovsdb-idl-provider.h |   4 +
- lib/ovsdb-idl.c          | 277 +++++++++++++++++++++++++++++++++++++++++++++++
+ lib/ovsdb-idl.c          | 286 +++++++++++++++++++++++++++++++++++++++++++++++
  lib/ovsdb-idl.h          |   6 +
- lib/ovsdb-map-op.c       | 172 +++++++++++++++++++++++++++++
+ lib/ovsdb-map-op.c       | 172 ++++++++++++++++++++++++++++
  lib/ovsdb-map-op.h       |  53 +++++++++
  ovsdb/ovsdb-idlc.in      |  69 ++++++++++++
- 7 files changed, 584 insertions(+), 1 deletion(-)
+ 7 files changed, 593 insertions(+), 1 deletion(-)
  create mode 100644 lib/ovsdb-map-op.c
  create mode 100644 lib/ovsdb-map-op.h
 
@@ -79,7 +79,7 @@ index 2dbf805..de22691 100644
      unsigned int insert_seqno;
      unsigned int modify_seqno;
 diff --git a/lib/ovsdb-idl.c b/lib/ovsdb-idl.c
-index 8427a4c..a572e48 100644
+index 8427a4c..8b89fae 100644
 --- a/lib/ovsdb-idl.c
 +++ b/lib/ovsdb-idl.c
 @@ -159,6 +159,7 @@ static struct ovsdb_idl_row *ovsdb_idl_row_create(struct ovsdb_idl_table *,
@@ -150,7 +150,7 @@ index 8427a4c..a572e48 100644
          if (row->old) {
              if (row->written) {
                  ovsdb_idl_row_unparse(row);
-@@ -1915,6 +1946,116 @@ ovsdb_idl_txn_disassemble(struct ovsdb_idl_txn *txn)
+@@ -1915,6 +1946,125 @@ ovsdb_idl_txn_disassemble(struct ovsdb_idl_txn *txn)
      hmap_init(&txn->txn_rows);
  }
  
@@ -175,7 +175,16 @@ index 8427a4c..a572e48 100644
 +        column = &class->columns[idx];
 +        key_type = column->type.key.type;
 +        value_type = column->type.value.type;
-+        old_datum = ovsdb_idl_read(row, column);
++
++        /* Get the value to be changed */
++        if (row->new && row->written && bitmap_is_set(row->written,idx)) {
++            old_datum = &row->new[idx];
++        } else if (row->old != NULL) {
++            old_datum = &row->old[idx];
++        } else {
++            old_datum = CONST_CAST(struct ovsdb_datum*,
++                                   ovsdb_datum_default(&column->type));
++        }
 +
 +        del_set = json_array_create_empty();
 +        ins_map = json_array_create_empty();
@@ -267,7 +276,7 @@ index 8427a4c..a572e48 100644
  /* Attempts to commit 'txn'.  Returns the status of the commit operation, one
   * of the following TXN_* constants:
   *
-@@ -2101,6 +2242,28 @@ ovsdb_idl_txn_commit(struct ovsdb_idl_txn *txn)
+@@ -2101,6 +2251,28 @@ ovsdb_idl_txn_commit(struct ovsdb_idl_txn *txn)
                  json_destroy(op);
              }
          }
@@ -296,7 +305,7 @@ index 8427a4c..a572e48 100644
      }
  
      /* Add increment. */
-@@ -2908,6 +3071,120 @@ ovsdb_idl_parse_lock_notify(struct ovsdb_idl *idl,
+@@ -2908,6 +3080,120 @@ ovsdb_idl_parse_lock_notify(struct ovsdb_idl *idl,
      }
  }
  
