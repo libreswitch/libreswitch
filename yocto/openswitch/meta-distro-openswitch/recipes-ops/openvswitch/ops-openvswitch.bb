@@ -39,6 +39,7 @@ SRC_URI = "git://github.com/openvswitch/ovs.git;protocol=https;branch=branch-2.5
            file://0031-Add-optional-c-extension-wrapper-for-python-json-parsing.patch \
            file://0032-OVSDB-Wait-Monitoring-Functions.patch \
            file://0033-Reduce-number-of-operations-for-IDL-on-demand-fetchi.patch \
+           file://0034-Enable-OpenFlow.patch \
           "
 
 SRCREV = "976b441345df85dd7adb973f8ae208f588d764a0"
@@ -170,6 +171,7 @@ FILES_ops-ovsdb = "/run /var/run /var/log /var/volatile ${bindir}/ovsdb* \
 FILES_python-ops-ovsdb = "${libdir}/${PYTHON_DIR}/*"
 
 FILES_${PN} = "${bindir}/ovs-appctl ${bindir}/ovs-pki ${bindir}/ovs-vsctl \
+ ${bindir}/ovs-ofctl ${bindir}/ovs-dpctl ${bindir}/ovs-testcontroller \
  /var/local/openvswitch /etc/bash_completion.d \
  ${libdir}/libofproto.so.1* \
  ${libdir}/libopenvswitch.so.1* \
