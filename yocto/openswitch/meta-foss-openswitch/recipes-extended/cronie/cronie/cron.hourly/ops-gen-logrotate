@@ -38,6 +38,7 @@ rotate_max_count = 3
 remoteIP = "0"
 protocol = "tftp"
 uri = "tftp://"
+log_file = ""
 
 
 # period, maxsize, target
@@ -45,6 +46,7 @@ def read_ovsdb():
     global target
     global protocol
     global uri
+    global remoteIP
 
     results = {}
     try:
@@ -148,6 +150,7 @@ def cleanLogfiles(path):
 # Send tftp with retry mechanism
 def sendTftp(command):
     global retry_max_count
+    global log_file
     retry = True
     retry_count = 1
     while (retry):
@@ -159,12 +162,15 @@ def sendTftp(command):
             retry_count = retry_count + 1
         else:
             print("Tftp transfer iteration " + str(retry_count) + ": success")
+            print("Removed log file from local %s" %log_file)
+            system("rm -f /var/log/%s" %log_file)
             retry = False
 
 
 def sendLogFilesTftp(path):
     global remoteIP
     global uri
+    global log_file
 
     try:
         with open('/tmp/tftp_files', 'r') as tftp_file:
