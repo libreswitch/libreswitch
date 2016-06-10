@@ -10,7 +10,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-ipapps;protocol=${OPS_REPO_PROTOCOL};branch=
            file://ops-relay.service \
            "
 
-SRCREV = "2dca68ea9fa7b33deb761c966305c9859e615090"
+SRCREV = "558dc18f32917b8b4506ae618606e26bd4290e41"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
