@@ -1,27 +1,23 @@
-From 11db6d96be654c4ff87872e50fabb80cd0587292 Mon Sep 17 00:00:00 2001
+From fc630bcc025505c2d68a55a2de5829b852918235 Mon Sep 17 00:00:00 2001
 From: aslammdkhan <aslam.khan@hpe.com>
 Date: Fri, 3 Jun 2016 13:35:53 -0700
-Subject: [PATCH] fix: dev: Changed the schema-to-idl auto generation script to
- populate value if it is present.
+Subject: [PATCH 10/11] schema-to-idl populates value if it is present
 
-TG-907
-Tags: fix, dev
+The auto generation script is not looking for value part of key-value
+and is not updating the value in set_subinterface idl api when min=0 and
+max=1.  Added code to check if value is present fill that also.
 
-The auto generation script is not looking for value part of key-value and is
-not updating the value in set_subinterface idl api when min=0 and max=1.
-Added code to check if value is present fill that also.
-
-Change-Id: I45476df16ce24f74858136ed85980a0a4770869c
 Signed-off-by: aslammdkhan <aslam.khan@hpe.com>
+
 ---
  ovsdb/ovsdb-idlc.in | 8 +++++++-
  1 file changed, 7 insertions(+), 1 deletion(-)
 
 diff --git a/ovsdb/ovsdb-idlc.in b/ovsdb/ovsdb-idlc.in
-index 6f52c40..593c867 100755
+index 36c5507..287df22 100755
 --- a/ovsdb/ovsdb-idlc.in
 +++ b/ovsdb/ovsdb-idlc.in
-@@ -788,6 +788,8 @@ const struct ovsdb_datum *
+@@ -925,6 +925,8 @@ const struct ovsdb_datum *
                  txn_write_func = "ovsdb_idl_txn_write_clone"
              elif type.n_max == 1:
                  print "    union ovsdb_atom key;"
@@ -30,7 +26,7 @@ index 6f52c40..593c867 100755
                  print
                  print "    ovs_assert(inited);"
                  print "    if (%s) {" % nVar
-@@ -798,7 +800,11 @@ const struct ovsdb_datum *
+@@ -935,7 +937,11 @@ const struct ovsdb_datum *
                  print "        datum.n = 0;"
                  print "        datum.keys = NULL;"
                  print "    }"
@@ -44,5 +40,5 @@ index 6f52c40..593c867 100755
              else:
                  print "    size_t i;"
 -- 
-1.9.1
+2.1.4
 

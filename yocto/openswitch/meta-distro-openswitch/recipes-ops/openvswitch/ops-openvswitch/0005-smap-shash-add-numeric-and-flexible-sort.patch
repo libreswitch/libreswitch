@@ -1,15 +1,15 @@
-From e4b192bf6075cad9386c054e7671c05a3ece9128 Mon Sep 17 00:00:00 2001
+From f4e9eec3e75a601bcd9fe3cf681cf7ab43ee8c92 Mon Sep 17 00:00:00 2001
 From: Kevin Worth <kevin.worth@hpe.com>
 Date: Mon, 21 Mar 2016 17:01:15 -0700
-Subject: [PATCH] smap,shash: add numeric and flexible sort
+Subject: [PATCH 05/11] smap,shash: add numeric and flexible sort
 
 The default implementation of shash_sort and smap_sort provide only
-lexigraphic sorting. This patch allows both a numeric sort and a flexible
-version where the caller provides a comparison function
+lexigraphic sorting. This patch allows both a numeric sort and a
+flexible version where the caller provides a comparison function
 ("compar" being the name used in other standard functions e.g. qsort(3))
 
-Change-Id: I12fd3f8eef3f627fc1482bda47ba8b2329123121
 Signed-off-by: Kevin Worth <kevin.worth@hpe.com>
+
 ---
  lib/shash.c | 36 ++++++++++++++++++++++++++++++++++--
  lib/shash.h |  4 ++++
@@ -204,5 +204,5 @@ index 489497a..eafeb80 100644
  void smap_from_json(struct smap *, const struct json *);
  struct json *smap_to_json(const struct smap *);
 -- 
-1.9.1
+2.1.4
 

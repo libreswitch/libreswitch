@@ -1,12 +1,13 @@
-From cc5a5d4239e977d8c47d8a11bc62ca39b3b6686d Mon Sep 17 00:00:00 2001
+From bee33f957516790000d5bcb90a19bbe7744c070c Mon Sep 17 00:00:00 2001
 From: Mamata Hegde <mamata.hegde@hpe.com>
 Date: Sun, 8 May 2016 21:59:14 -0700
-Subject: [PATCH] chg: dev: updated ovs-vsctl commands for L2 mac
+Subject: [PATCH 11/11] chg: dev: updated ovs-vsctl commands for L2 mac
 
 TG-957
 
 Change-Id: I8141feac4889847826a2d49d89505ee149f6cd70
 Signed-off-by: Mamata Hegde <mamata.hegde@hpe.com>
+
 ---
  utilities/ovs-vsctl.c | 129 +++++++++++++++++++++++++++++++++++++++++++++++++-
  1 file changed, 128 insertions(+), 1 deletion(-)
@@ -29,7 +30,7 @@ index d404b8f..7e08bda 100644
      printf("\
 @@ -1978,6 +1981,27 @@ pre_get_vlan_info(struct ctl_context *ctx)
  }
-
+ 
  static void
 +pre_get_mac_info(struct ctl_context *ctx)
 +{
@@ -57,7 +58,7 @@ index d404b8f..7e08bda 100644
      struct ovsrec_vlan **vlans;
 @@ -2134,6 +2158,105 @@ cmd_del_vlan(struct ctl_context *ctx)
  }
-
+ 
  static void
 +cmd_add_mac(struct ctl_context *ctx)
 +{
@@ -164,7 +165,7 @@ index d404b8f..7e08bda 100644
 @@ -3924,6 +4047,10 @@ static const struct ctl_command_syntax vsctl_commands[] = {
      {"del-vlan", 2, 2, "", pre_get_vlan_info, cmd_del_vlan, NULL, "--if-exists",
       RW},
-
+ 
 +    /* MAC commands. */
 +    {"add-mac", 4, 4, "", pre_get_mac_info, cmd_add_mac, NULL, "", RW},
 +    {"del-mac", 4, 4, "", pre_get_mac_info, cmd_del_mac, NULL, "", RW},
@@ -172,5 +173,6 @@ index d404b8f..7e08bda 100644
      /* VRF commands */
      {"list-vrf", 0, 0, "", pre_get_vrf_info, cmd_list_vrf, NULL, "", RO},
      {"add-vrf", 1, 1, "", pre_get_vrf_info, cmd_add_vrf, NULL,
---
-2.6.1.133.gf5b6079
+-- 
+2.1.4
+

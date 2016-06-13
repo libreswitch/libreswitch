@@ -6,17 +6,17 @@ DEPENDS = "openssl python perl systemd libtool libyaml jemalloc ops"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-openvswitch;protocol=http;branch=rel/dill \
    file://ovsdb-server.service \
-   file://partial-map-updates.patch \
-   file://on-demand-fetching.patch \
-   file://compound-indexes.patch \
-   file://idl_tracking_python.patch \
-   file://smap-shash-add-numeric-and-flexible-sort.patch \
-   file://json.py.patch \
-   file://get_idl_txn.patch \
-   file://ovsdb_json_error_msgs.patch \
-   file://bond_status_speed.patch \
-   file://Populate-value-for-key-value-pair-of-max1.patch \
-   file://mac-ovsvsctl-cmd.patch \
+   file://0001-Add-Partial-Map-Updates-functionality.patch \
+   file://0002-on-demand-fetching.patch \
+   file://0003-compound-indexes.patch \
+   file://0004-idl_tracking_python.patch \
+   file://0005-smap-shash-add-numeric-and-flexible-sort.patch \
+   file://0006-json.py.patch \
+   file://0007-get_idl_txn.patch \
+   file://0008-ovsdb_json_error_msgs.patch \
+   file://0009-bond_status_speed.patch \
+   file://0010-schema-to-idl-populates-value-if-it-is-present.patch \
+   file://0011-chg-dev-updated-ovs-vsctl-commands-for-L2-mac.patch \
 "
 
 SRCREV = "ae74c6e7d4086bdc9942b33f2410ef87403e336e"

@@ -1,13 +1,22 @@
+From 1d3f21adaa8bb23c56b2dd30e9b9a44d14034346 Mon Sep 17 00:00:00 2001
+From: "Marcelo E. Magallon" <marcelo.magallon@hpe.com>
+Date: Mon, 13 Jun 2016 15:05:38 -0600
+Subject: [PATCH 04/11] idl_tracking_python
+
+---
+ python/ovs/db/idl.py | 186 ++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 183 insertions(+), 3 deletions(-)
+
 diff --git a/python/ovs/db/idl.py b/python/ovs/db/idl.py
-index b6c986e..54bef8a 100644
+index b6c986e..764a930 100644
 --- a/python/ovs/db/idl.py
 +++ b/python/ovs/db/idl.py
 @@ -13,6 +13,7 @@
  # limitations under the License.
-
+ 
  import uuid
 +import collections
-
+ 
  import ovs.jsonrpc
  import ovs.db.parser
 @@ -406,7 +407,19 @@ class Idl(object):
@@ -48,7 +57,7 @@ index b6c986e..54bef8a 100644
 @@ -439,8 +459,12 @@ class Idl(object):
                  self.notify(op, row, Row.from_json(self, table, uuid, old))
          return changed
-
+ 
 +
      def __row_update(self, table, row, row_json):
          changed = False
@@ -59,7 +68,7 @@ index b6c986e..54bef8a 100644
              column = table.columns.get(column_name)
              if not column:
 @@ -451,7 +475,7 @@ class Idl(object):
-
+ 
              try:
                  datum = ovs.db.data.Datum.from_json(column.type, datum_json)
 -            except error.Error, e:
@@ -68,7 +77,7 @@ index b6c986e..54bef8a 100644
                  vlog.warn("error parsing column %s in table %s: %s"
                            % (column_name, table.name, e))
 @@ -459,12 +483,29 @@ class Idl(object):
-
+ 
              if datum != row._data[column_name]:
                  row._data[column_name] = datum
 +
@@ -95,12 +104,12 @@ index b6c986e..54bef8a 100644
 +                    TrackInfo(tracked_columns, update_seqno=seqno)
 +
          return changed
-
+ 
      def __create_row(self, table, uuid):
 @@ -487,6 +528,108 @@ class Idl(object):
          if txn:
              txn._process_reply(msg)
-
+ 
 +    def track_add_column(self, table, column):
 +        """
 +        Enable tracking for 'column' in 'table'
@@ -203,12 +212,12 @@ index b6c986e..54bef8a 100644
 +
 +        return self._db.tables[table].track_list
 +
-
+ 
  def _uuid_to_row(atom, base):
      if base.ref_table:
 @@ -1401,6 +1544,43 @@ class SchemaHelper(object):
              assert column_name in table.columns
-
+ 
              new_columns[column_name] = table.columns[column_name]
 -
          table.columns = new_columns
@@ -251,3 +260,6 @@ index b6c986e..54bef8a 100644
 +
 +    def __len__(self):
 +        return len(self.store)
+-- 
+2.1.4
+

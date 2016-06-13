@@ -1,3 +1,19 @@
+From 4f5d704739ceb9f8ccdabc4a3e103f0379678d4c Mon Sep 17 00:00:00 2001
+From: "Marcelo E. Magallon" <marcelo.magallon@hpe.com>
+Date: Mon, 13 Jun 2016 15:05:38 -0600
+Subject: [PATCH 08/11] ovsdb_json_error_msgs
+
+---
+ ovsdb/column.c           |  2 +-
+ ovsdb/execution.c        |  3 +++
+ ovsdb/row.c              |  4 +++-
+ ovsdb/table.c            | 16 ++++++++++------
+ python/ovs/db/schema.py  | 14 ++++++++++----
+ tests/ovsdb-column.at    |  4 ++++
+ tests/ovsdb-execution.at |  8 ++++----
+ tests/ovsdb-table.at     |  8 ++++++--
+ 8 files changed, 41 insertions(+), 18 deletions(-)
+
 diff --git a/ovsdb/column.c b/ovsdb/column.c
 index 26b7a0b..59452e6 100644
 --- a/ovsdb/column.c
@@ -178,3 +194,6 @@ index 26ff90e..997dfd8 100644
 +OVSDB_CHECK_NEGATIVE_CPY([column must contain the required type member],
 +  [[parse-table mytable '{"columns": {"name": {}}}']],
 +  [[syntax "{}": syntax error: Table - "mytable": Parsing schema for column name failed: Required 'type' member is missing.]])
+-- 
+2.1.4
+

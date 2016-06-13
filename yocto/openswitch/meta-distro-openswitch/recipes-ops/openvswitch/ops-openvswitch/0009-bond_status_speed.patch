@@ -1,3 +1,12 @@
+From f1fab59c5931a1dadeccfb88a24bd4374915ff9e Mon Sep 17 00:00:00 2001
+From: "Marcelo E. Magallon" <marcelo.magallon@hpe.com>
+Date: Mon, 13 Jun 2016 15:05:38 -0600
+Subject: [PATCH 09/11] bond_status_speed
+
+---
+ lib/openswitch-idl.h | 1 +
+ 1 file changed, 1 insertion(+)
+
 diff --git a/lib/openswitch-idl.h b/lib/openswitch-idl.h
 index 686ba95..137419d 100755
 --- a/lib/openswitch-idl.h
@@ -10,3 +19,6 @@ index 686ba95..137419d 100755
  
  #define PORT_CONFIG_ADMIN_DOWN                          "down"
  
+-- 
+2.1.4
+
