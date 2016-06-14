@@ -10,7 +10,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-vrrpd;protocol=${OPS_REPO_PROTOCOL};branch=$
            file://ops-vrrpd.service \
            "
 
-SRCREV = "fc6901f9b1daa27f06e660bedab31b1a368e1997"
+SRCREV = "149a26c7c8bdeab013ff758fab2a002e06c9cede"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
@@ -27,4 +27,4 @@ FILES_${PN} += "/usr/lib/cli/plugins/"
 SYSTEMD_PACKAGES = "${PN}"
 SYSTEMD_SERVICE_${PN} = "ops-vrrpd.service"
 
-inherit openswitch systemd
+inherit openswitch cmake systemd
