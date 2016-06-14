@@ -1,0 +1,25 @@
+From 0b76746628344accd873917e463c1fc5ab659a05 Mon Sep 17 00:00:00 2001
+From: Sudhakar Mohan <sudhakar.mohan@hpe.com>
+Date: Thu, 2 Jun 2016 13:32:59 -0700
+Subject: [PATCH] Fix static analysis warnings (ops-openvsswitch)
+
+Change-Id: If65ad2e837d048243a2d7baaf2a7b487e1b65c21
+Signed-off-by: Sudhakar Mohan <sudhakar.mohan@hpe.com>
+---
+ utilities/ovs-vsctl.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/utilities/ovs-vsctl.c b/utilities/ovs-vsctl.c
+index d404b8f..c11452c 100644
+--- a/utilities/ovs-vsctl.c
++++ b/utilities/ovs-vsctl.c
+@@ -678,6 +678,7 @@ add_vrf_to_cache(struct vsctl_context *ctx,
+     struct vsctl_vrf *vrf = xmalloc(sizeof *vrf);
+     vrf->vrf_cfg = vrf_cfg;
+     vrf->name = xstrdup(name);
++    ovs_assert(vrf->name);
+     list_init(&vrf->ports);
+     shash_add(&ctx->vrfs, vrf->name, vrf);
+     return vrf;
+--
+2.6.1.133.gf5b6079
