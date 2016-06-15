@@ -780,7 +780,11 @@ _testenv_rerun:
             $(ECHO) "\nIterating the tests $(TESTENV_ITERATIONS) times\n" ; \
 	    for iteration in $$(seq 1 $(TESTENV_ITERATIONS)) ; do \
 	      $(ECHO) "\nRunning the testsuite on iteration $$iteration" ; \
-	      cd $(BUILDDIR)/test/$(TESTSUITE) ; unset CURL_CA_BUNDLE; export TESTENV_EXTRA_PARAMETERS='$(TESTENV_EXTRA_PARAMETERS)' ; tox || exit 1 ; \
+	      cd $(BUILDDIR)/test/$(TESTSUITE) ; \
+	      unset CURL_CA_BUNDLE; \
+	      export TESTENV_EXTRA_PARAMETERS='$(TESTENV_EXTRA_PARAMETERS)' ; \
+	      export TESTENV_MARKERS='$(TESTENV_MARKERS)' ; \
+	      tox || exit 1 ; \
             done ; \
 	  fi
 
@@ -811,12 +815,14 @@ ifeq (testenv_suite_list_components,$(firstword $(MAKECMDGOALS)))
   endif
 endif
 testenv_suite_list_components: _testenv_header
-	$(V) for layer in $$YOCTO_LAYERS ; do \
+	$(V) for layer in $$YOCTO_LAYERS src/*/ops-tests ; do \
 	   test -d $$layer || continue ; \
 	   if [ -f $$layer/testsuite_$(TESTSUITE).conf ] ; then \
-		 while read component ; do \
-		     [[ $$component == \#* ]] && continue ; \
-			 $(ECHO) "  * $$component" ; \
+	     while read component ; do \
+	       [[ $$component == \#* ]] && continue ; \
+	       echo $$COMPONENTS | grep -q $$component && continue ; \
+               COMPONENTS="$$COMPONENTS $$component" ; \
+	       $(ECHO) "  * $$component" ; \
 	     done < $$layer/testsuite_$(TESTSUITE).conf ; \
 	   fi ; \
 	 done
@@ -847,19 +853,25 @@ testenv_suite_rerun: _testenv_header
 	$(V) $(MAKE) _testenv_suite_rerun
 
 _testenv_suite_rerun:
-	$(V) for layer in $$YOCTO_LAYERS ; do \
+	$(V) for layer in $$YOCTO_LAYERS src/*/ops-tests ; do \
 	   test -d $$layer || continue ; \
 	   if [ -f $$layer/testsuite_$(TESTSUITE).conf ] ; then \
-		 while read component ; do \
-		    [[ $$component == \#* ]] && continue ; \
-			COMPONENTS="$$COMPONENTS $$component" ; \
+	     while read component ; do \
+	       [[ $$component == \#* ]] && continue ; \
+               echo $$COMPONENTS | grep -q $$component && continue ; \
+	       COMPONENTS="$$COMPONENTS $$component" ; \
 	     done < $$layer/testsuite_$(TESTSUITE).conf ; \
 	   fi ; \
 	 done ; \
 	 if [ -z "$$COMPONENTS" ] ; then \
 	   $(call FATAL_ERROR, No components where found for the test suite. Do you have testsuite_$(TESTSUITE).conf files?); \
 	 else \
-	   $(MAKE) _testenv_rerun TESTSUITE=$(TESTSUITE) COMPONENTS="$$COMPONENTS" ; \
+	   testsuite=$(TESTSUITE) ; \
+	   marker=$$(expr match "$$testsuite" '\(^.*\)@') ; \
+	   if [ -n "$$marker" ] ; then \
+	     export TESTENV_MARKERS="-m $$marker" ; \
+	   fi ; \
+	   $(MAKE) _testenv_rerun TESTSUITE=$${testsuite##*@} COMPONENTS="$$COMPONENTS" ; \
 	 fi
 
 testenv_clean:
