@@ -1,0 +1,37 @@
+From fc736c1317ac0fa381629815b6c26c8adf7e7624 Mon Sep 17 00:00:00 2001
+From: "Mark P. Henry" <mark.p.henry@hpe.com>
+Date: Tue, 14 Jun 2016 10:05:37 -0700
+Subject: [PATCH 1/1] chg: dev: improve mirror PD errors, update/relocate xml
+ smap strings
+
+TG-1135: improve PD error num -> status string translation
+
+This commit has already occurred on master (review #10021) but in the ops repo
+per the new setup.
+
+Change-Id: Iaae21e58c7bf29aee98c2bccd29f6835fcabd62e
+Signed-off-by: Mark P. Henry <mark.p.henry@hpe.com>
+---
+ lib/openswitch-idl.h | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/lib/openswitch-idl.h b/lib/openswitch-idl.h
+index 686ba95..a672e8a 100755
+--- a/lib/openswitch-idl.h
++++ b/lib/openswitch-idl.h
+@@ -1022,4 +1022,12 @@ enum ospf_nbr_statistics_e {
+ #define SYSTEM_COPP_STATISTICS_MAP_TOTAL_PKTS_DROPPED     "total_packets_dropped"
+ #define SYSTEM_COPP_STATISTICS_MAP_TOTAL_BYTES_DROPPED    "total_bytes_dropped"
+ 
++/* Mirror table mirror_status column */
++#define MIRROR_STATUS_MAP_KEY_OPERATION_STATE           "operation_state"
++#define MIRROR_STATUS_MAP_STATE_ACTIVE                  "active"
++#define MIRROR_STATUS_MAP_STATE_SHUTDOWN                "shutdown"
++#define MIRROR_STATUS_MAP_ERROR_INTERNAL                "internal_error"
++#define MIRROR_STATUS_MAP_ERROR_EXTERNAL                "driver_error"
++#define MIRROR_STATUS_MAP_ERROR_UNKNOWN                 "unknown_error"
++
+ #endif /* OPENSWITCH_IDL_HEADER */
+-- 
+2.6.1.133.gf5b6079
+

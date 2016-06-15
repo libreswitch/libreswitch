@@ -18,6 +18,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-openvswitch;protocol=http;bra
    file://0010-schema-to-idl-populates-value-if-it-is-present.patch \
    file://0011-chg-dev-updated-ovs-vsctl-commands-for-L2-mac.patch \
    file://0012-Implementation-of-weak_gc-reference-type.patch \
+   file://0013-improve-mirror-PD-errors.patch \
 "
 
 SRCREV = "ae74c6e7d4086bdc9942b33f2410ef87403e336e"
