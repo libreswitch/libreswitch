@@ -1,0 +1,16 @@
+# OpenSwitch 'ops-openbfdd' service script
+
+[Unit]
+Description=OpenSwitch BFDD Daemon
+After=ovsdb-server.service ops-init.service
+
+[Service]
+Type=simple
+#ExecStartPre=/bin/rm -f /var/run/openvswitch/bfdd-beacon.pid
+# ExecStart=/sbin/ip netns exec swns /usr/bin/bfdd-beacon --detach --pidfile -vSYSLOG:INFO
+ExecStart=/sbin/ip netns exec swns /usr/bin/bfdd-beacon
+#PIDFile=/var/run/openvswitch/bfdd-beacon.pid
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target
