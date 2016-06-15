@@ -1,0 +1,450 @@
+From 9ab3a7c6d068c58b51a73fb7ff06d91510c43470 Mon Sep 17 00:00:00 2001
+From: Ligeo George <ligeo.george@hpe.com>
+Date: Wed, 15 Jun 2016 11:40:52 -0700
+Subject: [PATCH 12/12] Implementation of 'weak_gc' reference type
+
+The semantics for 'weak_gc' refType are the same as for 'weak',
+except that if weak refernce removal results in constraints
+or index violation of the referencing row, the transaction
+will not be cancelled and the referencing row would be
+garbage collected instead.
+
+Change-Id: I386a572050a17559e4a7c1a6536b988471f7559a
+Signed-off-by: Ligeo George <ligeo.george@hpe.com>
+---
+ lib/ovsdb-data.c         |   1 +
+ lib/ovsdb-types.c        |   8 ++-
+ lib/ovsdb-types.h        |  16 ++++-
+ ovsdb/ovsdb-server.1.in  |   8 +++
+ ovsdb/transaction.c      |  58 +++++++++++++++---
+ python/ovs/db/types.py   |  14 +++--
+ tests/ovsdb-execution.at | 150 ++++++++++++++++++++++++++++++++++++++++++++++-
+ 7 files changed, 238 insertions(+), 17 deletions(-)
+
+diff --git a/lib/ovsdb-data.c b/lib/ovsdb-data.c
+index f04fa55..1c6a674 100644
+--- a/lib/ovsdb-data.c
++++ b/lib/ovsdb-data.c
+@@ -298,6 +298,7 @@ ovsdb_symbol_referenced(struct ovsdb_symbol *symbol,
+             symbol->strong_ref = true;
+             break;
+         case OVSDB_REF_WEAK:
++        case OVSDB_REF_WEAK_GC:
+             symbol->weak_ref = true;
+             break;
+         }
+diff --git a/lib/ovsdb-types.c b/lib/ovsdb-types.c
+index 8fe0d42..9df207c 100644
+--- a/lib/ovsdb-types.c
++++ b/lib/ovsdb-types.c
+@@ -436,9 +436,12 @@ ovsdb_base_type_from_json(struct ovsdb_base_type *base,
+                     base->u.uuid.refType = OVSDB_REF_STRONG;
+                 } else if (!strcmp(refType_s, "weak")) {
+                     base->u.uuid.refType = OVSDB_REF_WEAK;
++                } else if (!strcmp(refType_s, "weak_gc")) {
++                    base->u.uuid.refType = OVSDB_REF_WEAK_GC;
+                 } else {
+                     error = ovsdb_syntax_error(json, NULL, "refType must be "
+-                                               "\"strong\" or \"weak\" (not "
++                                               "\"strong\" or \"weak\" or "
++                                               "\"weak_gc\" (not "
+                                                "\"%s\")", refType_s);
+                 }
+             } else {
+@@ -526,6 +529,9 @@ ovsdb_base_type_to_json(const struct ovsdb_base_type *base)
+             if (base->u.uuid.refType == OVSDB_REF_WEAK) {
+                 json_object_put_string(json, "refType", "weak");
+             }
++            if (base->u.uuid.refType == OVSDB_REF_WEAK_GC) {
++                json_object_put_string(json, "refType", "weak_gc");
++            }
+         }
+         break;
+
+diff --git a/lib/ovsdb-types.h b/lib/ovsdb-types.h
+index 81cc862..f60f689 100644
+--- a/lib/ovsdb-types.h
++++ b/lib/ovsdb-types.h
+@@ -46,7 +46,11 @@ struct json *ovsdb_atomic_type_to_json(enum ovsdb_atomic_type);
+
+ enum ovsdb_ref_type {
+     OVSDB_REF_STRONG,           /* Target must exist. */
+-    OVSDB_REF_WEAK              /* Delete reference if target disappears. */
++    OVSDB_REF_WEAK,             /* Delete reference if target disappears. */
++    OVSDB_REF_WEAK_GC           /* Delete reference if target disappears and
++                                   if the deletion results in constraint
++                                   violation, garbage collect the referencing
++                                   row. */
+ };
+
+ struct ovsdb_base_type {
+@@ -190,7 +194,15 @@ static inline bool
+ ovsdb_base_type_is_weak_ref(const struct ovsdb_base_type *base)
+ {
+     return (ovsdb_base_type_is_ref(base)
+-            && base->u.uuid.refType == OVSDB_REF_WEAK);
++            && (base->u.uuid.refType == OVSDB_REF_WEAK ||
++                base->u.uuid.refType == OVSDB_REF_WEAK_GC));
++}
++
++static inline bool
++ovsdb_base_type_is_weak_gc_ref(const struct ovsdb_base_type *base)
++{
++    return (ovsdb_base_type_is_ref(base)
++            && base->u.uuid.refType == OVSDB_REF_WEAK_GC);
+ }
+
+ static inline bool ovsdb_type_is_scalar(const struct ovsdb_type *type)
+diff --git a/ovsdb/ovsdb-server.1.in b/ovsdb/ovsdb-server.1.in
+index e340993..6d86866 100644
+--- a/ovsdb/ovsdb-server.1.in
++++ b/ovsdb/ovsdb-server.1.in
+@@ -254,6 +254,14 @@ of 0 or 1 integer'' and ``set of 0 or 1 real''.  These conditions
+ evaluate to false when the column is empty, and otherwise as described
+ in RFC 7047 for integer and real types.
+ .
++.IP "6. weak_gc refType"
++"weak_gc" refType has the same semantics as "weak", except that if weak_gc
++reference removal results in constraint or index violation of the referencing
++row, the transaction will not be cancelled and the referencing row would be
++garbage collected instead. Note that this garbage collection would only be
++allowed if the referencing table isRoot and there are no strong references
++to the row.
++.
+ .SH "BUGS"
+ .
+ In Open vSwitch before version 2.4, when \fBovsdb\-server\fR sent
+diff --git a/ovsdb/transaction.c b/ovsdb/transaction.c
+index 2c85fee..97480bf 100644
+--- a/ovsdb/transaction.c
++++ b/ovsdb/transaction.c
+@@ -86,7 +86,8 @@ struct ovsdb_txn_row {
+ };
+
+ static struct ovsdb_error * OVS_WARN_UNUSED_RESULT
+-delete_garbage_row(struct ovsdb_txn *txn, struct ovsdb_txn_row *r);
++delete_garbage_row(struct ovsdb_txn *txn, struct ovsdb_txn_row *r,
++                   bool check_isroot);
+ static void ovsdb_txn_row_prefree(struct ovsdb_txn_row *);
+ static struct ovsdb_error * OVS_WARN_UNUSED_RESULT
+ for_each_txn_row(struct ovsdb_txn *txn,
+@@ -334,7 +335,7 @@ delete_row_refs(struct ovsdb_txn *txn, const struct ovsdb_row *row,
+         }
+
+         if (--txn_row->n_refs == 0) {
+-            struct ovsdb_error *error = delete_garbage_row(txn, txn_row);
++            struct ovsdb_error *error = delete_garbage_row(txn, txn_row, true);
+             if (error) {
+                 return error;
+             }
+@@ -345,12 +346,13 @@ delete_row_refs(struct ovsdb_txn *txn, const struct ovsdb_row *row,
+ }
+
+ static struct ovsdb_error * OVS_WARN_UNUSED_RESULT
+-delete_garbage_row(struct ovsdb_txn *txn, struct ovsdb_txn_row *txn_row)
++delete_garbage_row(struct ovsdb_txn *txn, struct ovsdb_txn_row *txn_row,
++                   bool check_isroot)
+ {
+     struct shash_node *node;
+     struct ovsdb_row *row;
+
+-    if (txn_row->table->schema->is_root) {
++    if (check_isroot && txn_row->table->schema->is_root) {
+         return NULL;
+     }
+
+@@ -383,7 +385,7 @@ static struct ovsdb_error * OVS_WARN_UNUSED_RESULT
+ collect_garbage(struct ovsdb_txn *txn, struct ovsdb_txn_row *txn_row)
+ {
+     if (txn_row->new && !txn_row->n_refs) {
+-        return delete_garbage_row(txn, txn_row);
++        return delete_garbage_row(txn, txn_row, true);
+     }
+     return NULL;
+ }
+@@ -538,7 +540,12 @@ assess_weak_refs(struct ovsdb_txn *txn, struct ovsdb_txn_row *txn_row)
+             ovsdb_datum_sort_assert(datum, column->type.key.type);
+             if (datum->n < column->type.n_min) {
+                 const struct uuid *row_uuid = ovsdb_row_get_uuid(txn_row->new);
+-                if (zero && !txn_row->old) {
++                /* Garbage collect root table rows if weak_gc applies */
++                if ((table->schema->is_root && (txn_row->n_refs == 0)) &&
++                    (ovsdb_base_type_is_weak_gc_ref(&column->type.value) ||
++                     ovsdb_base_type_is_weak_gc_ref(&column->type.key))) {
++                    return delete_garbage_row(txn, txn_row, false);
++                } else if (zero && !txn_row->old) {
+                     return ovsdb_error(
+                         "constraint violation",
+                         "Weak reference column \"%s\" in \"%s\" row "UUID_FMT
+@@ -711,6 +718,29 @@ duplicate_index_row(const struct ovsdb_column_set *index,
+     return error;
+ }
+
++/* Check if the column_set has a column with weak_gc reference
++ * and if the number of entries in that column is 0.
++ */
++static bool
++columns_has_null_weak_gc_ref(const struct ovsdb_row *row,
++                             const struct ovsdb_column_set *columns)
++{
++    size_t i;
++    const struct ovsdb_column *column;
++    const struct ovsdb_datum *datum;
++
++    for (i = 0; i < columns->n_columns; i++) {
++        column = columns->columns[i];
++        datum = &row->fields[column->index];
++        if ((ovsdb_base_type_is_weak_gc_ref(&column->type.value) ||
++             ovsdb_base_type_is_weak_gc_ref(&column->type.key)) &&
++             (datum->n == 0)) {
++            return true;
++        }
++    }
++    return false;
++}
++
+ static struct ovsdb_error * OVS_WARN_UNUSED_RESULT
+ check_index_uniqueness(struct ovsdb_txn *txn OVS_UNUSED,
+                        struct ovsdb_txn_row *txn_row)
+@@ -732,12 +762,24 @@ check_index_uniqueness(struct ovsdb_txn *txn OVS_UNUSED,
+         hash = ovsdb_row_hash_columns(row, index, 0);
+         irow = ovsdb_index_search(&txn_table->txn_indexes[i], row, i, hash);
+         if (irow) {
+-            return duplicate_index_row(index, irow, row);
++            if ((table->schema->is_root && txn_row->n_refs == 0) &&
++                columns_has_null_weak_gc_ref(row, index)) {
++                /* Garbage collect root table rows if weak_gc applies */
++                return delete_garbage_row(txn, txn_row, false);
++            } else {
++                return duplicate_index_row(index, irow, row);
++            }
+         }
+
+         irow = ovsdb_index_search(&table->indexes[i], row, i, hash);
+         if (irow && !irow->txn_row) {
+-            return duplicate_index_row(index, irow, row);
++            if ((table->schema->is_root && txn_row->n_refs == 0) &&
++                columns_has_null_weak_gc_ref(row, index)) {
++                /* Garbage collect root table rows if weak_gc applies */
++                return delete_garbage_row(txn, txn_row, false);
++            } else {
++                return duplicate_index_row(index, irow, row);
++            }
+         }
+
+         hmap_insert(&txn_table->txn_indexes[i],
+diff --git a/python/ovs/db/types.py b/python/ovs/db/types.py
+index 1d06261..84cb8e4 100644
+--- a/python/ovs/db/types.py
++++ b/python/ovs/db/types.py
+@@ -195,9 +195,9 @@ class BaseType(object):
+             if base.ref_table_name:
+                 base.ref_type = parser.get_optional("refType", [str, unicode],
+                                                    "strong")
+-                if base.ref_type not in ['strong', 'weak']:
+-                    raise error.Error('refType must be "strong" or "weak" '
+-                                      '(not "%s")' % base.ref_type)
++                if base.ref_type not in ['strong', 'weak', 'weak_gc']:
++                    raise error.Error('refType must be "strong", "weak" or '
++                                      '"weak_gc" (not "%s")' % base.ref_type)
+         parser.finish()
+
+         return base
+@@ -271,13 +271,19 @@ class BaseType(object):
+         return self.is_ref() and self.ref_type == 'strong'
+
+     def is_weak_ref(self):
+-        return self.is_ref() and self.ref_type == 'weak'
++        return self.is_ref() and (self.ref_type == 'weak' or
++                                  self.ref_type == 'weak_gc')
++
++    def is_weak_gc_ref(self):
++        return self.is_ref() and self.ref_type == 'weak_gc'
+
+     def toEnglish(self, escapeLiteral=returnUnchanged):
+         if self.type == UuidType and self.ref_table_name:
+             s = escapeLiteral(self.ref_table_name)
+             if self.ref_type == 'weak':
+                 s = "weak reference to " + s
++            if self.ref_type == 'weak_gc':
++                s = "weak_gc reference to " + s
+             return s
+         else:
+             return self.type.to_string()
+diff --git a/tests/ovsdb-execution.at b/tests/ovsdb-execution.at
+index 10986b0..926a764 100644
+--- a/tests/ovsdb-execution.at
++++ b/tests/ovsdb-execution.at
+@@ -67,7 +67,21 @@ weak_schema () {
+            "b2a": {"type": {"key": {"type": "uuid",
+                                     "refTable": "a",
+                                     "refType": "weak"},
+-                            "min": 0, "max": "unlimited"}}}}}}
++                            "min": 0, "max": "unlimited"}}}},
++       "c": {
++         "columns": {
++           "c": {"type": "integer"},
++           "c2d": {"type": {"key": {"type": "uuid",
++                                    "refTable": "d",
++                                    "refType": "weak_gc"}}},
++           "c2d1": {"type": {"key": {"type": "uuid",
++                                    "refTable": "d",
++                                    "refType": "weak_gc"},
++                            "min": 0, "max": "unlimited"}}},
++                            "indexes": [["c2d1"]]},
++       "d": {
++         "columns": {
++           "d": {"type": "integer"}}}}}
+ EOF
+ }
+
+@@ -902,7 +916,124 @@ OVSDB_CHECK_EXECUTION([weak references],
+        "table": "b",
+        "where": [],
+        "columns": ["_uuid", "b", "b2a"],
+-       "sort": ["b"]}]]]],
++       "sort": ["b"]}]]],
++   dnl Delete the row that is referenced by a weak_gc column with min = 1
++   dnl constraint and check that the referencing row gets garbage collected.
++   [[["weak",
++      {"op": "insert",
++       "table": "c",
++       "row": {"c": 5,
++               "c2d": ["named-uuid", "row6"]},
++       "uuid-name": "row5"},
++      {"op": "insert",
++       "table": "d",
++       "row": {"d": 6},
++       "uuid-name": "row6"}]]],
++   [[["weak",
++      {"op": "select",
++       "table": "c",
++       "where": [],
++       "columns": ["c"],
++       "sort": ["c"]}]]],
++   [[["weak",
++      {"op": "select",
++       "table": "d",
++       "where": [],
++       "columns": ["d"],
++       "sort": ["d"]}]]],
++   [[["weak",
++      {"op": "delete",
++       "table": "d",
++       "where": [["d", "==", 6]]}]]],
++   [[["weak",
++      {"op": "select",
++       "table": "d",
++       "where": [],
++       "columns": ["d"],
++       "sort": ["d"]}]]],
++   [[["weak",
++      {"op": "select",
++       "table": "c",
++       "where": [],
++       "columns": ["c"],
++       "sort": ["c"]}]]],
++   dnl Delete the row that is referenced by a weak_gc column with index
++   dnl constraint and check that the referencing row gets garbage collected.
++   [[["weak",
++      {"op": "insert",
++       "table": "c",
++       "row": {"c": 5,
++               "c2d": ["named-uuid", "row7"],
++               "c2d1": ["named-uuid", "row8"]},
++       "uuid-name": "row5"},
++      {"op": "insert",
++       "table": "c",
++       "row": {"c": 6,
++               "c2d": ["named-uuid", "row9"],
++               "c2d1": ["named-uuid", "row10"]},
++       "uuid-name": "row6"},
++      {"op": "insert",
++       "table": "d",
++       "row": {"d": 7},
++       "uuid-name": "row7"},
++      {"op": "insert",
++       "table": "d",
++       "row": {"d": 8},
++       "uuid-name": "row8"},
++      {"op": "insert",
++       "table": "d",
++       "row": {"d": 9},
++       "uuid-name": "row9"},
++      {"op": "insert",
++       "table": "d",
++       "row": {"d": 10},
++       "uuid-name": "row10"}]]],
++   [[["weak",
++      {"op": "select",
++       "table": "c",
++       "where": [],
++       "columns": ["c"],
++       "sort": ["c"]}]]],
++   [[["weak",
++      {"op": "select",
++       "table": "d",
++       "where": [],
++       "columns": ["d"],
++       "sort": ["d"]}]]],
++   [[["weak",
++      {"op": "delete",
++       "table": "d",
++       "where": [["d", "==", 8]]}]]],
++   [[["weak",
++      {"op": "select",
++       "table": "c",
++       "where": [],
++       "columns": ["c"],
++       "sort": ["c"]}]]],
++   [[["weak",
++      {"op": "select",
++       "table": "d",
++       "where": [],
++       "columns": ["d"],
++       "sort": ["d"]}]]],
++   [[["weak",
++      {"op": "delete",
++       "table": "d",
++       "where": [["d", "==", 10]]}]]],
++   dnl The weak_gc ref c2d1 from c=6 to d=10 is now NULL. row c=6 should
++   dnl now be deleted since row c=5 already has a weak_gc c2d1 ref = NULL.
++   [[["weak",
++      {"op": "select",
++       "table": "c",
++       "where": [],
++       "columns": ["c"],
++       "sort": ["c"]}]]],
++   [[["weak",
++      {"op": "select",
++       "table": "d",
++       "where": [],
++       "columns": ["d"],
++       "sort": ["d"]}]]]],
+   [[[{"uuid":["uuid","<0>"]},{"uuid":["uuid","<1>"]},{"uuid":["uuid","<2>"]},{"uuid":["uuid","<3>"]},{"uuid":["uuid","<4>"]}]
+ [{"rows":[{"_uuid":["uuid","<0>"],"a2a":["set",[["uuid","<0>"],["uuid","<1>"]]],"a2a1":["uuid","<0>"],"a2b":["uuid","<3>"]},{"_uuid":["uuid","<1>"],"a2a":["set",[["uuid","<0>"],["uuid","<1>"]]],"a2a1":["uuid","<1>"],"a2b":["uuid","<3>"]},{"_uuid":["uuid","<2>"],"a2a":["set",[["uuid","<0>"],["uuid","<1>"]]],"a2a1":["uuid","<1>"],"a2b":["uuid","<4>"]}]}]
+ [{"rows":[{"_uuid":["uuid","<3>"],"b":2,"b2a":["uuid","<0>"]},{"_uuid":["uuid","<4>"],"b":3,"b2a":["uuid","<1>"]}]}]
+@@ -918,6 +1049,21 @@ OVSDB_CHECK_EXECUTION([weak references],
+ [{"count":1}]
+ [{"rows":[]}]
+ [{"rows":[{"_uuid":["uuid","<3>"],"b":2,"b2a":["set",[]]},{"_uuid":["uuid","<4>"],"b":3,"b2a":["set",[]]}]}]
++[{"uuid":["uuid","<6>"]},{"uuid":["uuid","<7>"]}]
++[{"rows":[{"c":5}]}]
++[{"rows":[{"d":6}]}]
++[{"count":1}]
++[{"rows":[]}]
++[{"rows":[]}]
++[{"uuid":["uuid","<8>"]},{"uuid":["uuid","<9>"]},{"uuid":["uuid","<10>"]},{"uuid":["uuid","<11>"]},{"uuid":["uuid","<12>"]},{"uuid":["uuid","<13>"]}]
++[{"rows":[{"c":5},{"c":6}]}]
++[{"rows":[{"d":7},{"d":8},{"d":9},{"d":10}]}]
++[{"count":1}]
++[{"rows":[{"c":5},{"c":6}]}]
++[{"rows":[{"d":7},{"d":9},{"d":10}]}]
++[{"count":1}]
++[{"rows":[{"c":5}]}]
++[{"rows":[{"d":7},{"d":9}]}]
+ ]])
+
+ OVSDB_CHECK_EXECUTION([immutable columns],
+--
+2.6.1.133.gf5b6079
