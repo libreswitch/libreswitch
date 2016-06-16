@@ -38,7 +38,7 @@ do_install_append() {
 }
 
 # We use systemd core dump, coredump
-PACKAGECONFIG_append += "audit coredump resolved"
+PACKAGECONFIG_append += "${@bb.utils.contains('DISTRO_FEATURES', 'audit', 'audit', '', d)} coredump resolved"
 
 EXTRA_OECONF += "--with-dns-servers=" ""
 EXTRA_OECONF_append = " --disable-timesyncd"

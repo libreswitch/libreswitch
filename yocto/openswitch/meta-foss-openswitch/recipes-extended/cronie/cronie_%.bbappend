@@ -14,4 +14,4 @@ do_install_append () {
 }
 
 # Enable Audit framework on OpenSwitch
-PACKAGECONFIG += "audit"
+PACKAGECONFIG += "${@bb.utils.contains('DISTRO_FEATURES', 'audit', 'audit', '', d)}"
