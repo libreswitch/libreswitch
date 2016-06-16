@@ -1,0 +1,28 @@
+From f7a431d193be3d758198fa3404ea2bad65482304 Mon Sep 17 00:00:00 2001
+From: kiranvaddey <kiran.vaddey@hpe.com>
+Date: Thu, 16 Jun 2016 14:48:06 -0700
+Subject: [PATCH] Adding support for SFP ER transceiver modules
+
+TG-1395
+
+Change-Id: I2ee8d5696c6f758b1b1a2cd1095439d210e0aae6
+Signed-off-by: kiranvaddey <kiran.vaddey@hpe.com>
+---
+ lib/openswitch-idl.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/lib/openswitch-idl.h b/lib/openswitch-idl.h
+index 137419d..7f50ea2 100755
+--- a/lib/openswitch-idl.h
++++ b/lib/openswitch-idl.h
+@@ -99,6 +99,7 @@ enum ovsrec_interface_pm_info_cable_technology_e {
+ #define OVSREC_INTERFACE_PM_INFO_CONNECTOR_SFP_DAC              "SFP_DAC"
+ #define OVSREC_INTERFACE_PM_INFO_CONNECTOR_SFP_FC               "SFP_FC"
+ #define OVSREC_INTERFACE_PM_INFO_CONNECTOR_SFP_LR               "SFP_LR"
++#define OVSREC_INTERFACE_PM_INFO_CONNECTOR_SFP_ER               "SFP_ER"
+ #define OVSREC_INTERFACE_PM_INFO_CONNECTOR_SFP_LRM              "SFP_LRM"
+ #define OVSREC_INTERFACE_PM_INFO_CONNECTOR_SFP_LX               "SFP_LX"
+ #define OVSREC_INTERFACE_PM_INFO_CONNECTOR_SFP_RJ45             "SFP_RJ45"
+-- 
+1.9.1
+
