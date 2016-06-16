@@ -1,0 +1,31 @@
+From 5acbd6addf9cfe2791b959a3600c7f65213d9847 Mon Sep 17 00:00:00 2001
+From: Bhaskar Upadhyayula <sarma.bha.upadhyayula@hpe.com>
+Date: Wed, 15 Jun 2016 23:08:58 -0700
+Subject: [PATCH] sFlow CLI restriction changes.
+
+Maintain a list of ports on which sFlow is disabled. When applying sFlow
+sampling, ignore these ports.
+
+Change-Id: Ia529847e6d296985f95738ae43aa8b645b3ce35f
+Signed-off-by: Bhaskar Upadhyayula <sarma.bha.upadhyayula@hpe.com>
+
+%% original patch: 0012-sFlow-CLI-restriction-changes.patch
+---
+ ofproto/ofproto.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/ofproto/ofproto.h b/ofproto/ofproto.h
+index 3f29f0a..a0b4a70 100644
+--- a/ofproto/ofproto.h
++++ b/ofproto/ofproto.h
+@@ -73,6 +73,7 @@ struct ofproto_sflow_options {
+ #ifdef OPS
+     char agent_ip[INET6_ADDRSTRLEN];     /* ip (v4 or v6) of interface */
+     uint32_t max_datagram;               /* Maximum datagram size */
++    struct sset ports; /* port names on which sFlow is disabled */
+ #endif
+     char *control_ip;
+ };
+-- 
+1.9.1
+
