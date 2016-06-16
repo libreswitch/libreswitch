@@ -146,11 +146,11 @@ DISK_SIGNATURE_GENERATED := "${@generate_disk_signature()}"
 
 run_qemu_img (){
     type="$1"
-    qemu-img convert -o subformat=streamOptimized -O $type ${DEPLOY_DIR_IMAGE}/${IMAGE_LINK_NAME}.hdddirect ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.$type
+    qemu-img convert $2 -O $type ${DEPLOY_DIR_IMAGE}/${IMAGE_LINK_NAME}.hdddirect ${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.$type
     ln -sf ${IMAGE_NAME}.$type ${DEPLOY_DIR_IMAGE}/${IMAGE_LINK_NAME}.$type
 }
 create_vmdk_image () {
-    run_qemu_img vmdk
+    run_qemu_img vmdk "-o subformat=streamOptimized"
 }
 
 create_vdi_image () {
