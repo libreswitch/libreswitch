@@ -1,0 +1,13 @@
+--- iputils-s20121221.orig/ping_common.c	2015-10-18 06:24:21.000000000 -0700
++++ iputils-s20121221/ping_common.c	2016-06-20 21:53:33.393989712 -0700
+@@ -1031,10 +1031,6 @@
+ 		       );
+ 		comma = ", ";
+ 	}
+-	if (pipesize > 1) {
+-		printf("%spipe %d", comma, pipesize);
+-		comma = ", ";
+-	}
+ 	if (nreceived && (!interval || (options&(F_FLOOD|F_ADAPTIVE))) && ntransmitted > 1) {
+ 		int ipg = (1000000*(long long)tv.tv_sec+tv.tv_usec)/(ntransmitted-1);
+ 		printf("%sipg/ewma %d.%03d/%d.%03d ms",
