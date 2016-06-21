@@ -7,3 +7,5 @@ SRC_URI += " \
     \
     file://support-broadcom-phy-with-igb.patch \
 "
+
+RM_WORK_EXCLUDE += "linux-yocto"

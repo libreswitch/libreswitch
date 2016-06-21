@@ -28,3 +28,4 @@ do_install() {
 }
 
 BBCLASSEXTEND = "native nativesdk"
+DISABLE_STATIC = ""
