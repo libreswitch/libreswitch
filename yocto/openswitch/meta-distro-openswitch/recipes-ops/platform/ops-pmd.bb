@@ -10,7 +10,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-pmd;protocol=${OPS_REPO_PROTOCOL};branch=${B
            file://ops-pmd.service \
 "
 
-SRCREV = "df28fc2accbd1425dd503609da037bbb940bd825"
+SRCREV = "8b9902e80928acae961a3b675b3ddbdac6e4d7a6"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.

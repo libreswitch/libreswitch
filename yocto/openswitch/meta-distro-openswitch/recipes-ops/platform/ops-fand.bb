@@ -10,7 +10,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-fand;protocol=${OPS_REPO_PROTOCOL};branch=${
            file://ops-fand.service \
 "
 
-SRCREV = "915ffc8227ca5e3c7ae5a99ef05d0d9001a1430e"
+SRCREV = "73fd8e1af237ead8b9690846576a69ce0a0a704b"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
