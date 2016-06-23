@@ -8,4 +8,7 @@ SRC_URI[sha256sum] = "71d08712f78ed543215e4145779a336e42acb4003b97e16d493a680cf0
 DEPENDS += "python-cffi"
 
 PYPI_PACKAGE = "xattr"
+
+DEPENDS = "python python-cffi-native"
+
 inherit pypi
