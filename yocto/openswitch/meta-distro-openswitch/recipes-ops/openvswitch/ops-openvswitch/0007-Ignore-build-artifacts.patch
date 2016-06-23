@@ -1,11 +1,9 @@
-From 8526c3ce66bce2c2d9339cb21884fff02b8f65ac Mon Sep 17 00:00:00 2001
+From d7a72136d8fe0359bbca04d5e0c87c0ab157203f Mon Sep 17 00:00:00 2001
 From: Kevin Worth <kevin.worth@hpe.com>
 Date: Tue, 5 Apr 2016 10:51:58 -0700
-Subject: [PATCH 06/22] Ignore build artifacts
+Subject: [PATCH] Ignore build artifacts
 
 Signed-off-by: Kevin Worth <kevin.worth@hpe.com>
-
-
 ---
  .gitignore | 11 +++++++++++
  1 file changed, 11 insertions(+)
@@ -30,5 +28,5 @@ index 2e883b4..06c9004 100644
 +vswitchd/vtep.xml
 +manpages.mk
 -- 
-2.1.4
+1.9.1
 

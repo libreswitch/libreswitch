@@ -1,11 +1,9 @@
-From 257df1fd715d5e9a21b1f203d8fd7a11bb3effa0 Mon Sep 17 00:00:00 2001
+From c636495d6c30cd2ad32f5bf5af9c01922f449a80 Mon Sep 17 00:00:00 2001
 From: Kevin Worth <kevin.worth@hpe.com>
 Date: Tue, 2 Feb 2016 20:35:49 -0800
-Subject: [PATCH 08/22] Add json_object_get_string() API
+Subject: [PATCH] Add json_object_get_string() API
 
 Signed-off-by: Kevin Worth <kevin.worth@hpe.com>
-
-
 ---
  lib/json.c | 12 ++++++++++++
  lib/json.h |  3 +++
@@ -49,5 +47,5 @@ index 3497035..00bfe7e 100644
  const char *json_string(const struct json *);
  struct json_array *json_array(const struct json *);
 -- 
-2.1.4
+1.9.1
 

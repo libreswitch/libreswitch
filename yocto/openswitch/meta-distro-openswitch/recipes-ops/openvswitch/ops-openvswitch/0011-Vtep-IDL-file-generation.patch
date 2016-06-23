@@ -1,13 +1,11 @@
-From 4794716144c01223ae416374b36eeb17c4d3fc4f Mon Sep 17 00:00:00 2001
+From 443640130ed6b483742b3b008e5711c3fa5af530 Mon Sep 17 00:00:00 2001
 From: Shad Ansari <shad.ansari@hpe.com>
 Date: Mon, 7 Mar 2016 23:27:21 +0000
-Subject: [PATCH 10/22] Vtep IDL file generation
+Subject: [PATCH] Vtep IDL file generation
 
 Explaination: Modified vtep/automake.mk and lib/automake.mk to generate vtep-idl.h and vtep-idl.c
 
 Signed-off-by: Sayali Mane <sayali.p.mane@hpe.com>
-
-
 ---
  configure.ac       |  1 +
  lib/automake.mk    | 21 +++++++++++++++++++++
@@ -161,5 +159,5 @@ index 0000000..7eaa053
 +Libs.private: @LIBS@
 +Cflags: -I${includedir}
 -- 
-2.1.4
+1.9.1
 

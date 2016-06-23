@@ -1,0 +1,25 @@
+From 72dc511bfe1b3c0a2ade9051cf0754453e04ac66 Mon Sep 17 00:00:00 2001
+From: "Marcelo E. Magallon" <marcelo.magallon@hpe.com>
+Date: Mon, 13 Jun 2016 16:55:44 -0600
+Subject: [PATCH] Add .gitreview
+
+Change-Id: I0a14428016dfb7d8881be6a2a9aa1348fe99b0ac
+Signed-off-by: Marcelo E. Magallon <marcelo.magallon@hpe.com>
+---
+ .gitreview | 4 ++++
+ 1 file changed, 4 insertions(+)
+ create mode 100644 .gitreview
+
+diff --git a/.gitreview b/.gitreview
+new file mode 100644
+index 0000000..bd422bb
+--- /dev/null
++++ b/.gitreview
+@@ -0,0 +1,4 @@
++[gerrit]
++host=review.openswitch.net
++port=29418
++project=openswitch/ovs
+-- 
+1.9.1
+

@@ -1,11 +1,9 @@
-From 5ace160811999fc22f61281c980e0be5135f8e38 Mon Sep 17 00:00:00 2001
+From 5d8937f418bc6d7ad5586ad74fbcaa13b1af68f8 Mon Sep 17 00:00:00 2001
 From: Suganya J S A <suganya.j-s-a@hpe.com>
 Date: Tue, 16 Feb 2016 11:14:50 -0800
-Subject: [PATCH 13/22] OSPFv2 key and default definitions
+Subject: [PATCH] OSPFv2 key and default definitions
 
 Signed-off-by: Suganya J S A <suganya.j-s-a@hpe.com>
-
-
 ---
  utilities/ovs-vsctl.c | 24 ++++++++++++++++++++++++
  1 file changed, 24 insertions(+)
@@ -53,5 +51,5 @@ index 42925a5..d404b8f 100644
      {&ovsrec_table_interface,
       {{&ovsrec_table_interface, &ovsrec_interface_col_name, NULL},
 -- 
-2.1.4
+1.9.1
 

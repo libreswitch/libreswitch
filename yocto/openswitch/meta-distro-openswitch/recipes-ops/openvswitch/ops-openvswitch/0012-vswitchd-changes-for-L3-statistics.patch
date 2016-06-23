@@ -1,13 +1,11 @@
-From 81e74935eacab7abfabc8257df3272990011d6c0 Mon Sep 17 00:00:00 2001
+From c998c7a4d3e75aa5b03e06bd1df826880183bcab Mon Sep 17 00:00:00 2001
 From: Surya Tatapudi <surya.tatapudi@hpe.com>
 Date: Wed, 16 Mar 2016 12:12:19 -0700
-Subject: [PATCH 11/22] vswitchd changes for L3 statistics
+Subject: [PATCH] vswitchd changes for L3 statistics
 
 -- Add L3 statistics fields
 
 Signed-off-by: Surya Tatapudi <surya.tatapudi@hpe.com>
-
-
 ---
  lib/netdev.h | 30 ++++++++++++++++++++++++++++++
  1 file changed, 30 insertions(+)
@@ -54,5 +52,5 @@ index 824dad6..68985b6 100644
  
  /* Configuration specific to tunnels. */
 -- 
-2.1.4
+1.9.1
 

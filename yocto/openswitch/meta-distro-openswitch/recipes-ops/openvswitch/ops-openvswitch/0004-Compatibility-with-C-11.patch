@@ -1,14 +1,12 @@
-From 8faba6e1c44dafabae30efc8ae64108e67935f99 Mon Sep 17 00:00:00 2001
+From c51255de4cad1af19812e49bee0de4196581bdd9 Mon Sep 17 00:00:00 2001
 From: Arturo Corrales <acorvil@hpe.com>
 Date: Thu, 10 Mar 2016 12:21:28 -0800
-Subject: [PATCH 03/22] Compatibility with C++11
+Subject: [PATCH] Compatibility with C++11
 
 This commit adds a conditional use of boost library
 when using C++11
 
 Signed-off-by: Arturo Corrales <acorvil@hpe.com>
-
-
 ---
  lib/util.h | 8 ++++++--
  1 file changed, 6 insertions(+), 2 deletions(-)
@@ -41,5 +39,5 @@ index 2480583..7d20cc8 100644
  
  #ifdef __GNUC__
 -- 
-2.1.4
+1.9.1
 

@@ -1,7 +1,7 @@
-From 007ec3595df0ccb509e6b29fc83f26958e3ab99a Mon Sep 17 00:00:00 2001
+From c90be1098a4de7165a2651f97430fdcf899a6c55 Mon Sep 17 00:00:00 2001
 From: Nehal Patel <nehal@hpe.com>
 Date: Thu, 5 Nov 2015 22:23:06 -0800
-Subject: [PATCH 12/22] Add Resilient ECMP CLI
+Subject: [PATCH] Add Resilient ECMP CLI
 
 Add the hooks in switchd to get Resilient ECMP
 flag updates and pass the params down through
@@ -11,8 +11,6 @@ CLI:
 [no] ip ecmp load-balance resilient disable
 
 Signed-off-by: Nehal Patel <nehal@hpe.com>
-
-
 ---
  ofproto/ofproto.h | 1 +
  1 file changed, 1 insertion(+)
@@ -30,5 +28,5 @@ index a356470..53aa127 100644
  enum ofproto_host_action {
      OFPROTO_HOST_ADD,
 -- 
-2.1.4
+1.9.1
 

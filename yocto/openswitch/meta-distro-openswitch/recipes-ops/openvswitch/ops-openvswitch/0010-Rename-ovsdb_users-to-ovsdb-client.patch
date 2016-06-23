@@ -1,7 +1,7 @@
-From d9419b66e964193a168520b8f2469388feca7d2c Mon Sep 17 00:00:00 2001
+From 3d9358170e9d440e052014b639a8746c0339931f Mon Sep 17 00:00:00 2001
 From: Scott Gulland <scott.gulland@hpe.com>
 Date: Mon, 8 Feb 2016 11:56:38 -0800
-Subject: [PATCH 09/22] Rename ovsdb_users to ovsdb-client
+Subject: [PATCH] Rename ovsdb_users to ovsdb-client
 
 Part of the changes to convert the ovsdb_users group to the ovsdb-client
 group.  Note that test_openvswitch_ct_socket_permission.py checks both
@@ -10,8 +10,6 @@ gate tests.  Once that change is in, the reference to ovsdb_users will
 be removed.
 
 Signed-off-by: Scott Gulland <scott.gulland@hpe.com>
-
-
 ---
  lib/socket-util-unix.c            | 9 +++++----
  ops/tests/ops-openvswitch_test.md | 2 +-
@@ -61,5 +59,5 @@ index ff4935b..bd70f28 100644
 -Validate that the socket files in /var/run/openvswitch have file permission of type ‘srwxrw’ and has ‘ovsdb_users’ as the file owner.
 +Validate that the socket files in /var/run/openvswitch have file permission of type ‘srwxrw’ and has ‘ovsdb-client’ as the file group owner.
 -- 
-2.1.4
+1.9.1
 

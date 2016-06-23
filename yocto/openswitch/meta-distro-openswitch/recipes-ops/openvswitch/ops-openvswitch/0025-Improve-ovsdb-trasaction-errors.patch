@@ -1,3 +1,34 @@
+From 6d1ef18fe5486ebe3300af3b945fdf43ded34b15 Mon Sep 17 00:00:00 2001
+From: Surya Tatapudi <surya.tatapudi@hpe.com>
+Date: Mon, 13 Jun 2016 17:02:05 -0600
+Subject: [PATCH] Improve ovsdb trasaction errors.
+
+TG-669
+
+When OVSDB reports errors, the messages should give enough information so that
+the problem can be triaged.
+
+When large transactions are attempted and a constraint violation is flagged on
+one of the elements, the log message should also identify the failing Table &
+Column.
+
+Right now, the log message only contains the failing constraint, but does not
+identify which Table or Column was being operated on when the failure occured.
+
+Change-Id: I9457a1e03748b95673f9c9d65f49e184ce5d24e6
+Signed-off-by: Surya Tatapudi <surya.tatapudi@hpe.com>
+Signed-off-by: Marcelo E. Magallon <marcelo.magallon@hpe.com>
+---
+ ovsdb/column.c           |  2 +-
+ ovsdb/execution.c        |  3 +++
+ ovsdb/row.c              |  4 +++-
+ ovsdb/table.c            | 16 ++++++++++------
+ python/ovs/db/schema.py  | 14 ++++++++++----
+ tests/ovsdb-column.at    |  4 ++++
+ tests/ovsdb-execution.at |  8 ++++----
+ tests/ovsdb-table.at     |  8 ++++++--
+ 8 files changed, 41 insertions(+), 18 deletions(-)
+
 diff --git a/ovsdb/column.c b/ovsdb/column.c
 index 26b7a0b..59452e6 100644
 --- a/ovsdb/column.c
@@ -178,3 +209,6 @@ index 26ff90e..997dfd8 100644
 +OVSDB_CHECK_NEGATIVE_CPY([column must contain the required type member],
 +  [[parse-table mytable '{"columns": {"name": {}}}']],
 +  [[syntax "{}": syntax error: Table - "mytable": Parsing schema for column name failed: Required 'type' member is missing.]])
+-- 
+1.9.1
+

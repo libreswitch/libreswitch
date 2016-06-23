@@ -6,32 +6,32 @@ DEPENDS = "openssl python perl systemd libtool libyaml jemalloc ops"
 
 SRC_URI = "git://github.com/openvswitch/ovs.git;protocol=https;branch=branch-2.5 \
            file://ovsdb-server.service \
-           file://0001-Sync-OVS-2.5-to-OPS.patch \
-           file://0002-Fix-compile-error-in-opennsl-plugin.patch \
-           file://0003-Compatibility-with-C-11.patch \
-           file://0004-Fix-IDL-generation-to-emit-enums-with-a-single-optio.patch \
-           file://0005-Add-support-for-column-tracking-in-IDL.patch \
-           file://0006-Ignore-build-artifacts.patch \
-           file://0007-Make-schema-cksum-validation-consistent.patch \
-           file://0008-Add-json_object_get_string-API.patch \
-           file://0009-Rename-ovsdb_users-to-ovsdb-client.patch \
-           file://0010-Vtep-IDL-file-generation.patch \
-           file://0011-vswitchd-changes-for-L3-statistics.patch \
-           file://0012-Add-Resilient-ECMP-CLI.patch \
-           file://0013-OSPFv2-key-and-default-definitions.patch \
-           file://0014-sFlow-related-changes.patch \
-           file://0015-Converted-tests.patch \
-           file://0016-Partial-map-updates.patch \
-           file://0017-On-demand-fetching.patch \
-           file://0018-Compound-indexes.patch \
-           file://0019-Python-IDL-tracking.patch \
-           file://0020-smap-shash-add-numeric-and-flexible-sort.patch \
-           file://0021-Handle-special-characters-in-Python-JSON-parser.patch \
-           file://0022-Populate-value-for-key-value-pair-of-max1.patch \
-           file://0023-Fix-for-weak-key-strong-value.patch \
-           file://0024-Improve-ovsdb-json-error-msgs.patch \
-           file://0025-Implementation-of-weak_gc-reference-type.patch \
-           "
+           file://0001-Add-.gitreview.patch \
+           file://0002-Sync-OVS-2.5-to-OPS.patch \
+           file://0003-Fix-compile-error-in-opennsl-plugin.patch \
+           file://0004-Compatibility-with-C-11.patch \
+           file://0005-Fix-IDL-generation-to-emit-enums-with-a-single-optio.patch \
+           file://0006-Add-support-for-column-tracking-in-IDL.patch \
+           file://0007-Ignore-build-artifacts.patch \
+           file://0008-Make-schema-cksum-validation-consistent.patch \
+           file://0009-Add-json_object_get_string-API.patch \
+           file://0010-Rename-ovsdb_users-to-ovsdb-client.patch \
+           file://0011-Vtep-IDL-file-generation.patch \
+           file://0012-vswitchd-changes-for-L3-statistics.patch \
+           file://0013-Add-Resilient-ECMP-CLI.patch \
+           file://0014-OSPFv2-key-and-default-definitions.patch \
+           file://0015-sFlow-related-changes.patch \
+           file://0016-Converted-tests.patch \
+           file://0017-Partial-map-updates.patch \
+           file://0018-On-demand-fetching.patch \
+           file://0019-Compound-indexes.patch \
+           file://0020-Python-IDL-tracking.patch \
+           file://0021-smap-shash-add-numeric-and-flexible-sort.patch \
+           file://0022-Handle-special-characters-in-Python-JSON-parser.patch \
+           file://0023-Changed-the-schema-to-idl-auto-generation-script-to-.patch \
+           file://0024-fix-dev-Fix-for-weak-key-strong-value.patch \
+           file://0025-Improve-ovsdb-trasaction-errors.patch \
+          "
 
 SRCREV = "976b441345df85dd7adb973f8ae208f588d764a0"
 

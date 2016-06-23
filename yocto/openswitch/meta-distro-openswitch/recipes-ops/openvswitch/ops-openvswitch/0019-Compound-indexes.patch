@@ -1,11 +1,9 @@
-From 2ac0a8dc103b0f1ce74d73a32f2ee13999c05306 Mon Sep 17 00:00:00 2001
+From d70eb47885284bc5dcd1d5556299526659a8f5d1 Mon Sep 17 00:00:00 2001
 From: "Marcelo E. Magallon" <marcelo.magallon@hpe.com>
 Date: Fri, 13 May 2016 13:31:20 -0600
-Subject: [PATCH 18/22] Compound indexes
+Subject: [PATCH] Compound indexes
 
 Signed-off-by: Marcelo E. Magallon <marcelo.magallon@hpe.com>
-
-
 ---
  Makefile.am                |   1 +
  README-compound-indexes.md | 321 ++++++++++++++++++++++++++++++++++++++
@@ -19,8 +17,10 @@ Signed-off-by: Marcelo E. Magallon <marcelo.magallon@hpe.com>
  tests/.gitignore           |   1 +
  tests/automake.mk          |   2 +
  tests/library.at           |  11 ++
+ tests/ovsdb-idl.at         | 266 ++++++++++++++++++++++++++++++++
+ tests/test-ovsdb.c         | 221 +++++++++++++++++++++++++-
  tests/test-skiplist.c      | 212 +++++++++++++++++++++++++
- 13 files changed, 1457 insertions(+)
+ 15 files changed, 1939 insertions(+), 5 deletions(-)
  create mode 100644 README-compound-indexes.md
  create mode 100644 lib/skiplist.c
  create mode 100644 lib/skiplist.h
@@ -408,7 +408,7 @@ index e651c19..446e357 100644
  
      bool has_pending_fetch;  /* Indicates if the table has a pending fetch
 diff --git a/lib/ovsdb-idl.c b/lib/ovsdb-idl.c
-index 5be0f87..5363093 100644
+index 2bb8762..65367cc 100644
 --- a/lib/ovsdb-idl.c
 +++ b/lib/ovsdb-idl.c
 @@ -37,8 +37,10 @@
@@ -1510,6 +1510,549 @@ index d5dcb12..4542156 100644
  AT_SETUP([test type properties])
  AT_CHECK([test-type-props])
  AT_CLEANUP
+diff --git a/tests/ovsdb-idl.at b/tests/ovsdb-idl.at
+index 5bf041b..043529a 100644
+--- a/tests/ovsdb-idl.at
++++ b/tests/ovsdb-idl.at
+@@ -881,6 +881,272 @@ OVSDB_CHECK_IDL_DELETE_SEQNO_C([simple idl, table delete seqno increment],
+ ]])
+ endif
+ 
++# Tests to verify the functionality of the one column compound index.
++# It tests index for one column string and integer indexes.
++# The run of test-ovsdb generates the output of the display of data using the different indexes defined in
++# the program.
++# Then, some at_checks are used to verify the correctness of the corresponding index as well as the existence
++# of all the rows involved in the test.
++m4_define([OVSDB_CHECK_IDL_COMPOUND_INDEX_SINGLE_COLUMN_C],
++  [AT_SETUP([$1 - C])
++   AT_KEYWORDS([ovsdb server idl compound_index_single_column compound_index positive $5])
++   AT_CHECK([ovsdb-tool create db $abs_srcdir/idltest.ovsschema],
++                  [0], [stdout], [ignore])
++   AT_CHECK([ovsdb-server '-vPATTERN:console:ovsdb-server|%c|%m' --detach --no-chdir --pidfile="`pwd`"/pid --remote=punix:socket --unixctl="`pwd`"/unixctl db], [0], [ignore], [ignore])
++   m4_if([$2], [], [],
++     [AT_CHECK([ovsdb-client transact unix:socket $2], [0], [ignore], [ignore], [kill `cat pid`])])
++# Generate the data to be tested.
++   AT_CHECK([test-ovsdb '-vPATTERN:console:test-ovsdb|%c|%m' -vjsonrpc -t10 -c idl-compound-index unix:socket $3],
++            [0], [stdout], [ignore], [kill `cat pid`])
++# Filter the rows of data that corresponds to the string index eliminating the extra columns of data.
++# This is done to verifiy that the output data is in the correct and expected order.
++   AT_CHECK([[cat stdout | grep -oh '[0-9]\{3\}: s=.*' | sed -e 's/ i=.*//g']],
++            [0], [$4], [], [kill `cat pid`])
++# Here, the data is filtered and sorted in order to have all the rows in the index and be
++# able to determined that all the involved rows are present.
++   AT_CHECK([[cat stdout | grep -oh '[0-9]\{3\}: s=.*' | sort -k 1,1n -k 2,2 -k 3,3]],
++            [0], [$5], [], [kill `cat pid`])
++# Filter the rows of data that corresponds to the integer index eliminating the extra columns of data.
++# This is done to verifiy that the output data is in the correct and expected order.
++   AT_CHECK([[cat stdout | grep -oh '[0-9]\{3\}: i=.*' | sed -e 's/ s=.*//g']],
++            [0], [$6], [], [kill `cat pid`])
++# Here again, the data is filtered and sorted in order to have all the rows in the index and be
++# able to determined that all the involved rows are present.
++   AT_CHECK([[cat stdout | grep -oh '[0-9]\{3\}: i=.*' | sort -k 1,1n -k 2,2 -k 3,3]],
++            [0], [$7], [], [kill `cat pid`])
++   OVSDB_SERVER_SHUTDOWN
++   AT_CLEANUP])
++
++OVSDB_CHECK_IDL_COMPOUND_INDEX_SINGLE_COLUMN_C([Compound_index, single column test ],
++    [['["idltest",
++      {"op": "insert", "table": "simple", "row": {"s":"List000", "i": 1, "b":true, "r":101.0}},
++      {"op": "insert", "table": "simple", "row": {"s":"List000", "i": 2, "b":false, "r":102.0}},
++      {"op": "insert", "table": "simple", "row": {"s":"List000", "i": 10, "b":true, "r":110.0}},
++      {"op": "insert", "table": "simple", "row": {"s":"List001", "i": 1, "b":false, "r":110.0}},
++      {"op": "insert", "table": "simple", "row": {"s":"List001", "i": 2, "b":true, "r":120.0}},
++      {"op": "insert", "table": "simple", "row": {"s":"List001", "i": 2, "b":true, "r":122.0}},
++      {"op": "insert", "table": "simple", "row": {"s":"List001", "i": 4, "b":true, "r":130.0}},
++      {"op": "insert", "table": "simple", "row": {"s":"List005", "i": 5, "b":true, "r":130.0}},
++      {"op": "insert", "table": "simple", "row": {"s":"List020", "i": 20, "b":true, "r":220.0}},
++      {"op": "insert", "table": "simple", "row": {"s":"List020", "i": 19, "b":true, "r":219.0}}
++      ]']],
++    [idl_compound_index_single_column],
++    [001: s=List000
++001: s=List000
++001: s=List000
++001: s=List001
++001: s=List001
++001: s=List001
++001: s=List001
++001: s=List005
++001: s=List020
++001: s=List020
++003: s=List001
++003: s=List001
++003: s=List001
++003: s=List001
++],
++[001: s=List000 i=1 b=True r=101.000000
++001: s=List000 i=10 b=True r=110.000000
++001: s=List000 i=2 b=False r=102.000000
++001: s=List001 i=1 b=False r=110.000000
++001: s=List001 i=2 b=True r=120.000000
++001: s=List001 i=2 b=True r=122.000000
++001: s=List001 i=4 b=True r=130.000000
++001: s=List005 i=5 b=True r=130.000000
++001: s=List020 i=19 b=True r=219.000000
++001: s=List020 i=20 b=True r=220.000000
++003: s=List001 i=1 b=False r=110.000000
++003: s=List001 i=2 b=True r=120.000000
++003: s=List001 i=2 b=True r=122.000000
++003: s=List001 i=4 b=True r=130.000000
++],
++[002: i=1
++002: i=1
++002: i=2
++002: i=2
++002: i=2
++002: i=4
++002: i=5
++002: i=10
++002: i=19
++002: i=20
++004: i=5
++005: i=4
++005: i=5
++006: i=5
++006: i=10
++006: i=19
++006: i=20
++006: i=54
++],
++[002: i=1 s=List000 b=True r=101.000000
++002: i=1 s=List001 b=False r=110.000000
++002: i=10 s=List000 b=True r=110.000000
++002: i=19 s=List020 b=True r=219.000000
++002: i=2 s=List000 b=False r=102.000000
++002: i=2 s=List001 b=True r=120.000000
++002: i=2 s=List001 b=True r=122.000000
++002: i=20 s=List020 b=True r=220.000000
++002: i=4 s=List001 b=True r=130.000000
++002: i=5 s=List005 b=True r=130.000000
++004: i=5 s=List005 b=True r=130.000000
++005: i=4 s=List001 b=True r=130.000000
++005: i=5 s=List005 b=True r=130.000000
++006: i=10 s=List000 b=True r=110.000000
++006: i=19 s=List020 b=True r=219.000000
++006: i=20 s=List020 b=True r=220.000000
++006: i=5 s=List005 b=True r=130.000000
++006: i=54 s=Lista054 b=False r=0.000000
++])
++
++# Tests to verify the functionality of two column compound index.
++# It tests index for two columns using string and integer fields.
++# The run of test-ovsdb generates the output of the display of data using the different indexes defined in
++# the program.
++# Then, some at_checks are used to verify the correctness of the corresponding index as well as the existence
++# of all the rows involved in the test.
++m4_define([OVSDB_CHECK_IDL_COMPOUND_INDEX_DOUBLE_COLUMN_C],
++  [AT_SETUP([$1 - C])
++   AT_KEYWORDS([ovsdb server idl compound_index_double_column compound_index positive $5])
++   AT_CHECK([ovsdb-tool create db $abs_srcdir/idltest.ovsschema],
++                  [0], [stdout], [ignore])
++   AT_CHECK([ovsdb-server '-vPATTERN:console:ovsdb-server|%c|%m' --detach --no-chdir --pidfile="`pwd`"/pid --remote=punix:socket --unixctl="`pwd`"/unixctl db], [0], [ignore], [ignore])
++   m4_if([$2], [], [],
++     [AT_CHECK([ovsdb-client transact unix:socket $2], [0], [ignore], [ignore], [kill `cat pid`])])
++# Generate the data to be tested.
++   AT_CHECK([test-ovsdb '-vPATTERN:console:test-ovsdb|%c|%m' -vjsonrpc -t10 -c idl-compound-index unix:socket $3],
++            [0], [stdout], [ignore], [kill `cat pid`])
++# Filter the rows of data that corresponds to the string-integer index eliminating the extra columns of data.
++# This is done to verifiy that the output data is in the correct and expected order.
++   AT_CHECK([[cat stdout | grep -oh '[0-9]\{3\}: s=.*' | sed -e 's/ b=.*//g']],
++            [0], [$4], [], [kill `cat pid`])
++# Here, the data is filtered and sorted in order to have all the rows in the index and be
++# able to determined that all the involved rows are present.
++   AT_CHECK([[cat stdout | grep -oh '[0-9]\{3\}: s=.*' | sort -k 1,1n -k 2,2 -k 3,3]],
++            [0], [$5], [], [kill `cat pid`])
++# Filter the rows of data that corresponds to the integer index eliminating the extra columns of data.
++# This is done to verifiy that the output data is in the correct and expected order.
++   AT_CHECK([[cat stdout | grep -oh '[0-9]\{3\}: i=.*' | sed -e 's/ b=.*//g']],
++            [0], [$6], [], [kill `cat pid`])
++# Here again, the data is filtered and sorted in order to have all the rows in the index and be
++# able to determined that all the involved rows are present.
++   AT_CHECK([[cat stdout | grep -oh '[0-9]\{3\}: i=.*' | sort -k 1,1n -k 2,2 -k 3,3]],
++            [0], [$7], [], [kill `cat pid`])
++   OVSDB_SERVER_SHUTDOWN
++   AT_CLEANUP])
++
++OVSDB_CHECK_IDL_COMPOUND_INDEX_DOUBLE_COLUMN_C([Compound_index, double column test ],
++    [['["idltest",
++      {"op": "insert", "table": "simple", "row": {"s":"List000", "i": 1, "b":true, "r":101.0}},
++      {"op": "insert", "table": "simple", "row": {"s":"List000", "i": 2, "b":false, "r":102.0}},
++      {"op": "insert", "table": "simple", "row": {"s":"List000", "i": 10, "b":true, "r":110.0}},
++      {"op": "insert", "table": "simple", "row": {"s":"List001", "i": 1, "b":false, "r":110.0}},
++      {"op": "insert", "table": "simple", "row": {"s":"List001", "i": 2, "b":true, "r":120.0}},
++      {"op": "insert", "table": "simple", "row": {"s":"List001", "i": 2, "b":true, "r":122.0}},
++      {"op": "insert", "table": "simple", "row": {"s":"List001", "i": 4, "b":true, "r":130.0}},
++      {"op": "insert", "table": "simple", "row": {"s":"List005", "i": 5, "b":true, "r":130.0}},
++      {"op": "insert", "table": "simple", "row": {"s":"List020", "i": 20, "b":true, "r":220.0}},
++      {"op": "insert", "table": "simple", "row": {"s":"List020", "i": 19, "b":true, "r":219.0}}
++      ]']],
++    [idl_compound_index_double_column],
++    [001: s=List000 i=1
++001: s=List000 i=2
++001: s=List000 i=10
++001: s=List001 i=1
++001: s=List001 i=2
++001: s=List001 i=2
++001: s=List001 i=4
++001: s=List005 i=5
++001: s=List020 i=19
++001: s=List020 i=20
++002: s=List000 i=10
++002: s=List000 i=2
++002: s=List000 i=1
++002: s=List001 i=4
++002: s=List001 i=2
++002: s=List001 i=2
++002: s=List001 i=1
++002: s=List005 i=5
++002: s=List020 i=20
++002: s=List020 i=19
++003: s=List000 i=10
++004: s=List001 i=1
++004: s=List001 i=2
++004: s=List001 i=2
++004: s=List001 i=4
++004: s=List005 i=5
++],
++    [001: s=List000 i=1 b=True r=101.000000
++001: s=List000 i=10 b=True r=110.000000
++001: s=List000 i=2 b=False r=102.000000
++001: s=List001 i=1 b=False r=110.000000
++001: s=List001 i=2 b=True r=120.000000
++001: s=List001 i=2 b=True r=122.000000
++001: s=List001 i=4 b=True r=130.000000
++001: s=List005 i=5 b=True r=130.000000
++001: s=List020 i=19 b=True r=219.000000
++001: s=List020 i=20 b=True r=220.000000
++002: s=List000 i=1 b=True r=101.000000
++002: s=List000 i=10 b=True r=110.000000
++002: s=List000 i=2 b=False r=102.000000
++002: s=List001 i=1 b=False r=110.000000
++002: s=List001 i=2 b=True r=120.000000
++002: s=List001 i=2 b=True r=122.000000
++002: s=List001 i=4 b=True r=130.000000
++002: s=List005 i=5 b=True r=130.000000
++002: s=List020 i=19 b=True r=219.000000
++002: s=List020 i=20 b=True r=220.000000
++003: s=List000 i=10 b=True r=110.000000
++004: s=List001 i=1 b=False r=110.000000
++004: s=List001 i=2 b=True r=120.000000
++004: s=List001 i=2 b=True r=122.000000
++004: s=List001 i=4 b=True r=130.000000
++004: s=List005 i=5 b=True r=130.000000
++],
++    [005: i=1 s=List000
++005: i=1 s=List001
++005: i=2 s=List000
++005: i=2 s=List001
++005: i=2 s=List001
++005: i=4 s=List001
++005: i=5 s=List005
++005: i=10 s=List000
++005: i=19 s=List020
++005: i=20 s=List020
++006: i=20 s=List020
++006: i=19 s=List020
++006: i=10 s=List000
++006: i=5 s=List005
++006: i=4 s=List001
++006: i=2 s=List000
++006: i=2 s=List001
++006: i=2 s=List001
++006: i=1 s=List000
++006: i=1 s=List001
++],
++    [005: i=1 s=List000 b=True r=101.000000
++005: i=1 s=List001 b=False r=110.000000
++005: i=10 s=List000 b=True r=110.000000
++005: i=19 s=List020 b=True r=219.000000
++005: i=2 s=List000 b=False r=102.000000
++005: i=2 s=List001 b=True r=120.000000
++005: i=2 s=List001 b=True r=122.000000
++005: i=20 s=List020 b=True r=220.000000
++005: i=4 s=List001 b=True r=130.000000
++005: i=5 s=List005 b=True r=130.000000
++006: i=1 s=List000 b=True r=101.000000
++006: i=1 s=List001 b=False r=110.000000
++006: i=10 s=List000 b=True r=110.000000
++006: i=19 s=List020 b=True r=219.000000
++006: i=2 s=List000 b=False r=102.000000
++006: i=2 s=List001 b=True r=120.000000
++006: i=2 s=List001 b=True r=122.000000
++006: i=20 s=List020 b=True r=220.000000
++006: i=4 s=List001 b=True r=130.000000
++006: i=5 s=List005 b=True r=130.000000
++])
++
+ m4_define([OVSDB_CHECK_IDL_ON_DEMAND_FETCH_COL_ROW_C],
+   [AT_SETUP([$1 - C])
+    AT_KEYWORDS([ovsdb server idl-fetch  positive $5])
+diff --git a/tests/test-ovsdb.c b/tests/test-ovsdb.c
+index 0cef598..78c566f 100644
+--- a/tests/test-ovsdb.c
++++ b/tests/test-ovsdb.c
+@@ -205,7 +205,14 @@ usage(void)
+            "  idl-fetch SERVER [TRANSACTION...]\n"
+            "    connect to SERVER and dump the contents of the database\n"
+            "    as seen initially by the IDL implementation and after\n"
+-           "    executing each TRANSACTION.  (Each TRANSACTION must modify\n",
++           "    executing each TRANSACTION.  (Each TRANSACTION must modify\n"
++           "  idl-compound-index TEST_TO_EXECUTE\n"
++           "    Execute the tests to verify compound-index feature.\n"
++           "    The TEST_TO_EXECUTE are:\n"
++           "        idl_compound_index_single_column:\n"
++           "            test for indexes using one column as part of the index.\n"
++           "        idl_compound_index_double_column:\n"
++           "            test for indexes using two columns as part of index.\n",
+            program_name, program_name);
+     vlog_usage();
+     printf("\nOther options:\n"
+@@ -2397,7 +2404,7 @@ do_fetch_table(struct ovs_cmdl_context *ctx)
+         struct stream *stream;
+ 
+         error = stream_open_block(jsonrpc_stream_open(ctx->argv[1], &stream,
+-                                  DSCP_DEFAULT), &stream);
++                    DSCP_DEFAULT), &stream);
+         if (error) {
+             ovs_fatal(error, "failed to connect to \"%s\"", ctx->argv[1]);
+         }
+@@ -2411,15 +2418,15 @@ do_fetch_table(struct ovs_cmdl_context *ctx)
+     ovsdb_idl_add_column(idl, &idltest_simple_col_ba);
+     ovsdb_idl_add_column(idl, &idltest_simple_col_i);
+     ovsdb_idl_add_on_demand_column(idl, &idltest_table_simple,
+-                                   &idltest_simple_col_ia);
++            &idltest_simple_col_ia);
+     ovsdb_idl_add_column(idl, &idltest_simple_col_r);
+     ovsdb_idl_add_column(idl, &idltest_simple_col_ra);
+     ovsdb_idl_add_column(idl, &idltest_simple_col_sa);
+     ovsdb_idl_add_column(idl, &idltest_simple_col_u);
+     ovsdb_idl_add_on_demand_column(idl, &idltest_table_simple,
+-                                   &idltest_simple_col_s);
++            &idltest_simple_col_s);
+     ovsdb_idl_add_on_demand_column(idl, &idltest_table_simple,
+-                                   &idltest_simple_col_ua);
++            &idltest_simple_col_ua);
+ 
+     ovsdb_idl_get_initial_snapshot(idl);
+     ovsdb_idl_run(idl);
+@@ -2457,6 +2464,209 @@ do_fetch_table(struct ovs_cmdl_context *ctx)
+     ovsdb_idl_destroy(idl);
+ }
+ 
++static int
++test_idl_compound_index_single_column(struct ovsdb_idl *idl,
++        struct ovsdb_idl_index_cursor* sCursor,
++        struct ovsdb_idl_index_cursor* iCursor)
++{
++    const struct idltest_simple* myRow;
++    struct ovsdb_idl_txn *txn;
++    int step=0;
++
++     /* Display records by string index -> sCursor */
++     ++step;
++     IDLTEST_SIMPLE_FOR_EACH_BYINDEX(myRow, sCursor)
++     {
++         printf("%03d: s=%s i=%"PRId64" b=%s r=%f\n", step, myRow->s, myRow->i, myRow->b?"True":"False", myRow->r);
++     }
++     /* Display records by integer index -> iCursor */
++     ++step;
++     IDLTEST_SIMPLE_FOR_EACH_BYINDEX(myRow, iCursor)
++     {
++         printf("%03d: i=%"PRId64" s=%s b=%s r=%f\n", step,  myRow->i,myRow->s, myRow->b?"True":"False", myRow->r);
++     }
++     /* Display records by string index -> sCursor with filtering where s=\"List001\ */
++     ++step;
++     struct idltest_simple equal;
++     equal.s = "List001";
++     IDLTEST_SIMPLE_FOR_EACH_EQUAL(myRow, sCursor, &equal)
++     {
++         printf("%03d: s=%s i=%"PRId64" b=%s r=%f\n", step, myRow->s, myRow->i, myRow->b?"True":"False", myRow->r);
++     }
++     /* Display records by integer index -> iCursor with filtering where i=5 */
++     ++step;
++     equal.i=5;
++     IDLTEST_SIMPLE_FOR_EACH_EQUAL(myRow, iCursor, &equal) {
++         printf("%03d: i=%"PRId64" s=%s b=%s r=%f\n", step,  myRow->i,myRow->s, myRow->b?"True":"False", myRow->r);
++     }
++     /* Display records by integer index -> iCursor in range i=[3,7] */
++     ++step;
++     struct idltest_simple from, to;
++     from.i = 3;
++     to.i = 7;
++     IDLTEST_SIMPLE_FOR_EACH_RANGE(myRow, iCursor, &from, &to)
++     {
++         printf("%03d: i=%"PRId64" s=%s b=%s r=%f\n", step,  myRow->i,myRow->s, myRow->b?"True":"False", myRow->r);
++     }
++     /* Delete record i=4 and insert i=54 by integer index -> iCursor */
++     ++step;
++     struct idltest_simple toDelete, *toInsert;
++     toDelete.i = 4;
++     myRow = &toDelete;
++     myRow = idltest_simple_index_find(iCursor, myRow);
++     txn = ovsdb_idl_txn_create(idl);
++     idltest_simple_delete(myRow);
++     toInsert = idltest_simple_insert(txn);
++     idltest_simple_set_i(toInsert, 54);
++     idltest_simple_set_s(toInsert, "Lista054");
++     ovsdb_idl_txn_commit_block(txn);
++     ovsdb_idl_txn_destroy(txn);
++     to.i = 60;
++     IDLTEST_SIMPLE_FOR_EACH_RANGE(myRow, iCursor, &from, &to)
++     {
++         printf("%03d: i=%"PRId64" s=%s b=%s r=%f\n", step,  myRow->i, myRow->s, myRow->b?"True":"False", myRow->r);
++     }
++     return step;
++}
++
++static int
++test_idl_compound_index_double_column(struct ovsdb_idl_index_cursor* siCursor,
++        struct ovsdb_idl_index_cursor* sidCursor,
++        struct ovsdb_idl_index_cursor* isCursor,
++        struct ovsdb_idl_index_cursor* idsCursor)
++{
++    const struct idltest_simple* myRow;
++    int step = 0;
++
++    /* Display records by string-integer index -> siCursor */
++    step++;
++    IDLTEST_SIMPLE_FOR_EACH_BYINDEX(myRow, siCursor)
++    {
++        printf("%03d: s=%s i=%"PRId64" b=%s r=%f\n", step, myRow->s, myRow->i, myRow->b?"True":"False", myRow->r);
++    }
++    /* Display records by string-integer(down order) index -> sidCursor */
++    step++;
++    IDLTEST_SIMPLE_FOR_EACH_BYINDEX(myRow, sidCursor)
++    {
++        printf("%03d: s=%s i=%"PRId64" b=%s r=%f\n", step, myRow->s, myRow->i, myRow->b?"True":"False", myRow->r);
++    }
++    /* Display records by string-integer index -> siCursor with filtering where s="List000" and i=10 */
++    step++;
++    struct idltest_simple equal;
++    equal.s = "List000";
++    equal.i = 10;
++    IDLTEST_SIMPLE_FOR_EACH_EQUAL(myRow, siCursor, &equal)
++    {
++        printf("%03d: s=%s i=%"PRId64" b=%s r=%f\n", step, myRow->s, myRow->i, myRow->b?"True":"False", myRow->r);
++    }
++    /* Display records by string-integer index -> siCursor in range i=[0,100] and s=[\"List002\",\"List003\"] */
++    step++;
++    struct idltest_simple from, to;
++    from.i = 0;
++    from.s = "List001";
++    to.i = 100;
++    to.s = "List005";
++    IDLTEST_SIMPLE_FOR_EACH_RANGE(myRow, siCursor, &from, &to)
++    {
++        printf("%03d: s=%s i=%"PRId64" b=%s r=%f\n", step, myRow->s, myRow->i, myRow->b?"True":"False", myRow->r);
++    }
++    /* Display records using integer-string index. */
++    step++;
++    IDLTEST_SIMPLE_FOR_EACH_BYINDEX(myRow, isCursor) {
++        printf("%03d: i=%"PRId64" s=%s b=%s r=%f\n", step, myRow->i, myRow->s, myRow->b?"True":"False", myRow->r);
++    }
++    /* Display records using integer(descend)-string index. */
++    step++;
++    IDLTEST_SIMPLE_FOR_EACH_BYINDEX(myRow, idsCursor) {
++        printf("%03d: i=%"PRId64" s=%s b=%s r=%f\n", step, myRow->i, myRow->s, myRow->b?"True":"False", myRow->r);
++    }
++    return step;
++}
++
++static void
++do_idl_compound_index(struct ovs_cmdl_context *ctx)
++{
++    struct ovsdb_idl *idl;
++    struct ovsdb_idl_index_cursor sCursor, iCursor, siCursor, sidCursor,
++                    isCursor, idsCursor;
++    enum TESTS { IDL_COMPOUND_INDEX_WITH_SINGLE_COLUMN,
++            IDL_COMPOUND_INDEX_WITH_DOUBLE_COLUMN
++    };
++    int step = 0;
++    int i;
++
++    idltest_init();
++
++    idl = ovsdb_idl_create(ctx->argv[1], &idltest_idl_class, false, true);
++
++    /* Add tables/columns and initialize index data needed for tests */
++    ovsdb_idl_add_table(idl, &idltest_table_simple);
++    ovsdb_idl_add_column(idl, &idltest_simple_col_s);
++    ovsdb_idl_add_column(idl, &idltest_simple_col_i);
++    ovsdb_idl_add_column(idl, &idltest_simple_col_r);
++    ovsdb_idl_add_column(idl, &idltest_simple_col_b);
++
++    struct ovsdb_idl_index *index;
++    index = ovsdb_idl_create_index(idl, &idltest_table_simple, "string");
++    ovsdb_idl_index_add_column(index, &idltest_simple_col_s, OVSDB_INDEX_ASC, NULL);
++
++    index = ovsdb_idl_create_index(idl, &idltest_table_simple, "integer");
++    ovsdb_idl_index_add_column(index, &idltest_simple_col_i, OVSDB_INDEX_ASC, NULL);
++
++    index = ovsdb_idl_create_index(idl, &idltest_table_simple, "string-integer");
++    ovsdb_idl_index_add_column(index, &idltest_simple_col_s, OVSDB_INDEX_ASC, NULL);
++    ovsdb_idl_index_add_column(index, &idltest_simple_col_i, OVSDB_INDEX_ASC, NULL);
++
++    index = ovsdb_idl_create_index(idl, &idltest_table_simple, "string-integerd");
++    ovsdb_idl_index_add_column(index, &idltest_simple_col_s, OVSDB_INDEX_ASC, NULL);
++    ovsdb_idl_index_add_column(index, &idltest_simple_col_i, OVSDB_INDEX_DESC, NULL);
++
++    index = ovsdb_idl_create_index(idl, &idltest_table_simple, "integer-string");
++    ovsdb_idl_index_add_column(index, &idltest_simple_col_i, OVSDB_INDEX_ASC, NULL);
++    ovsdb_idl_index_add_column(index, &idltest_simple_col_s, OVSDB_INDEX_ASC, NULL);
++
++    index = ovsdb_idl_create_index(idl, &idltest_table_simple, "integerd-string");
++    ovsdb_idl_index_add_column(index, &idltest_simple_col_i, OVSDB_INDEX_DESC, NULL);
++    ovsdb_idl_index_add_column(index, &idltest_simple_col_s, OVSDB_INDEX_ASC, NULL);
++
++    /* wait for replica to be updated */
++    ovsdb_idl_get_initial_snapshot(idl);
++
++    /* Initialize cursors to be used by indexes */
++    ovsdb_idl_initialize_cursor(idl, &idltest_table_simple, "string", &sCursor);
++    ovsdb_idl_initialize_cursor(idl, &idltest_table_simple, "integer", &iCursor);
++    ovsdb_idl_initialize_cursor(idl, &idltest_table_simple, "string-integer", &siCursor);
++    ovsdb_idl_initialize_cursor(idl, &idltest_table_simple, "string-integerd", &sidCursor);
++    ovsdb_idl_initialize_cursor(idl, &idltest_table_simple, "integer-string", &isCursor);
++    ovsdb_idl_initialize_cursor(idl, &idltest_table_simple, "integerd-string", &idsCursor);
++
++    setvbuf(stdout, NULL, _IONBF, 0);
++    int test_to_run = -1;
++    for (i = 2; i < ctx->argc; i++) {
++        char *arg = ctx->argv[i];
++
++        if(strcmp(arg,"idl_compound_index_single_column")== 0) {
++            test_to_run = IDL_COMPOUND_INDEX_WITH_SINGLE_COLUMN;
++        } else if(strcmp(arg, "idl_compound_index_double_column")==0) {
++            test_to_run = IDL_COMPOUND_INDEX_WITH_DOUBLE_COLUMN;
++        }
++
++        switch(test_to_run) {
++            case IDL_COMPOUND_INDEX_WITH_SINGLE_COLUMN:
++                test_idl_compound_index_single_column(idl, &sCursor, &iCursor);
++                break;
++            case IDL_COMPOUND_INDEX_WITH_DOUBLE_COLUMN:
++                test_idl_compound_index_double_column(&siCursor,
++                        &sidCursor, &isCursor, &idsCursor);
++                break;
++            default:
++                printf("%03d: Test %s not implemented.\n", step++, arg);
++        }
++    }
++    ovsdb_idl_destroy(idl);
++    printf("%03d: done\n", step);
++}
++
+ static struct ovs_cmdl_command all_commands[] = {
+     { "log-io", NULL, 2, INT_MAX, do_log_io },
+     { "default-atoms", NULL, 0, 0, do_default_atoms },
+@@ -2488,6 +2698,7 @@ static struct ovs_cmdl_command all_commands[] = {
+     { "idl-fetch-column-row", NULL, 1, INT_MAX, do_fetch_column_row },
+     { "idl-fetch-column-all", NULL, 1, INT_MAX, do_fetch_column_all },
+     { "idl-fetch-table", NULL, 1, INT_MAX, do_fetch_table },
++    { "idl-compound-index", NULL, 2, 2, do_idl_compound_index },
+     { "help", NULL, 0, INT_MAX, do_help },
+     { NULL, NULL, 0, 0, NULL },
+ };
 diff --git a/tests/test-skiplist.c b/tests/test-skiplist.c
 new file mode 100644
 index 0000000..291ff26
@@ -1729,5 +2272,5 @@ index 0000000..291ff26
 +
 +OVSTEST_REGISTER("test-skiplist", test_skiplist_main);
 -- 
-2.1.4
+1.9.1
 

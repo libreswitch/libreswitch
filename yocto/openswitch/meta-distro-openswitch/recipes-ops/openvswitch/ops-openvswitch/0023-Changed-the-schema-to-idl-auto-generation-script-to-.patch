@@ -1,8 +1,8 @@
-From d973d466f5713747472fce05125c96ad54fbdf18 Mon Sep 17 00:00:00 2001
+From 441c63641f9381d34bf18aa8fe17c6d5b80a1a80 Mon Sep 17 00:00:00 2001
 From: aslammdkhan <aslam.khan@hpe.com>
 Date: Thu, 26 May 2016 17:28:56 -0700
-Subject: [PATCH 22/22] Changed the schema-to-idl auto generation script to
- populate value if it is present.
+Subject: [PATCH] Changed the schema-to-idl auto generation script to populate
+ value if it is present.
 
 TG-907
 Tags: fix, dev
@@ -13,7 +13,6 @@ Added code to check if value is present fill that also.
 
 Change-Id: Ieb95c6f02bf8cc45430966606c8bdfe3781e429d
 Signed-off-by: aslammdkhan <aslam.khan@hpe.com>
-
 ---
  ovsdb/ovsdb-idlc.in | 8 +++++++-
  1 file changed, 7 insertions(+), 1 deletion(-)
@@ -45,5 +44,5 @@ index 4bada77..ce81088 100755
              else:
                  print "    size_t i;"
 -- 
-2.1.4
+1.9.1
 

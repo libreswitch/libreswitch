@@ -1,11 +1,9 @@
-From e79a82043159f47160177c886b14315ed85d73ed Mon Sep 17 00:00:00 2001
+From 02386830169fbb124da036932828717d18ce2312 Mon Sep 17 00:00:00 2001
 From: "Marcelo E. Magallon" <marcelo.magallon@hpe.com>
 Date: Fri, 13 May 2016 13:34:55 -0600
-Subject: [PATCH 21/22] Handle special characters in Python JSON parser
+Subject: [PATCH] Handle special characters in Python JSON parser
 
 Signed-off-by: Marcelo E. Magallon <marcelo.magallon@hpe.com>
-
-
 ---
  python/ovs/json.py | 25 +++++++++++++++++++------
  1 file changed, 19 insertions(+), 6 deletions(-)
@@ -98,5 +96,5 @@ index d329ee4..0c41fc0 100644
      def is_done(self):
          return self.done
 -- 
-2.1.4
+1.9.1
 
