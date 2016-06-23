@@ -26,6 +26,7 @@
 
 RRECOMMENDS_${PN} += "${PN}-dbg"
 RRECOMMENDS_${PN}_class-native = ""
+RM_WORK_EXCLUDE += "${PN}"
 
 SRCTREECOVEREDTASKS ?= "do_patch do_unpack do_fetch"
 
