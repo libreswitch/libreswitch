@@ -16,4 +16,13 @@ PV = "git${SRCPV}"
 
 S = "${WORKDIR}/git"
 
+FILES_${PN} += "/usr/share/opsplugins"
+do_install_append() {
+    # Code to copy ECMP custom validator to /usr/share/opsplugins.
+    install -d ${D}/usr/share/opsplugins
+    for plugin in $(find ${S}/opsplugins -name "*.py"); do \
+        install -m 0644 ${plugin} ${D}/usr/share/opsplugins
+    done
+}
+
 inherit openswitch pkgconfig cmake
