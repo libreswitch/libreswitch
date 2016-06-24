@@ -1,0 +1,8 @@
+# Copyright (C) 2016 Hewlett Packard Enterprise Development LP
+
+[Unit]
+Description=OpenSwitch system reboot script
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/ops-reboot %i

@@ -3,6 +3,7 @@
 [Unit]
 Description=OpenSwitch Switch Daemon for Xpliant
 After=ovsdb-server.service ops-init.service
+OnFailure=switch-reboot@ops-switchd.service
 
 [Service]
 Type=forking
@@ -13,7 +14,6 @@ Environment="HOST_PACKET_IF_MODE=KNET_NETDEV"
 ExecStart=/sbin/ip netns exec swns /usr/sbin/ops-switchd --no-chdir --pidfile --detach -vSYSLOG:INFO
 WorkingDirectory=/var/run/openvswitch
 PIDFile=/var/run/openvswitch/ops-switchd.pid
-Restart=no
 
 [Install]
 WantedBy=multi-user.target
