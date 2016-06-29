@@ -8,7 +8,7 @@ OnFailure=switch-reboot@ops-switchd.service
 [Service]
 Type=forking
 Environment="KNET_KCOM=bcm-knet"
-ExecStart=/sbin/ip netns exec swns /usr/bin/netserve -d 1943 /usr/sbin/ops-switchd --no-chdir --pidfile -vSYSLOG:INFO
+ExecStart=/usr/bin/netserve -d 1943 /sbin/ip netns exec swns /usr/sbin/ops-switchd --no-chdir --pidfile -vSYSLOG:INFO
 WorkingDirectory=/var/run/openvswitch
 PIDFile=/var/run/netserve.pid
 
