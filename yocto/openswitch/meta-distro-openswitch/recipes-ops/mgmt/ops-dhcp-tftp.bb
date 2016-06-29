@@ -11,7 +11,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-dhcp-tftp;protocol=${OPS_REPO_PROTOCOL};bran
            file://dhcp_tftp.service \
 "
 
-SRCREV = "18415f9bf30242b1a5676fb772e38824057e3fd1"
+SRCREV = "53e3919cb1bb851162d38786e25f3a1b6a9342d1"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
