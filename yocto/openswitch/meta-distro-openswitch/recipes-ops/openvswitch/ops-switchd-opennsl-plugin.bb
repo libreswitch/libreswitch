@@ -13,7 +13,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-switchd-opennsl-plugin;protocol=${OPS_REPO_P
 
 FILES_${PN} = "${libdir}/openvswitch/plugins"
 
-SRCREV = "f2de1fdae2ca3c73d60e1e5685ad2b70d66b9c62"
+SRCREV = "371842e9208d2a1226197478bf8179c35ed792df"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
