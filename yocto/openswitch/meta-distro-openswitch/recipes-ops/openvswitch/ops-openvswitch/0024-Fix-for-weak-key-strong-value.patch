@@ -1,7 +1,7 @@
-From cc301ee5570a3155ba2a8ef06241dde84c23002e Mon Sep 17 00:00:00 2001
+From 6655ec1c4cd6424a359f539bd0d36d89b1253541 Mon Sep 17 00:00:00 2001
 From: Ligeo George <ligeo.george@hpe.com>
 Date: Wed, 25 May 2016 15:10:29 -0700
-Subject: [PATCH] fix: dev: Fix for weak-key:strong-value
+Subject: [PATCH] Fix for weak-key:strong-value
 
 This fix allows the row pointed to by the strong
 value to be garbage collected when the row pointed

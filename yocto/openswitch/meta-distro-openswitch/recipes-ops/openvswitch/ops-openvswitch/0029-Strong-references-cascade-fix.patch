@@ -1,0 +1,54 @@
+From c69d5bf8e1ec52dd91f43f502609e39194248d7a Mon Sep 17 00:00:00 2001
+From: Esteban Rodriguez Betancourt <estebarb@hpe.com>
+Date: Wed, 8 Jun 2016 17:18:39 -0600
+Subject: [PATCH] Strong references cascade fix
+
+Improves the performance of OVSDB avoiding the chain
+reaction produced when modifing rows with a strong
+reference and the pointed rows have more strong
+references.
+
+The approach taken was using the change bitmap to avoid
+triggering a change count when the column hasn't changed.
+
+Change-Id: I812dfeaee22d249f76790847707ead40eca6ecc6
+Signed-off-by: Esteban Rodriguez Betancourt <estebarb@hpe.com>
+---
+ ovsdb/transaction.c | 20 +++++++++++---------
+ 1 file changed, 11 insertions(+), 9 deletions(-)
+
+diff --git a/ovsdb/transaction.c b/ovsdb/transaction.c
+index d720306..a4bf8c2 100644
+--- a/ovsdb/transaction.c
++++ b/ovsdb/transaction.c
+@@ -281,16 +281,18 @@ update_row_ref_count(struct ovsdb_txn *txn, struct ovsdb_txn_row *r)
+         const struct ovsdb_column *column = node->data;
+         struct ovsdb_error *error;
+ 
+-        if (r->old) {
+-            error = ovsdb_txn_adjust_row_refs(txn, r->old, column, -1);
+-            if (error) {
+-                return OVSDB_WRAP_BUG("error decreasing refcount", error);
++        if (bitmap_is_set(r->changed, column->index)) {
++            if (r->old) {
++                error = ovsdb_txn_adjust_row_refs(txn, r->old, column, -1);
++                if (error) {
++                    return OVSDB_WRAP_BUG("error decreasing refcount", error);
++                }
+             }
+-        }
+-        if (r->new) {
+-            error = ovsdb_txn_adjust_row_refs(txn, r->new, column, 1);
+-            if (error) {
+-                return error;
++            if (r->new) {
++                error = ovsdb_txn_adjust_row_refs(txn, r->new, column, 1);
++                if (error) {
++                    return error;
++                }
+             }
+         }
+     }
+-- 
+1.9.1
+

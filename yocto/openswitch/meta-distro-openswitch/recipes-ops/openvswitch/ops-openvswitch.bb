@@ -29,9 +29,13 @@ SRC_URI = "git://github.com/openvswitch/ovs.git;protocol=https;branch=branch-2.5
            file://0021-smap-shash-add-numeric-and-flexible-sort.patch \
            file://0022-Handle-special-characters-in-Python-JSON-parser.patch \
            file://0023-Changed-the-schema-to-idl-auto-generation-script-to-.patch \
-           file://0024-fix-dev-Fix-for-weak-key-strong-value.patch \
+           file://0024-Fix-for-weak-key-strong-value.patch \
            file://0025-Improve-ovsdb-trasaction-errors.patch \
            file://0026-Implementation-of-weak_gc-reference-type.patch \
+           file://0027-Change-track-retain-column-values-of-deleted-rows.patch \
+           file://0028-Weak-references-performance-fix.patch \
+           file://0029-Strong-references-cascade-fix.patch \
+           file://0030-new-dev-OVSDB-Priority-Sessions.patch \
           "
 
 SRCREV = "976b441345df85dd7adb973f8ae208f588d764a0"

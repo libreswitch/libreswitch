@@ -1,0 +1,237 @@
+From 029304ef098055e3ff6027650dc9c4431267685d Mon Sep 17 00:00:00 2001
+From: Esteban Rodriguez Betancourt <estebarb@hpe.com>
+Date: Mon, 20 Jun 2016 13:48:34 -0600
+Subject: [PATCH] Weak references performance fix
+
+Prevents the cloning of rows with outgoing or
+incoming weak references when those rows aren't
+being modified.
+
+It improves the OVSDB Server performance when
+many rows with weak references are involved
+in a transaction.
+
+Change-Id: Ie0e54ee001c08b64ccebb0a382b5d1dc1f6dfdd9
+Signed-off-by: Esteban Rodriguez Betancourt <estebarb@hpe.com>
+---
+ lib/list.h          | 19 +++++++++++++++++++
+ ovsdb/row.h         |  8 +++++---
+ ovsdb/transaction.c | 52 +++++++++++++++++++++++++++++++++++++++++++++++-----
+ tests/library.at    |  2 +-
+ tests/test-list.c   | 41 +++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 113 insertions(+), 9 deletions(-)
+
+diff --git a/lib/list.h b/lib/list.h
+index f9c9d85..9730175 100644
+--- a/lib/list.h
++++ b/lib/list.h
+@@ -277,4 +277,23 @@ list_is_short(const struct ovs_list *list)
+     return list->next == list->prev;
+ }
+ 
++/* Transplant a list into another, and resets the origin list */
++static inline void
++list_transplant(const struct ovs_list *dst_, const struct ovs_list *src_)
++{
++    struct ovs_list *src, *dst;
++    src = CONST_CAST(struct ovs_list *, src_);
++    dst = CONST_CAST(struct ovs_list *, dst_);
++
++    /* Chain last element of dst with first of src */
++    src->next->prev = dst->prev;
++    dst->prev->next = src->next;
++
++    /* Chain last element of src with head of dst */
++    src->prev->next = dst;
++    dst->prev = src->prev;
++
++    list_init(src);
++}
++
+ #endif /* list.h */
+diff --git a/ovsdb/row.h b/ovsdb/row.h
+index 62820d5..696ce93 100644
+--- a/ovsdb/row.h
++++ b/ovsdb/row.h
+@@ -36,9 +36,11 @@ struct ovsdb_column_set;
+  * ovsdb_weak_ref" structures are created for them.
+  */
+ struct ovsdb_weak_ref {
+-    struct ovs_list src_node;   /* In src->src_refs list. */
+-    struct ovs_list dst_node;   /* In destination row's dst_refs list. */
+-    struct ovsdb_row *src;      /* Source row. */
++    struct ovs_list src_node;      /* In src->src_refs list. */
++    struct ovs_list dst_node;      /* In destination row's dst_refs list. */
++    struct ovsdb_row *src;         /* Source row. */
++    struct ovsdb_table *dst_table; /* Destination table. */
++    struct uuid dst;               /* Destination row uuid. */
+ };
+ 
+ /* A row in a database table. */
+diff --git a/ovsdb/transaction.c b/ovsdb/transaction.c
+index 00a7349..d720306 100644
+--- a/ovsdb/transaction.c
++++ b/ovsdb/transaction.c
+@@ -445,8 +445,48 @@ ovsdb_txn_row_commit(struct ovsdb_txn *txn OVS_UNUSED,
+     return NULL;
+ }
+ 
++static struct ovsdb_error *
++ovsdb_txn_update_weak_refs(struct ovsdb_txn *txn OVS_UNUSED,
++                           struct ovsdb_txn_row *txn_row)
++{
++    struct ovsdb_weak_ref *weak, *next;
++
++    /* Remove the weak references originating in the old version of the row */
++    if (txn_row->old) {
++        LIST_FOR_EACH_SAFE (weak, next, src_node, &txn_row->old->src_refs) {
++            list_remove(&weak->src_node);
++            list_remove(&weak->dst_node);
++            free(weak);
++        }
++    }
++
++    /* Although the originating rows have the responsability of updating the
++     * weak references in the dst, is possible that some source rows aren't
++     * part of the transaction.
++     * In that situation this row needs to move the list of incoming weak
++     * references from the old row into the new one.
++     */
++    if (txn_row->old && txn_row->new) {
++        /* Move the incoming weak references from old to new */
++        list_transplant(&txn_row->new->dst_refs, &txn_row->old->dst_refs);
++    }
++
++    /* Insert the weak references originating in the new version of the row */
++    struct ovsdb_row *dst_row;
++    if (txn_row->new) {
++        LIST_FOR_EACH_SAFE (weak, next, src_node, &txn_row->new->src_refs) {
++            /* dst_row MUST exist */
++            dst_row = CONST_CAST(struct ovsdb_row *,
++                    ovsdb_table_get_row(weak->dst_table, &weak->dst));
++            list_insert(&dst_row->dst_refs, &weak->dst_node);
++        }
++    }
++
++    return NULL;
++}
++
+ static void
+-add_weak_ref(struct ovsdb_txn *txn,
++add_weak_ref(struct ovsdb_txn *txn OVS_UNUSED,
+              const struct ovsdb_row *src_, const struct ovsdb_row *dst_)
+ {
+     struct ovsdb_row *src = CONST_CAST(struct ovsdb_row *, src_);
+@@ -457,8 +497,6 @@ add_weak_ref(struct ovsdb_txn *txn,
+         return;
+     }
+ 
+-    dst = ovsdb_txn_row_modify(txn, dst);
+-
+     if (!list_is_empty(&dst->dst_refs)) {
+         /* Omit duplicates. */
+         weak = CONTAINER_OF(list_back(&dst->dst_refs),
+@@ -470,7 +508,10 @@ add_weak_ref(struct ovsdb_txn *txn,
+ 
+     weak = xmalloc(sizeof *weak);
+     weak->src = src;
+-    list_push_back(&dst->dst_refs, &weak->dst_node);
++    weak->dst_table = dst->table;
++    memcpy(&weak->dst, ovsdb_row_get_uuid(dst), sizeof(struct uuid));
++    /* The dst_refs list is updated at commit time */
++    list_init(&weak->dst_node);
+     list_push_back(&src->src_refs, &weak->src_node);
+ }
+ 
+@@ -480,7 +521,7 @@ assess_weak_refs(struct ovsdb_txn *txn, struct ovsdb_txn_row *txn_row)
+     struct ovsdb_table *table;
+     struct shash_node *node;
+ 
+-    if (txn_row->old) {
++    if (txn_row->old && !txn_row->new) {
+         /* Mark rows that have weak references to 'txn_row' as modified, so
+          * that their weak references will get reassessed. */
+         struct ovsdb_weak_ref *weak, *next;
+@@ -903,6 +944,7 @@ ovsdb_txn_commit_(struct ovsdb_txn *txn, bool durable)
+ 
+     /* Finalize commit. */
+     txn->db->run_triggers = true;
++    ovsdb_error_assert(for_each_txn_row(txn, ovsdb_txn_update_weak_refs));
+     ovsdb_error_assert(for_each_txn_row(txn, ovsdb_txn_row_commit));
+     ovsdb_txn_free(txn);
+ 
+diff --git a/tests/library.at b/tests/library.at
+index 4542156..893688a 100644
+--- a/tests/library.at
++++ b/tests/library.at
+@@ -38,7 +38,7 @@ AT_CHECK([ovstest test-atomic])
+ AT_CLEANUP
+ 
+ AT_SETUP([test linked lists])
+-AT_CHECK([ovstest test-list], [0], [...
++AT_CHECK([ovstest test-list], [0], [....
+ ])
+ AT_CLEANUP
+ 
+diff --git a/tests/test-list.c b/tests/test-list.c
+index 9b6b0bd..8ea21ae 100644
+--- a/tests/test-list.c
++++ b/tests/test-list.c
+@@ -184,6 +184,46 @@ test_list_for_each_pop(void)
+     }
+ }
+ 
++/* Tests the transplant of one list into another  */
++static void
++test_list_transplant(void)
++{
++    struct ovs_list list_a, list_b;
++    struct element a, b, c, d;
++
++    a.value = 0;
++    b.value = 1;
++    c.value = 2;
++    d.value = 3;
++
++    list_init(&list_a);
++    list_init(&list_b);
++
++    list_insert(&list_a, &a.node);
++    list_insert(&list_a, &b.node);
++    list_insert(&list_b, &c.node);
++    list_insert(&list_b, &d.node);
++
++    /* Check test preconditions */
++    assert(2 == list_size(&list_a));
++    assert(2 == list_size(&list_b));
++
++    /* Perform transplant */
++    list_transplant(&list_a, &list_b);
++
++    /* Check expected result */
++    assert(4 == list_size(&list_a));
++    assert(0 == list_size(&list_b));
++
++    struct element *node;
++    int n = 0;
++    LIST_FOR_EACH(node, node, &list_a) {
++        assert(n == node->value);
++        n++;
++    }
++    assert(n == 4);
++}
++
+ static void
+ run_test(void (*function)(void))
+ {
+@@ -197,6 +237,7 @@ test_list_main(int argc OVS_UNUSED, char *argv[] OVS_UNUSED)
+     run_test(test_list_construction);
+     run_test(test_list_for_each_safe);
+     run_test(test_list_for_each_pop);
++    run_test(test_list_transplant);
+     printf("\n");
+ }
+ 
+-- 
+1.9.1
+

@@ -1,0 +1,124 @@
+From adec7a6476da996ff5fe24ea53913f7339be1ad7 Mon Sep 17 00:00:00 2001
+From: Shad Ansari <shad.ansari@hpe.com>
+Date: Wed, 15 Jun 2016 09:27:29 -0700
+Subject: [PATCH] Change track: retain column values of deleted rows
+
+When change tracking is enabled, only the row uuid of deleted rows is
+available. The column values are unparsed and the ovsdb_datum values
+are cleared so they are not available for inspection. This change
+leaves the column values around for inspection. The column values are
+cleared (unparsed) upon clearing the change track.
+
+Signed-off-by: Shad Ansari <shad.ansari@hpe.com>
+Signed-off-by: Sebastian Arguello <sebastian.arguello@hpe.com>
+---
+ lib/ovsdb-idl.c | 26 ++++++++++++--------------
+ 1 file changed, 12 insertions(+), 14 deletions(-)
+
+diff --git a/lib/ovsdb-idl.c b/lib/ovsdb-idl.c
+index 65367cc..a943f02 100644
+--- a/lib/ovsdb-idl.c
++++ b/lib/ovsdb-idl.c
+@@ -181,6 +181,7 @@ static struct ovsdb_idl_row *ovsdb_idl_row_create(struct ovsdb_idl_table *,
+                                                   const struct uuid *);
+ static void ovsdb_idl_row_destroy(struct ovsdb_idl_row *);
+ static void ovsdb_idl_row_destroy_postprocess(struct ovsdb_idl *);
++static void ovsdb_idl_row_free(struct ovsdb_idl_row *);
+ static void ovsdb_idl_destroy_all_map_op_lists(struct ovsdb_idl_row *);
+ 
+ static void ovsdb_idl_row_parse(struct ovsdb_idl_row *);
+@@ -344,7 +345,6 @@ ovsdb_idl_clear(struct ovsdb_idl *idl)
+ 
+             if (!ovsdb_idl_row_is_orphan(row)) {
+                 ovsdb_idl_remove_from_indexes(row);
+-                ovsdb_idl_row_unparse(row);
+             }
+             LIST_FOR_EACH_SAFE (arc, next_arc, src_node, &row->src_arcs) {
+                 free(arc);
+@@ -352,10 +352,6 @@ ovsdb_idl_clear(struct ovsdb_idl *idl)
+             /* No need to do anything with dst_arcs: some node has those arcs
+              * as forward arcs and will destroy them itself. */
+ 
+-            if (!list_is_empty(&row->track_node)) {
+-                list_remove(&row->track_node);
+-            }
+-
+             ovsdb_idl_row_destroy(row);
+         }
+     }
+@@ -843,8 +839,7 @@ ovsdb_idl_track_clear(const struct ovsdb_idl *idl)
+                 list_remove(&row->track_node);
+                 list_init(&row->track_node);
+                 if (ovsdb_idl_row_is_orphan(row)) {
+-                    ovsdb_idl_row_clear_old(row);
+-                    free(row);
++                    ovsdb_idl_row_free(row);
+                 }
+             }
+         }
+@@ -1972,7 +1967,7 @@ ovsdb_idl_row_destroy_postprocess(struct ovsdb_idl *idl)
+             LIST_FOR_EACH_SAFE(row, next, track_node, &table->track_list) {
+                 if (!ovsdb_idl_track_is_set(row->table)) {
+                     list_remove(&row->track_node);
+-                    free(row);
++                    ovsdb_idl_row_free(row);
+                 }
+             }
+         }
+@@ -1980,6 +1975,13 @@ ovsdb_idl_row_destroy_postprocess(struct ovsdb_idl *idl)
+ }
+ 
+ static void
++ovsdb_idl_row_free(struct ovsdb_idl_row *row)
++{
++    ovsdb_idl_row_unparse(row);
++    free(row);
++}
++
++static void
+ ovsdb_idl_insert_row(struct ovsdb_idl_row *row, const struct json *row_json)
+ {
+     const struct ovsdb_idl_table_class *class = row->table->class;
+@@ -2008,7 +2010,6 @@ static void
+ ovsdb_idl_delete_row(struct ovsdb_idl_row *row)
+ {
+     ovsdb_idl_remove_from_indexes(row);
+-    ovsdb_idl_row_unparse(row);
+     ovsdb_idl_row_clear_arcs(row, true);
+     ovsdb_idl_row_clear_old(row);
+ #ifdef OPS
+@@ -2764,8 +2765,6 @@ ovsdb_idl_txn_disassemble(struct ovsdb_idl_txn *txn)
+                 ovsdb_idl_row_clear_arcs(row, false);
+                 ovsdb_idl_row_parse(row);
+             }
+-        } else {
+-            ovsdb_idl_row_unparse(row);
+         }
+         ovsdb_idl_row_clear_new(row);
+ 
+@@ -2779,7 +2778,7 @@ ovsdb_idl_txn_disassemble(struct ovsdb_idl_txn *txn)
+         hmap_node_nullify(&row->txn_node);
+         if (!row->old) {
+             hmap_remove(&row->table->rows, &row->hmap_node);
+-            free(row);
++            ovsdb_idl_row_free(row);
+         }
+     }
+     hmap_destroy(&txn->txn_rows);
+@@ -3479,12 +3478,11 @@ ovsdb_idl_txn_delete(const struct ovsdb_idl_row *row_)
+ 
+     ovs_assert(row->new != NULL);
+     if (!row->old) {
+-        ovsdb_idl_row_unparse(row);
+         ovsdb_idl_row_clear_new(row);
+         ovs_assert(!row->prereqs);
+         hmap_remove(&row->table->rows, &row->hmap_node);
+         hmap_remove(&row->table->idl->txn->txn_rows, &row->txn_node);
+-        free(row);
++        ovsdb_idl_row_free(row);
+         return;
+     }
+     if (hmap_node_is_null(&row->txn_node)) {
+-- 
+1.9.1
+

@@ -1,0 +1,1039 @@
+From 63fde75a61fb6d18909d4d8fc4aa95d8296f7bf3 Mon Sep 17 00:00:00 2001
+From: Esteban Rodriguez Betancourt <estebarb@hpe.com>
+Date: Tue, 21 Jun 2016 15:03:42 -0600
+Subject: [PATCH] new: dev: OVSDB Priority Sessions
+
+The priority sessions feature adds to the OVSDB Server
+the ability to identify and prioritize client sessions.
+
+The clients identify themselves using a new JSON RPC command,
+"identify", which receives the daemon name as parameter
+or the client's identifier.
+
+Then the server compares that identifier with a list of
+priorities assigned by name. If the name matches, then that
+priority is selected, otherwise a default priority is assigned.
+
+The priorities are saved in a json file, that the ovsdb server
+receives as a optional parameter when initializing. With
+ovsdb-appctl the ovsdb-server can be forced to reload that file
+in runtime.
+
+The priorities goes from 0 to 15, being 0 the most important,
+and 15 the less important.
+
+The OVSDB Server process the requests in a loop. The priority
+system works deferring the processing of the requests with a
+lower priority to a next iteration of the loop.
+
+The sessions with priority 0 run all the times (16 times of each
+16 iterations), with priority 1 run 15 times of each 16 iterations,
+and so on, finally with priority 15, that runs just 1 time of each
+16 iterations.
+
+The JSON RPC was also added to the ovsdb-client program.
+
+Change-Id: I46fd9f6c0b2a4e6653a0fda0658308fe1a708062
+Signed-off-by: Esteban Rodriguez Betancourt <estebarb@hpe.com>
+---
+ lib/ovsdb-idl.c        |  85 ++++++++++++++++++++-
+ lib/ovsdb-idl.h        |  21 +++++
+ ovsdb/jsonrpc-server.c | 204 +++++++++++++++++++++++++++++++++++++++++++++++--
+ ovsdb/jsonrpc-server.h |  15 ++++
+ ovsdb/ovsdb-client.c   |  33 +++++++-
+ ovsdb/ovsdb-server.c   |  55 ++++++++++---
+ ovsdb/server.c         |   4 +
+ ovsdb/server.h         |   4 +
+ tests/ovsdb-idl.at     |  25 ++++++
+ tests/ovsdb-server.at  |  46 +++++++++++
+ tests/test-ovsdb.c     |  30 +++++++-
+ 11 files changed, 505 insertions(+), 17 deletions(-)
+
+diff --git a/lib/ovsdb-idl.c b/lib/ovsdb-idl.c
+index a943f02..cd4d719 100644
+--- a/lib/ovsdb-idl.c
++++ b/lib/ovsdb-idl.c
+@@ -105,6 +105,11 @@ struct ovsdb_idl {
+     unsigned int state_seqno;
+     enum ovsdb_idl_state state;
+     struct json *request_id;
++    uint8_t session_priority;         /* Priority assigned by the server */
++    struct uuid server_uuid;          /* UUID of the server */
++    char *session_name;               /* Identifier of this sessions */
++    struct json *identify_request_id; /* JSON-RPC ID of in-flight identify
++                                       * request. */
+ 
+     /* Database locking. */
+     char *lock_name;            /* Name of lock we need, NULL if none. */
+@@ -153,6 +158,7 @@ static struct vlog_rate_limit syntax_rl = VLOG_RATE_LIMIT_INIT(1, 5);
+ static struct vlog_rate_limit semantic_rl = VLOG_RATE_LIMIT_INIT(1, 5);
+ 
+ static void ovsdb_idl_clear(struct ovsdb_idl *);
++static void ovsdb_idl_send_identify(struct ovsdb_idl *);
+ static void ovsdb_idl_send_schema_request(struct ovsdb_idl *);
+ static void ovsdb_idl_send_monitor_request(struct ovsdb_idl *,
+                                            const struct json *schema_json);
+@@ -202,6 +208,8 @@ static void ovsdb_idl_txn_add_map_op(struct ovsdb_idl_row *,
+ 
+ static void ovsdb_idl_send_lock_request(struct ovsdb_idl *);
+ static void ovsdb_idl_send_unlock_request(struct ovsdb_idl *);
++static void ovsdb_idl_parse_identify_reply(struct ovsdb_idl *,
++                                           const struct json *);
+ static void ovsdb_idl_parse_lock_reply(struct ovsdb_idl *,
+                                        const struct json *);
+ static void ovsdb_idl_parse_lock_notify(struct ovsdb_idl *,
+@@ -255,6 +263,7 @@ ovsdb_idl_create(const char *remote, const struct ovsdb_idl_class *class,
+     idl = xzalloc(sizeof *idl);
+     idl->class = class;
+     idl->session = jsonrpc_session_open(remote, retry);
++    idl->session_priority = IDL_PRIORITY_UNDEFINED;
+     shash_init(&idl->table_by_name);
+     idl->tables = xmalloc(class->n_tables * sizeof *idl->tables);
+     for (i = 0; i < class->n_tables; i++) {
+@@ -288,6 +297,7 @@ ovsdb_idl_create(const char *remote, const struct ovsdb_idl_class *class,
+ 
+     idl->state_seqno = UINT_MAX;
+     idl->request_id = NULL;
++    idl->session_name = NULL;
+ 
+     hmap_init(&idl->outstanding_txns);
+     hmap_init(&idl->outstanding_fetch_reqs);
+@@ -318,6 +328,7 @@ ovsdb_idl_destroy(struct ovsdb_idl *idl)
+         free(idl->tables);
+         json_destroy(idl->request_id);
+         free(idl->lock_name);
++        json_destroy(idl->identify_request_id);
+         json_destroy(idl->lock_request_id);
+         hmap_destroy(&idl->outstanding_txns);
+         hmap_destroy(&idl->outstanding_fetch_reqs);
+@@ -363,6 +374,50 @@ ovsdb_idl_clear(struct ovsdb_idl *idl)
+     }
+ }
+ 
++/* Identifies the client within the OVSDB Server.
++ * It must be called after the initial replica is
++ * received.
++ */
++void
++ovsdb_idl_set_identity(struct ovsdb_idl *idl, char* name)
++{
++    idl->session_name = name;
++    ovsdb_idl_send_identify(idl);
++}
++
++static void
++ovsdb_idl_send_identify(struct ovsdb_idl *idl)
++{
++    if (idl->session_name) {
++        idl->session_priority = IDL_PRIORITY_UNDEFINED;
++        struct jsonrpc_msg *msg;
++        struct json *params = json_object_create();
++        json_destroy(idl->identify_request_id);
++
++        json_object_put_string(params, "name", idl->session_name);
++
++        msg = jsonrpc_create_request(
++            "identify",
++            json_array_create_1(params),
++            &idl->identify_request_id);
++        jsonrpc_session_send(idl->session, msg);
++    }
++}
++
++/* Returns the current priority assigned to the IDL session */
++uint8_t
++ovsdb_idl_get_priority(struct ovsdb_idl *idl)
++{
++    return idl->session_priority;
++}
++
++/* Returns the server's uuid */
++struct uuid *
++ovsdb_idl_get_server_uuid(struct ovsdb_idl *idl)
++{
++    return &idl->server_uuid;
++}
++
+ /* Processes a batch of messages from the database server on 'idl'.  This may
+  * cause the IDL's contents to change.  The client may check for that with
+  * ovsdb_idl_get_seqno(). */
+@@ -386,6 +441,8 @@ ovsdb_idl_run(struct ovsdb_idl *idl)
+             ovsdb_idl_txn_abort_all(idl);
+ 
+             ovsdb_idl_send_schema_request(idl);
++            ovsdb_idl_send_identify(idl);
++
+             idl->state = IDL_S_SCHEMA_REQUESTED;
+             if (idl->lock_name) {
+                 ovsdb_idl_send_lock_request(idl);
+@@ -432,12 +489,16 @@ ovsdb_idl_run(struct ovsdb_idl *idl)
+                 ovsdb_idl_clear(idl);
+                 ovsdb_idl_parse_update(idl, msg->result);
+                 break;
+-
+             case IDL_S_MONITORING:
+             default:
+                 OVS_NOT_REACHED();
+             }
+         } else if (msg->type == JSONRPC_REPLY
++                   && idl->identify_request_id
++                   && json_equal(idl->identify_request_id, msg->id)) {
++            /* Reply to our "identify" request */
++            ovsdb_idl_parse_identify_reply(idl, msg->result);
++        } else if (msg->type == JSONRPC_REPLY
+                    && idl->lock_request_id
+                    && json_equal(idl->lock_request_id, msg->id)) {
+             /* Reply to our "lock" request. */
+@@ -3868,6 +3929,28 @@ ovsdb_idl_send_unlock_request(struct ovsdb_idl *idl)
+ }
+ 
+ static void
++ovsdb_idl_parse_identify_reply(struct ovsdb_idl *idl, const struct json *result)
++{
++    json_destroy(idl->identify_request_id);
++    idl->identify_request_id = NULL;
++    if (result->type == JSON_OBJECT) {
++        const struct json *asigned_priority;
++        asigned_priority = shash_find_data(
++                           result->u.object,
++                           "priority");
++        if (!asigned_priority) {
++            VLOG_ERR("Identify response with invalid format");
++        }
++        idl->session_priority = json_integer(asigned_priority);
++        const struct json *server_uuid;
++        server_uuid = shash_find_data(result->u.object, "uuid");
++        uuid_from_string(&idl->server_uuid, json_string(server_uuid));
++    } else {
++        VLOG_ERR("Identify response with invalid format");
++    }
++}
++
++static void
+ ovsdb_idl_parse_lock_reply(struct ovsdb_idl *idl, const struct json *result)
+ {
+     bool got_lock;
+diff --git a/lib/ovsdb-idl.h b/lib/ovsdb-idl.h
+index 214e5bd..4d06b5c 100644
+--- a/lib/ovsdb-idl.h
++++ b/lib/ovsdb-idl.h
+@@ -63,6 +63,27 @@ void ovsdb_idl_set_lock(struct ovsdb_idl *, const char *lock_name);
+ bool ovsdb_idl_has_lock(const struct ovsdb_idl *);
+ bool ovsdb_idl_is_lock_contended(const struct ovsdb_idl *);
+ 
++void ovsdb_idl_set_identity(struct ovsdb_idl *, char* name);
++uint8_t ovsdb_idl_get_priority(struct ovsdb_idl *);
++struct uuid * ovsdb_idl_get_server_uuid(struct ovsdb_idl *);
++
++/* enum ovsdb_idl_priority defines some priorities used by the
++ * OVSDB Server.
++ * The priorities go from 0 to 15, being 0 the most important,
++ * and 15 the less important.
++ * The sessions are attended in a round robing fashion, and got
++ * attention from the OVSDB Server with a probability of 
++ * (15-priority)/15.
++ * A priority of IDL_PRIORITY_UNDEFINED means that the IDL
++ * still don't know the assigned priority to the session.
++ */
++enum ovsdb_idl_priority {
++    IDL_PRIORITY_HIGHEST = 0,
++    IDL_PRIORITY_DEFAULT = 8,
++    IDL_PRIORITY_LOWEST = 15,
++    IDL_PRIORITY_UNDEFINED = 255
++};
++
+ unsigned int ovsdb_idl_get_seqno(const struct ovsdb_idl *);
+ bool ovsdb_idl_has_ever_connected(const struct ovsdb_idl *);
+ void ovsdb_idl_enable_reconnect(struct ovsdb_idl *);
+diff --git a/ovsdb/jsonrpc-server.c b/ovsdb/jsonrpc-server.c
+index fffcb73..cef3b71 100644
+--- a/ovsdb/jsonrpc-server.c
++++ b/ovsdb/jsonrpc-server.c
+@@ -66,6 +66,8 @@ static void ovsdb_jsonrpc_session_unlock_all(struct ovsdb_jsonrpc_session *);
+ static void ovsdb_jsonrpc_session_unlock__(struct ovsdb_lock_waiter *);
+ static void ovsdb_jsonrpc_session_send(struct ovsdb_jsonrpc_session *,
+                                        struct jsonrpc_msg *);
++static void ovsdb_jsonrpc_server_update_remotes_priorities(
++        struct ovsdb_jsonrpc_server *);
+ 
+ /* Triggers. */
+ static void ovsdb_jsonrpc_trigger_create(struct ovsdb_jsonrpc_session *,
+@@ -99,6 +101,8 @@ struct ovsdb_jsonrpc_server {
+     struct ovsdb_server up;
+     unsigned int n_sessions, max_sessions;
+     struct shash remotes;      /* Contains "struct ovsdb_jsonrpc_remote *"s. */
++    int current_priority;
++    char *priority_file;
+ };
+ 
+ /* A configured remote.  This is either a passive stream listener plus a list
+@@ -108,7 +112,9 @@ struct ovsdb_jsonrpc_remote {
+     struct ovsdb_jsonrpc_server *server;
+     struct pstream *listener;   /* Listener, if passive. */
+     struct ovs_list sessions;   /* List of "struct ovsdb_jsonrpc_session"s. */
++    struct ovs_list *sessions_by_priority; /* Sessions grouped by priority */
+     uint8_t dscp;
++    int current_priority;
+ };
+ 
+ static struct ovsdb_jsonrpc_remote *ovsdb_jsonrpc_server_add_remote(
+@@ -238,6 +244,7 @@ ovsdb_jsonrpc_server_add_remote(struct ovsdb_jsonrpc_server *svr,
+     struct ovsdb_jsonrpc_remote *remote;
+     struct pstream *listener;
+     int error;
++    int i;
+ 
+     error = jsonrpc_pstream_open(name, &listener, options->dscp);
+     if (error && error != EAFNOSUPPORT) {
+@@ -249,8 +256,15 @@ ovsdb_jsonrpc_server_add_remote(struct ovsdb_jsonrpc_server *svr,
+     remote->server = svr;
+     remote->listener = listener;
+     list_init(&remote->sessions);
++    remote->sessions_by_priority = xmalloc(sizeof(struct ovs_list) *
++                                           OVSDB_PRIORITY_N);
++    for (i = 0; i < OVSDB_PRIORITY_N; i++) {
++        list_init(&remote->sessions_by_priority[i]);
++    }
++
+     remote->dscp = options->dscp;
+     shash_add(&svr->remotes, name, remote);
++    remote->current_priority = OVSDB_PRIORITY_DEFAULT;
+ 
+     if (!listener) {
+         ovsdb_jsonrpc_session_create(remote, jsonrpc_session_open(name, true));
+@@ -266,6 +280,7 @@ ovsdb_jsonrpc_server_del_remote(struct shash_node *node)
+     ovsdb_jsonrpc_session_close_all(remote);
+     pstream_close(remote->listener);
+     shash_delete(&remote->server->remotes, node);
++    free(remote->sessions_by_priority);
+     free(remote);
+ }
+ 
+@@ -318,6 +333,7 @@ ovsdb_jsonrpc_server_run(struct ovsdb_jsonrpc_server *svr)
+ 
+     SHASH_FOR_EACH (node, &svr->remotes) {
+         struct ovsdb_jsonrpc_remote *remote = node->data;
++        remote->current_priority = svr->current_priority;
+ 
+         if (remote->listener) {
+             if (svr->n_sessions < svr->max_sessions) {
+@@ -346,6 +362,14 @@ ovsdb_jsonrpc_server_run(struct ovsdb_jsonrpc_server *svr)
+     }
+ }
+ 
++/* Sets the current priority being attended at this moment by the jsonrpc server */
++void
++ovsdb_jsonrpc_server_set_current_priority(struct ovsdb_jsonrpc_server *svr,
++                                          int priority)
++{
++    svr->current_priority = priority;
++}
++
+ void
+ ovsdb_jsonrpc_server_wait(struct ovsdb_jsonrpc_server *svr)
+ {
+@@ -394,6 +418,13 @@ struct ovsdb_jsonrpc_session {
+     /* Network connectivity. */
+     struct jsonrpc_session *js;  /* JSON-RPC session. */
+     unsigned int js_seqno;       /* Last jsonrpc_session_get_seqno() value. */
++
++    /* Priority */
++    char *name;                  /* Client's name/identifier */
++    struct ovs_list priority_node; /* Priority bucket of this session */
++    uint8_t priority;            /* Priority from IDL_PRIORITY_HIGHEST to
++                                    IDL_PRIORITY_LOWEST */
++    bool has_executed;           /* The session tries to execute a transaction */
+ };
+ 
+ static void ovsdb_jsonrpc_session_close(struct ovsdb_jsonrpc_session *);
+@@ -420,6 +451,10 @@ ovsdb_jsonrpc_session_create(struct ovsdb_jsonrpc_remote *remote,
+     hmap_init(&s->monitors);
+     s->js = js;
+     s->js_seqno = jsonrpc_session_get_seqno(js);
++    s->priority = OVSDB_PRIORITY_DEFAULT;
++    list_push_back(&remote->sessions_by_priority[s->priority],
++                       &s->priority_node);
++    s->name = NULL;
+ 
+     remote->server->n_sessions++;
+ 
+@@ -438,8 +473,12 @@ ovsdb_jsonrpc_session_close(struct ovsdb_jsonrpc_session *s)
+ 
+     jsonrpc_session_close(s->js);
+     list_remove(&s->node);
++    list_remove(&s->priority_node);
+     s->remote->server->n_sessions--;
+     ovsdb_session_destroy(&s->up);
++    if (s->name){
++        free(s->name);
++    }
+     free(s);
+ }
+ 
+@@ -463,11 +502,13 @@ ovsdb_jsonrpc_session_run(struct ovsdb_jsonrpc_session *s)
+ 
+         msg = jsonrpc_session_recv(s->js);
+         if (msg) {
++            s->has_executed = true;
+             if (msg->type == JSONRPC_REQUEST) {
+                 ovsdb_jsonrpc_session_got_request(s, msg);
+             } else if (msg->type == JSONRPC_NOTIFY) {
+                 ovsdb_jsonrpc_session_got_notify(s, msg);
+             } else {
++                s->has_executed = false;
+                 VLOG_WARN("%s: received unexpected %s message",
+                           jsonrpc_session_get_name(s->js),
+                           jsonrpc_msg_type_to_string(msg->type));
+@@ -492,11 +533,21 @@ static void
+ ovsdb_jsonrpc_session_run_all(struct ovsdb_jsonrpc_remote *remote)
+ {
+     struct ovsdb_jsonrpc_session *s, *next;
+-
+-    LIST_FOR_EACH_SAFE (s, next, node, &remote->sessions) {
+-        int error = ovsdb_jsonrpc_session_run(s);
+-        if (error) {
+-            ovsdb_jsonrpc_session_close(s);
++    bool has_executed = false;
++    int current_priority = remote->current_priority;
++    int i = 0;
++
++    for (i = 0;
++         i <= current_priority || (!has_executed && i < OVSDB_PRIORITY_N);
++         i++) {
++        LIST_FOR_EACH_SAFE(s, next, priority_node,
++                           &remote->sessions_by_priority[i]) {
++            s->has_executed = false;
++            int error = ovsdb_jsonrpc_session_run(s);
++            has_executed |= s->has_executed;
++            if (error) {
++                ovsdb_jsonrpc_session_close(s);
++            }
+         }
+     }
+ }
+@@ -880,6 +931,47 @@ ovsdb_jsonrpc_session_got_request(struct ovsdb_jsonrpc_session *s,
+         reply = ovsdb_jsonrpc_session_unlock(s, request);
+     } else if (!strcmp(request->method, "echo")) {
+         reply = jsonrpc_create_reply(json_clone(request->params), request->id);
++    } else if (!strcmp(request->method, "identify")) {
++        const struct json_array *params;
++        struct simap_node *existing_priority;
++        uint8_t assigned_priority;
++        params = json_array(request->params);
++        if (params->n != 1 || params->elems[0]->type != JSON_OBJECT) {
++            reply = jsonrpc_create_error(json_string_create(
++                    "Wrong parameters for identifying the session priority"),
++                                                 request->id);
++        } else {
++            struct json *session_name;
++            session_name = shash_find_data(params->elems[0]->u.object, "name");
++            if (session_name) {
++                s->name = xstrdup(json_string(session_name));
++                existing_priority = simap_find(&s->up.server->priorities,
++                                               s->name);
++                assigned_priority = existing_priority ?
++                        existing_priority->data : OVSDB_PRIORITY_DEFAULT;
++                s->priority = assigned_priority;
++
++                /* Updates the priority list */
++                list_remove(&s->priority_node);
++                list_push_back(
++                    &s->remote->sessions_by_priority[assigned_priority],
++                    &s->priority_node);
++
++                /* Build response */
++                struct json *result = json_object_create();
++                char *uuid_as_string = xmalloc(UUID_LEN);
++                sprintf(uuid_as_string, UUID_FMT,
++                        UUID_ARGS(&s->up.server->uuid));
++                json_object_put_string(result, "uuid", uuid_as_string);
++                json_object_put(result, "priority",
++                                json_integer_create(s->priority));
++                reply = jsonrpc_create_reply(result, request->id);
++            } else {
++                reply = jsonrpc_create_error(json_string_create(
++                        "Wrong parameters for identifying the session priority"),
++                                                     request->id);
++            }
++        }
+     } else {
+         reply = jsonrpc_create_error(json_string_create("unknown method"),
+                                      request->id);
+@@ -1339,3 +1431,105 @@ ovsdb_jsonrpc_monitor_flush_all(struct ovsdb_jsonrpc_session *s)
+         }
+     }
+ }
++
++/* ovsdb_jsonrpc_load_priorities forces the jsonrpc server to 
++ * read the priorities file and update the priorities of
++ * the existing sessions in the server. */
++void
++ovsdb_jsonrpc_load_priorities(struct ovsdb_jsonrpc_server * jsonrpc)
++{
++    if (!jsonrpc->priority_file) {
++        return;
++    }
++
++    FILE *priority_cfg = NULL;
++    struct json *json;
++    uint8_t priority;
++    size_t i;
++
++    priority_cfg  = fopen(jsonrpc->priority_file, "r");
++    if (!priority_cfg) {
++        VLOG_ERR("reading priority json failed (%s)", jsonrpc->priority_file);
++    }
++
++    json = json_from_stream(priority_cfg);
++    if (json->type != JSON_OBJECT) {
++        fclose(priority_cfg);
++        VLOG_ERR("reading json failed");
++    }
++
++    simap_clear(&jsonrpc->up.priorities);
++
++    struct shash_node *node;
++    struct json_array *identifiers;
++    SHASH_FOR_EACH(node, json->u.object) {
++        priority = atoi(node->name);
++        if (OVSDB_PRIORITY_HIGHEST > priority
++           || priority > OVSDB_PRIORITY_LOWEST) {
++            VLOG_WARN("%u is an invalid priority value."
++                      "Assigned default priority (%d) instead.\n",
++                      priority, OVSDB_PRIORITY_DEFAULT);
++            priority = OVSDB_PRIORITY_DEFAULT;
++        }
++
++        if (((struct json*)node->data)->type != JSON_ARRAY) {
++            VLOG_ERR("Priorities file with wrong format.");
++            fclose(priority_cfg);
++            return;
++        }
++        identifiers = &((struct json*)node->data)->u.array;
++
++        for (i = 0; i < identifiers->n; i++) {
++            simap_put(&jsonrpc->up.priorities,
++                      identifiers->elems[i]->u.string,
++                      priority);
++        }
++    }
++    fclose(priority_cfg);
++    json_destroy(json);
++
++    ovsdb_jsonrpc_server_update_remotes_priorities(jsonrpc);
++}
++
++/* ovsdb_jsonrpc_server_update_remotes_priorities reasigns the connected sessions
++ * to their new corresponding priority bucket. */
++static void
++ovsdb_jsonrpc_server_update_remotes_priorities(struct ovsdb_jsonrpc_server *jsonrpc)
++{
++    struct shash_node *node;
++    struct ovsdb_jsonrpc_session *s;
++    struct simap_node *priority_node;
++    uint8_t assigned_priority;
++
++    SHASH_FOR_EACH(node, &jsonrpc->remotes) {
++        struct ovsdb_jsonrpc_remote *remote = node->data;
++
++        /* Clears the priorities buckets */
++        LIST_FOR_EACH (s, node, &remote->sessions) {
++            list_remove(&s->priority_node);
++        }
++
++        /* Reloads the priorities per session and rebuilds the buckets */
++        LIST_FOR_EACH (s, node, &remote->sessions) {
++            priority_node = simap_find(&jsonrpc->up.priorities,
++                                       s->name);
++            if (!priority_node) {
++                assigned_priority = OVSDB_PRIORITY_DEFAULT;
++            } else {
++                assigned_priority = priority_node->data;
++            }
++
++            s->priority = assigned_priority;
++            list_push_back(&remote->sessions_by_priority[s->priority],
++                               &s->priority_node);
++        }
++    }
++}
++
++/* ovsdb_jsonrpc_set_priority_file changes the priority file used by the
++ * jsonrpc server */
++void
++ovsdb_jsonrpc_set_priority_file(struct ovsdb_jsonrpc_server *jsonrpc, char *pf)
++{
++    jsonrpc->priority_file = pf;
++}
+diff --git a/ovsdb/jsonrpc-server.h b/ovsdb/jsonrpc-server.h
+index fce8b7b..103aebc 100644
+--- a/ovsdb/jsonrpc-server.h
++++ b/ovsdb/jsonrpc-server.h
+@@ -39,6 +39,11 @@ struct ovsdb_jsonrpc_options {
+ struct ovsdb_jsonrpc_options *
+ ovsdb_jsonrpc_default_options(const char *target);
+ 
++void ovsdb_jsonrpc_load_priorities(struct ovsdb_jsonrpc_server * jsonrpc);
++
++void ovsdb_jsonrpc_set_priority_file(struct ovsdb_jsonrpc_server *,
++                                     char *priority_file);
++
+ void ovsdb_jsonrpc_server_set_remotes(struct ovsdb_jsonrpc_server *,
+                                       const struct shash *);
+ 
+@@ -64,6 +69,8 @@ void ovsdb_jsonrpc_server_free_remote_status(
+ void ovsdb_jsonrpc_server_reconnect(struct ovsdb_jsonrpc_server *);
+ 
+ void ovsdb_jsonrpc_server_run(struct ovsdb_jsonrpc_server *);
++void ovsdb_jsonrpc_server_set_current_priority(struct ovsdb_jsonrpc_server *,
++                                               int priority);
+ void ovsdb_jsonrpc_server_wait(struct ovsdb_jsonrpc_server *);
+ 
+ void ovsdb_jsonrpc_server_get_memory_usage(const struct ovsdb_jsonrpc_server *,
+@@ -72,4 +79,12 @@ void ovsdb_jsonrpc_server_get_memory_usage(const struct ovsdb_jsonrpc_server *,
+ struct ovsdb_jsonrpc_monitor;
+ void ovsdb_jsonrpc_monitor_destroy(struct ovsdb_jsonrpc_monitor *);
+ 
++enum ovsdb_priority {
++    OVSDB_PRIORITY_UNDEFINED = -1,
++    OVSDB_PRIORITY_HIGHEST = 0,
++    OVSDB_PRIORITY_DEFAULT = 8,
++    OVSDB_PRIORITY_LOWEST = 15,
++    OVSDB_PRIORITY_N = 16
++};
++
+ #endif /* ovsdb/jsonrpc-server.h */
+diff --git a/ovsdb/ovsdb-client.c b/ovsdb/ovsdb-client.c
+index 0a6ca6b..bf20973 100644
+--- a/ovsdb/ovsdb-client.c
++++ b/ovsdb/ovsdb-client.c
+@@ -263,6 +263,9 @@ usage(void)
+            "    in DATBASE on SERVER.\n"
+            "\n  dump [SERVER] [DATABASE] [TABLE [COLUMN]...]\n"
+            "    dump contents of DATABASE on SERVER to stdout\n"
++           "\n  identify [name]\n"
++           "    identify the session on the SERVER, and returns the assigned\n"
++           "    priority.\n"
+            "\nThe default SERVER is unix:%s/db.sock.\n"
+            "The default DATABASE is Open_vSwitch.\n",
+            program_name, program_name, ovs_rundir());
+@@ -511,6 +514,34 @@ do_transact(struct jsonrpc *rpc, const char *database OVS_UNUSED,
+     putchar('\n');
+     jsonrpc_msg_destroy(reply);
+ }
++
++static void
++do_identify(struct jsonrpc *rpc, const char *database OVS_UNUSED,
++            int argc OVS_UNUSED, char *argv[] OVS_UNUSED)
++{
++    struct jsonrpc_msg *request, *reply;
++    struct json *req;
++    req = json_object_create();
++    json_object_put_string(req, "name", argv[0]);
++    request = jsonrpc_create_request("identify",
++                                     json_array_create_1(req),
++                                     NULL);
++
++    check_txn(jsonrpc_transact_block(rpc, request, &reply), &reply);
++    if (reply->result->type != JSON_OBJECT) {
++        ovs_fatal(0, "identify response is not array");
++    }
++
++    struct json *response = shash_find_data(reply->result->u.object,
++                                            "priority");
++    if (!response) {
++        ovs_fatal(0, "identify response doesn't have a priority key");
++    }
++    printf("%"PRId64"\n", json_integer(response));
++
++    jsonrpc_msg_destroy(reply);
++}
++
+ 
+ /* "monitor" command. */
+ 
+@@ -1177,7 +1208,7 @@ static const struct ovsdb_client_command all_commands[] = {
+     { "transact",           NEED_RPC,      1, 1,       do_transact },
+     { "monitor",            NEED_DATABASE, 1, INT_MAX, do_monitor },
+     { "dump",               NEED_DATABASE, 0, INT_MAX, do_dump },
+-
++    { "identify",           NEED_RPC,      1, 2,       do_identify },
+     { "help",               NEED_NONE,     0, INT_MAX, do_help },
+ 
+     { NULL,                 0,             0, 0,       NULL },
+diff --git a/ovsdb/ovsdb-server.c b/ovsdb/ovsdb-server.c
+index 9705b4a..c43ff48 100644
+--- a/ovsdb/ovsdb-server.c
++++ b/ovsdb/ovsdb-server.c
+@@ -80,6 +80,7 @@ static unixctl_cb_func ovsdb_server_compact;
+ static unixctl_cb_func ovsdb_server_reconnect;
+ static unixctl_cb_func ovsdb_server_perf_counters_clear;
+ static unixctl_cb_func ovsdb_server_perf_counters_show;
++static unixctl_cb_func ovsdb_server_reload_priorities;
+ 
+ struct server_config {
+     struct sset *remotes;
+@@ -100,7 +101,7 @@ static void close_db(struct db *db);
+ 
+ static void parse_options(int *argc, char **argvp[],
+                           struct sset *remotes, char **unixctl_pathp,
+-                          char **run_command);
++                          char **run_command, char **priorities);
+ OVS_NO_RETURN static void usage(void);
+ 
+ static char *reconfigure_remotes(struct ovsdb_jsonrpc_server *,
+@@ -131,6 +132,7 @@ main_loop(struct ovsdb_jsonrpc_server *jsonrpc, struct shash *all_dbs,
+     *exiting = false;
+     ssl_error = NULL;
+     remotes_error = NULL;
++    int current_priority = 0;
+     while (!*exiting) {
+         memory_run();
+         if (memory_should_report()) {
+@@ -155,6 +157,7 @@ main_loop(struct ovsdb_jsonrpc_server *jsonrpc, struct shash *all_dbs,
+             reconfigure_remotes(jsonrpc, all_dbs, remotes),
+             &remotes_error);
+         report_error_if_changed(reconfigure_ssl(all_dbs), &ssl_error);
++        ovsdb_jsonrpc_server_set_current_priority(jsonrpc, current_priority);
+         ovsdb_jsonrpc_server_run(jsonrpc);
+ 
+         SHASH_FOR_EACH(node, all_dbs) {
+@@ -175,8 +178,13 @@ main_loop(struct ovsdb_jsonrpc_server *jsonrpc, struct shash *all_dbs,
+         }
+ 
+         memory_wait();
+-        ovsdb_jsonrpc_server_wait(jsonrpc);
+-        unixctl_server_wait(unixctl);
++        /* Prevents the OVSDB Server to wait, until it had tried to
++         * process the requests from all the existing clients.
++         */
++        if (current_priority == OVSDB_PRIORITY_LOWEST) {
++            ovsdb_jsonrpc_server_wait(jsonrpc);
++            unixctl_server_wait(unixctl);
++        }
+         SHASH_FOR_EACH(node, all_dbs) {
+             struct db *db = node->data;
+             ovsdb_trigger_wait(db->db, time_msec());
+@@ -187,11 +195,15 @@ main_loop(struct ovsdb_jsonrpc_server *jsonrpc, struct shash *all_dbs,
+         if (*exiting) {
+             poll_immediate_wake();
+         }
+-        poll_timer_wait_until(status_timer);
+-        poll_block();
++        if (current_priority == OVSDB_PRIORITY_LOWEST) {
++            poll_timer_wait_until(status_timer);
++            poll_block();
++        }
+         if (should_service_stop()) {
+             *exiting = true;
+         }
++        current_priority++;
++        current_priority %= OVSDB_PRIORITY_N;
+     }
+ 
+ }
+@@ -201,6 +213,7 @@ main(int argc, char *argv[])
+ {
+     char *unixctl_path = NULL;
+     char *run_command = NULL;
++    char *priority_file = NULL;
+     struct unixctl_server *unixctl;
+     struct ovsdb_jsonrpc_server *jsonrpc;
+     struct sset remotes, db_filenames;
+@@ -221,7 +234,8 @@ main(int argc, char *argv[])
+     fatal_ignore_sigpipe();
+     process_init();
+ 
+-    parse_options(&argc, &argv, &remotes, &unixctl_path, &run_command);
++    parse_options(&argc, &argv, &remotes, &unixctl_path, &run_command,
++                  &priority_file);
+     daemon_become_new_user(false);
+ 
+     /* Create and initialize 'config_tmpfile' as a temporary file to hold
+@@ -260,6 +274,9 @@ main(int argc, char *argv[])
+     load_config(config_tmpfile, &remotes, &db_filenames);
+     jsonrpc = ovsdb_jsonrpc_server_create();
+ 
++    ovsdb_jsonrpc_set_priority_file(jsonrpc, priority_file);
++    ovsdb_jsonrpc_load_priorities(jsonrpc);
++
+     shash_init(&all_dbs);
+     server_config.all_dbs = &all_dbs;
+     server_config.jsonrpc = jsonrpc;
+@@ -334,7 +351,9 @@ main(int argc, char *argv[])
+                              ovsdb_server_perf_counters_show, NULL);
+     unixctl_command_register("ovsdb-server/perf-counters-clear", "", 0, 0,
+                              ovsdb_server_perf_counters_clear, NULL);
+-
++    /* Reloads the priority file */
++    unixctl_command_register("ovsdb-server/priority-reload", "",
++                             0, 0, ovsdb_server_reload_priorities, jsonrpc);
+     main_loop(jsonrpc, &all_dbs, unixctl, &remotes, run_process, &exiting);
+ 
+     ovsdb_jsonrpc_server_destroy(jsonrpc);
+@@ -1059,6 +1078,15 @@ ovsdb_server_perf_counters_clear(struct unixctl_conn *conn, int argc OVS_UNUSED,
+ }
+ 
+ static void
++ovsdb_server_reload_priorities(struct unixctl_conn *conn, int argc OVS_UNUSED,
++                          const char *argv[] OVS_UNUSED, void *jsonrpc_)
++{
++    struct ovsdb_jsonrpc_server *jsonrpc = jsonrpc_;
++    ovsdb_jsonrpc_load_priorities(jsonrpc);
++    unixctl_command_reply(conn, NULL);
++}
++
++static void
+ ovsdb_server_compact(struct unixctl_conn *conn, int argc,
+                      const char *argv[], void *dbs_)
+ {
+@@ -1253,7 +1281,8 @@ ovsdb_server_list_databases(struct unixctl_conn *conn, int argc OVS_UNUSED,
+ 
+ static void
+ parse_options(int *argcp, char **argvp[],
+-              struct sset *remotes, char **unixctl_pathp, char **run_command)
++              struct sset *remotes, char **unixctl_pathp, char **run_command,
++              char **priorities)
+ {
+     enum {
+         OPT_REMOTE = UCHAR_MAX + 1,
+@@ -1262,7 +1291,8 @@ parse_options(int *argcp, char **argvp[],
+         OPT_BOOTSTRAP_CA_CERT,
+         OPT_PEER_CA_CERT,
+         VLOG_OPTION_ENUMS,
+-        DAEMON_OPTION_ENUMS
++        DAEMON_OPTION_ENUMS,
++        OPT_PRIORITIES
+     };
+     static const struct option long_options[] = {
+         {"remote",      required_argument, NULL, OPT_REMOTE},
+@@ -1279,6 +1309,7 @@ parse_options(int *argcp, char **argvp[],
+         {"private-key", required_argument, NULL, 'p'},
+         {"certificate", required_argument, NULL, 'c'},
+         {"ca-cert",     required_argument, NULL, 'C'},
++        {"priority-file",  required_argument, NULL, OPT_PRIORITIES},
+         {NULL, 0, NULL, 0},
+     };
+     char *short_options = ovs_cmdl_long_options_to_short_options(long_options);
+@@ -1339,6 +1370,10 @@ parse_options(int *argcp, char **argvp[],
+             stream_ssl_set_peer_ca_cert_file(optarg);
+             break;
+ 
++        case OPT_PRIORITIES:
++            *priorities = optarg;
++            break;
++
+         case '?':
+             exit(EXIT_FAILURE);
+ 
+@@ -1362,6 +1397,8 @@ usage(void)
+            program_name, program_name, ovs_dbdir());
+     printf("\nJSON-RPC options (may be specified any number of times):\n"
+            "  --remote=REMOTE         connect or listen to REMOTE\n");
++    printf("\nPriority file (for priority sessions):\n"
++           "  --priority-file=FILE       json file with priorities\n");
+     stream_usage("JSON-RPC", true, true, true);
+     daemon_usage();
+     vlog_usage();
+diff --git a/ovsdb/server.c b/ovsdb/server.c
+index 82f55cb..7df978ba 100644
+--- a/ovsdb/server.c
++++ b/ovsdb/server.c
+@@ -19,6 +19,7 @@
+ 
+ #include "hash.h"
+ #include "ovsdb.h"
++#include "simap.h"
+ 
+ /* Initializes 'session' as a session within 'server'. */
+ void
+@@ -121,6 +122,8 @@ ovsdb_server_init(struct ovsdb_server *server)
+ {
+     shash_init(&server->dbs);
+     hmap_init(&server->locks);
++    simap_init(&server->priorities);
++    uuid_generate(&server->uuid);
+ }
+ 
+ /* Adds 'db' to the set of databases served out by 'server'.  Returns true if
+@@ -151,6 +154,7 @@ ovsdb_server_destroy(struct ovsdb_server *server)
+ {
+     shash_destroy(&server->dbs);
+     hmap_destroy(&server->locks);
++    simap_destroy(&server->priorities);
+ }
+ 
+ static struct ovsdb_lock *
+diff --git a/ovsdb/server.h b/ovsdb/server.h
+index 82c733f..f472f74 100644
+--- a/ovsdb/server.h
++++ b/ovsdb/server.h
+@@ -19,6 +19,8 @@
+ #include "hmap.h"
+ #include "list.h"
+ #include "shash.h"
++#include "simap.h"
++#include "uuid.h"
+ 
+ struct ovsdb;
+ struct ovsdb_server;
+@@ -79,6 +81,8 @@ bool ovsdb_lock_waiter_is_owner(const struct ovsdb_lock_waiter *);
+ struct ovsdb_server {
+     struct shash dbs;      /* Maps from a db name to a "struct ovsdb *". */
+     struct hmap locks;     /* Contains "struct ovsdb_lock"s indexed by name. */
++    struct simap priorities; /* Priorities assigned in this server */
++    struct uuid uuid; /* Server identifier */
+ };
+ 
+ void ovsdb_server_init(struct ovsdb_server *);
+diff --git a/tests/ovsdb-idl.at b/tests/ovsdb-idl.at
+index 043529a..d3f4305 100644
+--- a/tests/ovsdb-idl.at
++++ b/tests/ovsdb-idl.at
+@@ -881,6 +881,31 @@ OVSDB_CHECK_IDL_DELETE_SEQNO_C([simple idl, table delete seqno increment],
+ ]])
+ endif
+ 
++m4_define([OVSDB_CHECK_IDL_PRIORITY_SESSION_C],
++  [AT_SETUP([$1 - C])
++   AT_KEYWORDS([ovsdb server idl priority_session positive $5])
++   AT_CHECK([ovsdb-tool create db $abs_srcdir/idltest.ovsschema],
++                  [0], [stdout], [ignore])
++   AT_DATA([priority.json], [[
++   {
++   "0": ["maxp"],
++   "5": ["example"],
++   "15": ["minp"],
++   "20": ["wrongp"]
++   }
++]])
++   AT_CHECK([ovsdb-server '-vPATTERN:console:ovsdb-server|%c|%m' --detach --no-chdir --pidfile="`pwd`"/pid --remote=punix:socket --unixctl="`pwd`"/unixctl db --priority-file="`pwd`"/priority.json], [0], [stdout], [stderr])
++   AT_CHECK([test-ovsdb '-vPATTERN:console:test-ovsdb|%c|%m' -vjsonrpc -t10 -c idl-priority-session unix:socket],
++            [0], [[example: 5
++maxp: 0
++minp: 15
++wrongp: 8
++]], [ignore], [kill `cat pid`])
++   OVSDB_SERVER_SHUTDOWN
++   AT_CLEANUP])
++
++OVSDB_CHECK_IDL_PRIORITY_SESSION_C([ovsdb idl priority sessions])
++
+ # Tests to verify the functionality of the one column compound index.
+ # It tests index for one column string and integer indexes.
+ # The run of test-ovsdb generates the output of the display of data using the different indexes defined in
+diff --git a/tests/ovsdb-server.at b/tests/ovsdb-server.at
+index c869d6f..fe11b7b 100644
+--- a/tests/ovsdb-server.at
++++ b/tests/ovsdb-server.at
+@@ -768,6 +768,52 @@ AT_CHECK_UNQUOTED([ovs-vsctl get open_vswitch . system_version], [0],
+   ["xyzzy$counter"
+ ])
+ AT_CLEANUP
++
++
++AT_SETUP([ovsdb-client priority])
++AT_KEYWORDS([ovsdb server priority_session positive])
++ordinal_schema > schema
++AT_DATA([priority.json], [[
++{
++"0": ["maxp"],
++"5": ["example"],
++"15": ["minp"],
++"20": ["wrongp"]
++}
++]])
++AT_CHECK([ovsdb-tool create db schema], [0], [ignore], [ignore])
++AT_CHECK([ovsdb-server --detach --no-chdir --pidfile="`pwd`"/pid --unixctl="`pwd`"/unixctl --remote=punix:socket db --priority-file="`pwd`"/priority.json], [0], [ignore], [ignore])
++AT_CHECK([ovsdb-client identify unix:socket example], [0], [5
++])
++AT_CHECK([ovsdb-client identify unix:socket minp], [0], [15
++])
++AT_CHECK([ovsdb-client identify unix:socket maxp], [0], [0
++])
++AT_CHECK([ovsdb-client identify unix:socket default], [0], [8
++])
++AT_CHECK([ovsdb-client identify unix:socket wrongp], [0], [8
++])
++OVSDB_SERVER_SHUTDOWN
++AT_CLEANUP
++
++AT_SETUP([ovs-appctl priority])
++AT_KEYWORDS([ovsdb server priority_session positive])
++ordinal_schema > schema
++AT_DATA([priority.json], [[{"5": ["example"]}
++]])
++AT_CHECK([ovsdb-tool create db schema], [0], [ignore], [ignore])
++AT_CHECK([ovsdb-server --detach --no-chdir --pidfile="`pwd`"/pid --unixctl="`pwd`"/unixctl --remote=punix:socket db --priority-file="`pwd`"/priority.json], [0], [ignore], [ignore])
++AT_CHECK([ovsdb-client identify unix:socket example], [0], [5
++])
++AT_DATA([priority.json], [[{"9": ["example"]}
++]])
++AT_CHECK([ovs-appctl -t "`pwd`"/unixctl ovsdb-server/priority-reload], [0], [ignore], [ignore])
++AT_CHECK([ovsdb-client identify unix:socket example], [0], [9
++])
++OVSDB_SERVER_SHUTDOWN
++AT_CLEANUP
++
++
+ 
+ AT_BANNER([OVSDB -- ovsdb-server transactions (SSL IPv4 sockets)])
+ 
+diff --git a/tests/test-ovsdb.c b/tests/test-ovsdb.c
+index 78c566f..53b6eed 100644
+--- a/tests/test-ovsdb.c
++++ b/tests/test-ovsdb.c
+@@ -212,7 +212,10 @@ usage(void)
+            "        idl_compound_index_single_column:\n"
+            "            test for indexes using one column as part of the index.\n"
+            "        idl_compound_index_double_column:\n"
+-           "            test for indexes using two columns as part of index.\n",
++           "            test for indexes using two columns as part of index.\n"
++           "  idl-priority-session\n"
++           "    Changes the identification of the session, and verifies the\n"
++           "    priorities returned by the OVSDB-Server.",
+            program_name, program_name);
+     vlog_usage();
+     printf("\nOther options:\n"
+@@ -2128,6 +2131,30 @@ do_idl(struct ovs_cmdl_context *ctx)
+ }
+ 
+ static void
++do_idl_priority_session(struct ovs_cmdl_context *ctx)
++{
++    struct ovsdb_idl *idl;
++    idltest_init();
++
++    idl = ovsdb_idl_create(ctx->argv[1], &idltest_idl_class, false, true);
++    setvbuf(stdout, NULL, _IONBF, 0);
++    ovsdb_idl_get_initial_snapshot(idl);
++
++    char *ids[] = {"example", "maxp", "minp", "wrongp"};
++    int i;
++
++    for(i = 0; i < sizeof(ids)/sizeof(*ids); i++){
++        ovsdb_idl_set_identity(idl, ids[i]);
++        while (ovsdb_idl_get_priority(idl) == IDL_PRIORITY_UNDEFINED) {
++            ovsdb_idl_wait(idl);
++            poll_block();
++            ovsdb_idl_run(idl);
++        }
++        printf("%s: %u\n", ids[i], ovsdb_idl_get_priority(idl));
++    }
++}
++
++static void
+ print_idl_row_simple2(const struct idltest_simple2 *s, int step)
+ {
+     size_t i;
+@@ -2699,6 +2726,7 @@ static struct ovs_cmdl_command all_commands[] = {
+     { "idl-fetch-column-all", NULL, 1, INT_MAX, do_fetch_column_all },
+     { "idl-fetch-table", NULL, 1, INT_MAX, do_fetch_table },
+     { "idl-compound-index", NULL, 2, 2, do_idl_compound_index },
++    { "idl-priority-session", NULL, 1, 1, do_idl_priority_session },
+     { "help", NULL, 0, INT_MAX, do_help },
+     { NULL, NULL, 0, 0, NULL },
+ };
+-- 
+1.9.1
+
