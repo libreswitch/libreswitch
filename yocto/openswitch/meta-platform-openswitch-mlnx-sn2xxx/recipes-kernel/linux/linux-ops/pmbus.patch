@@ -1,0 +1,53 @@
+diff --git a/drivers/hwmon/pmbus/pmbus.c b/drivers/hwmon/pmbus/pmbus.c
+index 7e91700..d8f775b 100644
+--- a/drivers/hwmon/pmbus/pmbus.c
++++ b/drivers/hwmon/pmbus/pmbus.c
+@@ -25,6 +25,7 @@
+ #include <linux/slab.h>
+ #include <linux/mutex.h>
+ #include <linux/i2c.h>
++#include <linux/i2c/pmbus.h>
+ #include "pmbus.h"
+ 
+ /*
+@@ -166,14 +167,24 @@ static int pmbus_probe(struct i2c_client *client,
+ 		       const struct i2c_device_id *id)
+ {
+ 	struct pmbus_driver_info *info;
++    struct pmbus_platform_data *pdata;
++    struct device *dev = &client->dev;
+ 
+ 	info = devm_kzalloc(&client->dev, sizeof(struct pmbus_driver_info),
+ 			    GFP_KERNEL);
+ 	if (!info)
+ 		return -ENOMEM;
+ 
++    pdata = kzalloc(sizeof(struct pmbus_platform_data), GFP_KERNEL);
++    if (!pdata) {
++        kfree(info);
++        return -ENOMEM;
++    }
++
+ 	info->pages = id->driver_data;
+ 	info->identify = pmbus_identify;
++    pdata->flags = PMBUS_SKIP_STATUS_CHECK;
++    dev->platform_data = pdata;
+ 
+ 	return pmbus_do_probe(client, id, info);
+ }
+diff --git a/drivers/hwmon/pmbus/pmbus_core.c b/drivers/hwmon/pmbus/pmbus_core.c
+index 291d11f..7cbf250 100644
+--- a/drivers/hwmon/pmbus/pmbus_core.c
++++ b/drivers/hwmon/pmbus/pmbus_core.c
+@@ -1792,8 +1792,11 @@ EXPORT_SYMBOL_GPL(pmbus_do_probe);
+ int pmbus_do_remove(struct i2c_client *client)
+ {
+ 	struct pmbus_data *data = i2c_get_clientdata(client);
++    const struct pmbus_platform_data *pdata = dev_get_platdata(&client->dev);
+ 	hwmon_device_unregister(data->hwmon_dev);
+ 	kfree(data->group.attrs);
++    if (pdata)
++        kfree(pdata);
+ 	return 0;
+ }
+ EXPORT_SYMBOL_GPL(pmbus_do_remove);

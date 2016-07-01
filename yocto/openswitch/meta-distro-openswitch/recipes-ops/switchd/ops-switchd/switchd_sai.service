@@ -1,0 +1,16 @@
+# Copyright Mellanox Technologies, Ltd. 2001-2016.
+# This software product is licensed under Apache version 2, as detailed in
+# the COPYING file.
+
+[Unit]
+Description=OpenSwitch Switch Daemon for SAI
+After=ovsdb-server.service ops-init.service ops-sysd.service
+
+[Service]
+Type=simple
+ExecStart=/sbin/ip netns exec swns /usr/sbin/ops-switchd --no-chdir --pidfile -vSYSLOG:INFO
+WorkingDirectory=/var/run/openvswitch
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target

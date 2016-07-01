@@ -1,0 +1,12 @@
+[Unit]
+Description=Setup ONIE install
+DefaultDependencies=no
+Requires=umount.target
+Before=umount.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/grub-reboot --boot-directory=/var/local/boot ONIE
+
+[Install]
+WantedBy=onie-install.target

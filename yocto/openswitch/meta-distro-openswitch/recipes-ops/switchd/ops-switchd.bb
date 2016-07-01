@@ -11,6 +11,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-switchd;protocol=${OPS_REPO_PROTOCOL};branch
    file://switchd_sim.service \
    file://switchd_p4sim.service \
    file://switchd_xpliant.service \
+   file://switchd_sai.service \
 "
 
 SRCREV = "0b648add950e62dbb6aa7f7034e6001cf2e06b2b"
@@ -41,6 +42,8 @@ do_install_append() {
       install -m 0644 ${WORKDIR}/switchd_p4sim.service ${D}${systemd_unitdir}/system/switchd.service
    elif ${@bb.utils.contains('MACHINE_FEATURES','ops-container','true','false',d)}; then
       install -m 0644 ${WORKDIR}/switchd_sim.service ${D}${systemd_unitdir}/system/switchd.service
+   elif ${@bb.utils.contains('MACHINE_FEATURES','ops-sai','true','false',d)}; then
+      install -m 0644 ${WORKDIR}/switchd_sai.service ${D}${systemd_unitdir}/system/switchd.service
    fi
 
    install -d ${D}/usr/share/opsplugins

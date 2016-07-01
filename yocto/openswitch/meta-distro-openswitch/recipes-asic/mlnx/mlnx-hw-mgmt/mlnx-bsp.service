@@ -1,0 +1,11 @@
+[Unit]
+Description=Mellanox x86 system BSP
+Before=ops-sysd.service
+
+[Service]
+Type=oneshot
+ExecStartPre=/sbin/modprobe sx_core
+ExecStart=/usr/bin/mlnx-bsp.sh start
+
+[Install]
+WantedBy=multi-user.target
