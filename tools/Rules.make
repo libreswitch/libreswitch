@@ -377,12 +377,12 @@ images/$(CONFIGURED_PLATFORM).itb:: $(DISTRO_PLATFORM_ITS_FILE) $(MKIMAGE)
 
 # ONIE installer
 .PHONY: onie-installer
-onie-installer: header _kernel_links _fs _onie-installer
+onie-installer: header _onie-installer _kernel_links _fs_links
 
 DISTRO_ONIE_INSTALLER_FILE?= $(BASE_ONIE_INSTALLER_FILE)
 _onie-installer::
 	$(V) $(ECHO) "$(BLUE)Building ONIE Installer file ($(ONIE_INSTALLER_RECIPE))...$(GRAY)\n"
-	$(V)$(call BITBAKE,$(ONIE_INSTALLER_RECIPE))
+	$(V)$(call BITBAKE,$(ONIE_INSTALLER_RECIPE) $(DISTRO_FS_TARGET))
 	$(V)ln -sf $(DISTRO_ONIE_INSTALLER_FILE) images/`basename $(DISTRO_ONIE_INSTALLER_FILE)`
 
 ifneq ($(findstring onie-installer,$(MAKECMDGOALS)),)
@@ -413,17 +413,19 @@ _setup-git-review:: $(addprefix .git/hooks/,$(notdir $(wildcard $(BUILD_ROOT)/to
 	$(V) cp $(BUILD_ROOT)/tools/bin/hooks/$* $@
 
 .PHONY: devenv_init devenv_clean devenv_add devenv_rm devenv_status devenv_cscope devenv_list_all
-.PHONY: devenv_import dev_header devenv_refresh _devenv_refresh
+.PHONY: check_devenv devenv_import dev_header devenv_refresh _devenv_refresh
 
 -include src/Rules.make
 
-dev_header: header
-	$(V) flock -n $(BUILDDIR)/bitbake.lock echo -n || \
-	   { echo "Bitbake is currently running... can't proceed further, aborting" ; \
-             exit 255 ; }
+check_devenv:
 	$(V) if ! [ -f .devenv ] ; then \
 	  $(call FATAL_ERROR, devenv is not initialized, use 'devenv_init') ; \
 	fi
+
+dev_header: header check_devenv
+	$(V) flock -n $(BUILDDIR)/bitbake.lock echo -n || \
+	   { echo "Bitbake is currently running... can't proceed further, aborting" ; \
+             exit 255 ; }
 
 devenv_init: header
 	$(V) $(ECHO) "$(BLUE)Configuring development enviroment...$(GRAY)\n"
@@ -509,11 +511,11 @@ ifneq ($(findstring query_recipe,$(MAKECMDGOALS)),)
   endif
   PACKAGE?=$(EXTRA_ARGS)
   ifeq ($(PACKAGE),)
-   $(error ====== PACKAGE variable is empty, please specify which package(s) you want  =====)
+   $(error ====== Please specify which package(s) you want to query =====)
   endif
 endif
 
-query_recipe:
+query_recipe: check_devenv
 	@$(foreach P, $(PACKAGE), $(call QUERY_RECIPE,$(VAR),$(P)))
 
 ifeq (devenv_import,$(firstword $(MAKECMDGOALS)))
@@ -621,6 +623,8 @@ TOPOLOGY_TEST_IMAGE?=ops_$(USER)$(subst /,_,$(BUILD_ROOT))
 # In the current implementation, this directory is shared between the host and the container using Docker volumes to collect the coverage data (gcda) files.
 TOPOLOGY_TEST_COV_DIR?=$(BUILD_ROOT)/src
 
+TESTENV_REQUIRED_DRIVERS = bonding
+
 ifeq (testenv_run,$(firstword $(MAKECMDGOALS)))
   $(eval $(call PARSE_TWO_ARGUMENTS,testenv_run))
   export TESTSUITE?=$(EXTRA_ARGS_1)
@@ -642,8 +646,8 @@ testenv_run: _testenv_header
 	$(V) docker rmi $(TOPOLOGY_TEST_IMAGE) > /dev/null 2>&1 || true
 	$(V) $(MAKE) export_docker_image $(TOPOLOGY_TEST_IMAGE)
 	$(V) $(SUDO) rm -Rf $(BUILDDIR)/test/$(TESTSUITE)
+	$(V) $(SUDO) modprobe $(TESTENV_REQUIRED_DRIVERS)
 	$(V) $(MAKE) _testenv_rerun
-	$(V) $(SUDO) modprobe bonding
 
 ifeq (testenv_rerun,$(firstword $(MAKECMDGOALS)))
   $(eval $(call PARSE_TWO_ARGUMENTS,testenv_rerun))
@@ -659,6 +663,8 @@ endif
 testenv_rerun: _testenv_header
 	$(V) $(MAKE) _testenv_rerun
 
+TESTENV_ABORT_IF_NOT_FOUND?=true
+
 define TESTENV_PREPARE
 	$(V) # Find if the component is on the devenv
 	$(V) \
@@ -666,12 +672,20 @@ define TESTENV_PREPARE
 	  if [ "$(TESTSUITE)" = "legacy" ] ; then \
 	    test_source_path="tests" ; \
 	  fi ; \
+	  testenv_abort=false ; \
 	  if [ -f .devenv ] && [ -d src/$(1) ] ; then \
 	   $(ECHO) "$(1): using tests from devenv..." ; \
 	   if ! [ -d src/$(1)/$$test_source_path ] ; then \
-		 $(call FATAL_ERROR, No testsuite found at src/$(1)/$$test_source_path); \
+	     if [ "$(TESTENV_ABORT_IF_NOT_FOUND)" == "true" ] ; then \
+	       $(call FATAL_ERROR, No testsuite found at src/$(1)/$$test_source_path); \
+	     else \
+	       $(call WARNING, No testsuite found at src/$(1)/$$test_source_path); \
+	       testenv_abort = true ; \
+	     fi ; \
 	   fi ; \
-	   ln -sf $(BUILD_ROOT)/src/$(1)/$$test_source_path $(BUILDDIR)/test/$(TESTSUITE)/code_under_test/$(1) ; \
+	   if ! $$testenv_abort ; then \
+	     ln -sf $(BUILD_ROOT)/src/$(1)/$$test_source_path $(BUILDDIR)/test/$(TESTSUITE)/code_under_test/$(1) ; \
+	   fi ; \
 	 else \
 	   $(ECHO) "$(1): fetching tests from git..." ; \
 	   $$(query-recipe.py -s -v SRCREV --gitrepo --gitbranch $(1)) ; \
@@ -687,40 +701,49 @@ define TESTENV_PREPARE
 	   git reset $$SRCREV --hard ; \
 	   popd > /dev/null ; \
 	   if ! [ -d $(BUILDDIR)/test/$(TESTSUITE)/downloads/$(1)/git/$$test_source_path ] ; then \
-		 $(call FATAL_ERROR, No testsuite found at '/$$test_source_path' inside the git repo $$gitrepo); \
+	     if [ "$(TESTENV_ABORT_IF_NOT_FOUND)" == "true" ] ; then \
+	       $(call FATAL_ERROR, No testsuite found at '/$$test_source_path' inside the git repo $$gitrepo); \
+	     else \
+	       $(call WARNING, No testsuite found at '/$$test_source_path' inside the git repo $$gitrepo); \
+	       testenv_abort = true ; \
+	     fi ; \
 	   fi ; \
-	   ln -sf $(BUILDDIR)/test/$(TESTSUITE)/downloads/$(1)/git/$$test_source_path \
+	   if ! $$testenv_abort ; then \
+	     ln -sf $(BUILDDIR)/test/$(TESTSUITE)/downloads/$(1)/git/$$test_source_path \
 		 $(BUILDDIR)/test/$(TESTSUITE)/code_under_test/$(1) ; \
+	   fi ; \
 	 fi ; \
-	 if [ "$(TESTSUITE)" = "legacy" ] ; then \
-	   cp tools/pytest.ini $(BUILDDIR)/test/$(TESTSUITE)/pytest.ini ; \
-	 else \
-	   if [ -f $(BUILDDIR)/test/$(TESTSUITE)/code_under_test/$(1)/requirements.txt ] ; then \
+	 if ! $$testenv_abort ; then \
+	   if [ "$(TESTSUITE)" = "legacy" ] ; then \
+	     cp tools/pytest.ini $(BUILDDIR)/test/$(TESTSUITE)/pytest.ini ; \
+	   else \
+	     if [ -f $(BUILDDIR)/test/$(TESTSUITE)/code_under_test/$(1)/requirements.txt ] ; then \
 		 $(call WARNING,Overriding the global requirements.txt with the one from $(1)) ; \
 		 cp $(BUILDDIR)/test/$(TESTSUITE)/code_under_test/$(1)/requirements.txt \
 		   $(BUILDDIR)/test/$(TESTSUITE)/ ; \
-	   else \
+	     else \
 		 cp tools/topology/requirements.txt $(BUILDDIR)/test/$(TESTSUITE)/ ; \
-	   fi ; \
-	   if [ -f $(BUILDDIR)/test/$(TESTSUITE)/code_under_test/$(1)/tox.ini ] ; then \
-	     $(call WARNING,Overriding the global tox.ini with the one from $(1)) ; \
+	     fi ; \
+	     if [ -f $(BUILDDIR)/test/$(TESTSUITE)/code_under_test/$(1)/tox.ini ] ; then \
+	       $(call WARNING,Overriding the global tox.ini with the one from $(1)) ; \
 		 cp $(BUILDDIR)/test/$(TESTSUITE)/code_under_test/$(1)/tox.ini \
 		   $(BUILDDIR)/test/$(TESTSUITE)/ ; \
-	   else \
+	     else \
 		 cp tools/topology/tox.ini $(BUILDDIR)/test/$(TESTSUITE)/ ; \
-	   fi ; \
-	   output_attr_json=$(BUILDDIR)/test/$(TESTSUITE)/attributes.json ; \
-	   if [ -f $(BUILDDIR)/test/$(TESTSUITE)/code_under_test/$(1)/attributes.json.in ] ; then \
+	     fi ; \
+	     output_attr_json=$(BUILDDIR)/test/$(TESTSUITE)/attributes.json ; \
+	     if [ -f $(BUILDDIR)/test/$(TESTSUITE)/code_under_test/$(1)/attributes.json.in ] ; then \
 		 $(call WARNING, Overriding the global attributes.json with the one from $(1)) ; \
 		 sed -e 's?@TEST_IMAGE@?$(TOPOLOGY_TEST_IMAGE):latest?' \
 			-e 's?@BUILD_ROOT@?$(BUILD_ROOT)?g' \
 		   $(BUILDDIR)/test/$(TESTSUITE)/code_under_test/$(1)/attributes.json.in \
 		   > $$output_attr_json ; \
 		 sed -i 's?@TEST_COV_DIR@?$(TOPOLOGY_TEST_COV_DIR)?g' $$output_attr_json ; \
-	   else \
+	     else \
 		 sed -e 's?@TEST_IMAGE@?$(TOPOLOGY_TEST_IMAGE):latest?' \
 		   tools/topology/attributes.json.in > $$output_attr_json ; \
 		 sed -i 's?@TEST_COV_DIR@?$(TOPOLOGY_TEST_COV_DIR)?g' $$output_attr_json ; \
+	     fi ; \
 	   fi ; \
 	 fi
 
@@ -757,7 +780,11 @@ _testenv_rerun:
             $(ECHO) "\nIterating the tests $(TESTENV_ITERATIONS) times\n" ; \
 	    for iteration in $$(seq 1 $(TESTENV_ITERATIONS)) ; do \
 	      $(ECHO) "\nRunning the testsuite on iteration $$iteration" ; \
-	      cd $(BUILDDIR)/test/$(TESTSUITE) ; unset CURL_CA_BUNDLE; export TESTENV_EXTRA_PARAMETERS='$(TESTENV_EXTRA_PARAMETERS)' ; tox || exit 1 ; \
+	      cd $(BUILDDIR)/test/$(TESTSUITE) ; \
+	      unset CURL_CA_BUNDLE; \
+	      export TESTENV_EXTRA_PARAMETERS='$(TESTENV_EXTRA_PARAMETERS)' ; \
+	      export TESTENV_MARKERS='$(TESTENV_MARKERS)' ; \
+	      tox || exit 1 ; \
             done ; \
 	  fi
 
@@ -788,12 +815,14 @@ ifeq (testenv_suite_list_components,$(firstword $(MAKECMDGOALS)))
   endif
 endif
 testenv_suite_list_components: _testenv_header
-	$(V) for layer in $$YOCTO_LAYERS ; do \
+	$(V) for layer in $$YOCTO_LAYERS src/*/ops-tests ; do \
 	   test -d $$layer || continue ; \
 	   if [ -f $$layer/testsuite_$(TESTSUITE).conf ] ; then \
-		 while read component ; do \
-		     [[ $$component == \#* ]] && continue ; \
-			 $(ECHO) "  * $$component" ; \
+	     while read component ; do \
+	       [[ $$component == \#* ]] && continue ; \
+	       echo $$COMPONENTS | grep -q $$component && continue ; \
+               COMPONENTS="$$COMPONENTS $$component" ; \
+	       $(ECHO) "  * $$component" ; \
 	     done < $$layer/testsuite_$(TESTSUITE).conf ; \
 	   fi ; \
 	 done
@@ -824,19 +853,25 @@ testenv_suite_rerun: _testenv_header
 	$(V) $(MAKE) _testenv_suite_rerun
 
 _testenv_suite_rerun:
-	$(V) for layer in $$YOCTO_LAYERS ; do \
+	$(V) for layer in $$YOCTO_LAYERS src/*/ops-tests ; do \
 	   test -d $$layer || continue ; \
 	   if [ -f $$layer/testsuite_$(TESTSUITE).conf ] ; then \
-		 while read component ; do \
-		    [[ $$component == \#* ]] && continue ; \
-			COMPONENTS="$$COMPONENTS $$component" ; \
+	     while read component ; do \
+	       [[ $$component == \#* ]] && continue ; \
+               echo $$COMPONENTS | grep -q $$component && continue ; \
+	       COMPONENTS="$$COMPONENTS $$component" ; \
 	     done < $$layer/testsuite_$(TESTSUITE).conf ; \
 	   fi ; \
 	 done ; \
 	 if [ -z "$$COMPONENTS" ] ; then \
 	   $(call FATAL_ERROR, No components where found for the test suite. Do you have testsuite_$(TESTSUITE).conf files?); \
 	 else \
-	   $(MAKE) _testenv_rerun TESTSUITE=$(TESTSUITE) COMPONENTS="$$COMPONENTS" ; \
+	   testsuite=$(TESTSUITE) ; \
+	   marker=$$(expr match "$$testsuite" '\(^.*\)@') ; \
+	   if [ -n "$$marker" ] ; then \
+	     export TESTENV_MARKERS="-m $$marker" ; \
+	   fi ; \
+	   $(MAKE) _testenv_rerun TESTSUITE=$${testsuite##*@} COMPONENTS="$$COMPONENTS" ; \
 	 fi
 
 testenv_clean:
@@ -874,7 +909,7 @@ devenv_ct_clean:
 	for name in `docker ps -a -q --filter="name=$$SBOX_UUID"`; do \
 	  echo "Cleaning the docker container with id $$SBOX_UUID" ; \
 	  docker stop --time=5 $$name >/dev/null ; \
-	  docker rm -f $$name >/dev/null ; \
+	  docker rm -vf $$name >/dev/null ; \
 	done
 	$(V) rm -rf .sandbox_uuid
 
