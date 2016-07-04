@@ -11,7 +11,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-switchd;protocol=http;branch=
    file://switchd_xpliant.service \
 "
 
-SRCREV = "6ad617d31bd6b2182e3b87550c0d6268d55e919e"
+SRCREV = "2b35ed270f7ec3728fba0f661fcd8794e517e04b"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
