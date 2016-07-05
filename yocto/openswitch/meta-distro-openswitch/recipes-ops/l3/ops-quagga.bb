@@ -12,7 +12,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-quagga;protocol=http;branch=r
     file://ops-zebra.service file://ops-bgpd.service file://ops-ospfd.service \
 "
 
-SRCREV = "4cf1b92224c9aaf1e7233046986ed3d712cdd053"
+SRCREV = "055c80f8a575b25cc88e1d6760ecdb0f22a36799"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
