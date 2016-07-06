@@ -42,6 +42,7 @@ do_install_append() {
 # We use systemd core dump
 EXTRA_OECONF_remove = "--disable-coredump"
 EXTRA_OECONF += "--with-dns-servers=" ""
+EXTRA_OECONF_append = " --disable-timesyncd"
 FILES_${PN} += "${bindir}/coredumpctl \
                  /var/log/journal"
 EXTRA_OECONF_remove = "--without-python"
