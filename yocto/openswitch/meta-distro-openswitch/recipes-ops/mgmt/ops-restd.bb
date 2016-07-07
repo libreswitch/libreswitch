@@ -12,7 +12,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-restd;protocol=${OPS_REPO_PROTOCOL};branch=$
            file://restd.service \
 "
 
-SRCREV = "b9dcbd408e6d85fc4c375db28aef2a3b4b5ade3b"
+SRCREV = "e757d8c045a332e5067618829be3a5cec39b2d09"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
