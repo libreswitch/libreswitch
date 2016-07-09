@@ -1,0 +1,150 @@
+From 297a759a76847e61ab941293c431657bce96296b Mon Sep 17 00:00:00 2001
+From: Harshvardhan <harshvardhan@hpe.com>
+Date: Fri, 8 Jul 2016 14:17:47 -0700
+Subject: [PATCH] setting and fetching vlan using new vlan_tag column for port
+ table
+
+1. Port Table
+   1.1	Setting vlan value for new column  vlan_tag
+   1.2	Fetching vlan value form new column  vlan_tag
+
+Tags: fix, dev
+TG-1175
+
+Change-Id: Idfe431786cacbdaece6f70fe570a393a061ab797
+Signed-off-by: Harshvardhan <harshvardhan@hpe.com>
+---
+ utilities/ovs-vsctl.c | 48 ++++++++++++++++++++++++++++++++++--------------
+ 1 file changed, 34 insertions(+), 14 deletions(-)
+
+diff --git a/utilities/ovs-vsctl.c b/utilities/ovs-vsctl.c
+index d404b8f..38a8bad 100644
+--- a/utilities/ovs-vsctl.c
++++ b/utilities/ovs-vsctl.c
+@@ -650,8 +650,8 @@ static bool
+ port_is_fake_bridge(const struct ovsrec_port *port_cfg)
+ {
+     return (port_cfg->fake_bridge
+-            && port_cfg->tag
+-            && *port_cfg->tag >= 0 && *port_cfg->tag <= 4095);
++            && port_cfg->vlan_tag
++            && port_cfg->vlan_tag->id >= 0 && port_cfg->vlan_tag->id <= 4095);
+ }
+ #endif
+
+@@ -707,11 +707,11 @@ add_port_to_cache(struct vsctl_context *vsctl_ctx, struct vsctl_bridge *parent,
+ {
+     struct vsctl_port *port;
+
+-    if (port_cfg->tag
+-        && *port_cfg->tag >= 0 && *port_cfg->tag <= 4095) {
++    if (port_cfg->vlan_tag
++        && port_cfg->vlan_tag->id >= 0 && port_cfg->vlan_tag->id <= 4095) {
+         struct vsctl_bridge *vlan_bridge;
+
+-        vlan_bridge = find_vlan_bridge(parent, *port_cfg->tag);
++        vlan_bridge = find_vlan_bridge(parent, port_cfg->vlan_tag->id);
+         if (vlan_bridge) {
+             parent = vlan_bridge;
+         }
+@@ -840,12 +840,13 @@ pre_get_info(struct ctl_context *ctx)
+     ovsdb_idl_add_column(ctx->idl, &ovsrec_bridge_col_fail_mode);
+ #endif
+     ovsdb_idl_add_column(ctx->idl, &ovsrec_bridge_col_ports);
++    ovsdb_idl_add_column(ctx->idl, &ovsrec_bridge_col_vlans);
+
+     ovsdb_idl_add_column(ctx->idl, &ovsrec_port_col_name);
+ #ifndef OPS_TEMP
+     ovsdb_idl_add_column(ctx->idl, &ovsrec_port_col_fake_bridge);
+ #endif
+-    ovsdb_idl_add_column(ctx->idl, &ovsrec_port_col_tag);
++    ovsdb_idl_add_column(ctx->idl, &ovsrec_port_col_vlan_tag);
+     ovsdb_idl_add_column(ctx->idl, &ovsrec_port_col_interfaces);
+
+     ovsdb_idl_add_column(ctx->idl, &ovsrec_interface_col_name);
+@@ -860,6 +861,8 @@ pre_get_info(struct ctl_context *ctx)
+      */
+     ovsdb_idl_add_column(ctx->idl, &ovsrec_open_vswitch_col_subsystems);
+ #endif
++    ovsdb_idl_add_table(ctx->idl, &ovsrec_table_vlan);
++    ovsdb_idl_add_column(ctx->idl, &ovsrec_vlan_col_id);
+ }
+
+ static void
+@@ -920,8 +923,10 @@ vsctl_context_populate_cache(struct ctl_context *ctx)
+ #ifndef OPS_TEMP
+             if (port_is_fake_bridge(port_cfg)
+                 && sset_add(&bridges, port_cfg->name)) {
+-                add_bridge_to_cache(vsctl_ctx, NULL, port_cfg->name, br,
+-                                    *port_cfg->tag);
++                if(port_cfg->vlan_tag != NULL) {
++                    add_bridge_to_cache(vsctl_ctx, NULL, port_cfg->name, br,
++                                        port_cfg->vlan_tag->id);
++                }
+             }
+ #endif
+         }
+@@ -1314,8 +1319,8 @@ static struct cmd_show_table cmd_show_tables[] = {
+ #endif
+     {&ovsrec_table_port,
+      &ovsrec_port_col_name,
+-     {&ovsrec_port_col_tag,
+-      &ovsrec_port_col_trunks,
++     {&ovsrec_port_col_vlan_tag,
++      &ovsrec_port_col_vlan_trunks,
+       &ovsrec_port_col_interfaces},
+      {NULL, NULL, NULL}
+     },
+@@ -1601,6 +1606,22 @@ cmd_emer_reset(struct ctl_context *ctx)
+     vsctl_context_invalidate_cache(ctx);
+ }
+
++static struct ovsrec_vlan *ovs_vsctl_get_vlan_row(struct ovsrec_bridge *bridge,
++                                                  int vlan)
++{
++    struct ovsrec_vlan *vlan_row = NULL;
++    int i = 0;
++
++    for (i = 0; i < bridge->n_vlans; i++) {
++        if (bridge->vlans[i]->id == vlan) {
++            vlan_row = bridge->vlans[i];
++            break;
++        }
++    }
++
++    return vlan_row;
++}
++
+ static void
+ cmd_add_br(struct ctl_context *ctx)
+ {
+@@ -1703,7 +1724,6 @@ cmd_add_br(struct ctl_context *ctx)
+         struct vsctl_bridge *parent;
+         struct ovsrec_port *port;
+         struct ovsrec_bridge *br;
+-        int64_t tag = vlan;
+
+         parent = find_bridge(vsctl_ctx, parent_name, false);
+         if (parent && parent->parent) {
+@@ -1727,7 +1747,7 @@ cmd_add_br(struct ctl_context *ctx)
+         ovsrec_port_set_name(port, br_name);
+         ovsrec_port_set_interfaces(port, &iface, 1);
+         ovsrec_port_set_fake_bridge(port, true);
+-        ovsrec_port_set_tag(port, &tag, 1);
++        ovsrec_port_set_vlan_tag(port, ovs_vsctl_get_vlan_row(br, vlan));
+
+         bridge_insert_port(br, port);
+     }
+@@ -2666,8 +2686,8 @@ add_port(struct ctl_context *ctx,
+ #endif
+
+     if (bridge->parent) {
+-        int64_t tag = bridge->vlan;
+-        ovsrec_port_set_tag(port, &tag, 1);
++        ovsrec_port_set_vlan_tag(port, ovs_vsctl_get_vlan_row
++                                       (bridge->br_cfg, bridge->vlan));
+     }
+
+     for (i = 0; i < n_settings; i++) {
+--
+2.9.0
