@@ -1,23 +1,19 @@
-From a6634a4e9dd297e84ecbadf2549394547be5a0d1 Mon Sep 17 00:00:00 2001
+From 06ba1660148ebe1a640a4aae985f80d38effab0b Mon Sep 17 00:00:00 2001
 From: Harshvardhan <harshvardhan@hpe.com>
-Date: Fri, 8 Jul 2016 17:00:58 -0700
-Subject: [PATCH] ovs-vsctl l2mac command modification
-
-1. MAC Table
-   1.1	Setting vlan value for new column  mac_vlan
-   1.2	Fetching vlan value form new column  mac_vlan
+Date: Tue, 12 Jul 2016 08:34:48 -0700
+Subject: [PATCH] Removing setting of vlan column for MAC table
 
 Tags: fix, dev
 TG-1175
 
-Change-Id: Ica3c8e0b98c4e93316ccac051cfdc4bb2cf30372
+Change-Id: I0d8cab707478a6665bf1539a15ab0dff41c285da
 Signed-off-by: Harshvardhan <harshvardhan@hpe.com>
 ---
- utilities/ovs-vsctl.c | 142 +++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 141 insertions(+), 1 deletion(-)
+ utilities/ovs-vsctl.c | 140 +++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 139 insertions(+), 1 deletion(-)
 
 diff --git a/utilities/ovs-vsctl.c b/utilities/ovs-vsctl.c
-index d404b8f..960e9b2 100644
+index d404b8f..3f06ee3 100644
 --- a/utilities/ovs-vsctl.c
 +++ b/utilities/ovs-vsctl.c
 @@ -446,7 +446,10 @@ VRF Port commands:\n\
@@ -32,7 +28,7 @@ index d404b8f..960e9b2 100644
  #endif
      vlog_usage();
      printf("\
-@@ -1978,6 +1981,32 @@ pre_get_vlan_info(struct ctl_context *ctx)
+@@ -1978,6 +1981,31 @@ pre_get_vlan_info(struct ctl_context *ctx)
  }
  
  static void
@@ -50,7 +46,6 @@ index d404b8f..960e9b2 100644
 +    ovsdb_idl_add_column(ctx->idl, &ovsrec_mac_col_bridge);
 +    ovsdb_idl_add_column(ctx->idl, &ovsrec_mac_col_mac_addr);
 +    ovsdb_idl_add_column(ctx->idl, &ovsrec_mac_col_tunnel_key);
-+    ovsdb_idl_add_column(ctx->idl, &ovsrec_mac_col_vlan);
 +    ovsdb_idl_add_column(ctx->idl, &ovsrec_mac_col_mac_vlan);
 +    ovsdb_idl_add_column(ctx->idl, &ovsrec_mac_col_port);
 +    ovsdb_idl_add_column(ctx->idl, &ovsrec_mac_col_from);
@@ -65,7 +60,7 @@ index d404b8f..960e9b2 100644
  bridge_insert_vlan(struct ovsrec_bridge *br, struct ovsrec_vlan *vlan)
  {
      struct ovsrec_vlan **vlans;
-@@ -2134,6 +2163,113 @@ cmd_del_vlan(struct ctl_context *ctx)
+@@ -2134,6 +2162,112 @@ cmd_del_vlan(struct ctl_context *ctx)
  }
  
  static void
@@ -110,7 +105,6 @@ index d404b8f..960e9b2 100644
 +
 +    mac = ovsrec_mac_insert(ctx->txn);
 +    ovsrec_mac_set_bridge(mac, bridge->br_cfg);
-+    ovsrec_mac_set_vlan(mac, vid);
 +    for (i = 0; i < bridge->br_cfg->n_vlans; i++) {
 +        if (bridge->br_cfg->vlans[i]->id == vid) {
 +            vlan_row = bridge->br_cfg->vlans[i];
@@ -179,7 +173,7 @@ index d404b8f..960e9b2 100644
  pre_get_vrf_info(struct ctl_context *ctx)
  {
      ovsdb_idl_add_column(ctx->idl, &ovsrec_open_vswitch_col_vrfs);
-@@ -3924,6 +4060,10 @@ static const struct ctl_command_syntax vsctl_commands[] = {
+@@ -3924,6 +4058,10 @@ static const struct ctl_command_syntax vsctl_commands[] = {
      {"del-vlan", 2, 2, "", pre_get_vlan_info, cmd_del_vlan, NULL, "--if-exists",
       RW},
  
