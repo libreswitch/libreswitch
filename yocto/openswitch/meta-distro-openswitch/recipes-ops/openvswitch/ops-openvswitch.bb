@@ -37,6 +37,7 @@ SRC_URI = "git://github.com/openvswitch/ovs.git;protocol=https;branch=branch-2.5
            file://0029-Strong-references-cascade-fix.patch \
            file://0030-new-dev-OVSDB-Priority-Sessions.patch \
            file://0031-Add-optional-c-extension-wrapper-for-python-json-parsing.patch \
+           file://0032-OVSDB-Wait-Monitoring-Functions.patch \
           "
 
 SRCREV = "976b441345df85dd7adb973f8ae208f588d764a0"

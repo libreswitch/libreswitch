@@ -1,0 +1,2782 @@
+From 43482b6b01f7f4760f4b7d55b42a2d3893b57300 Mon Sep 17 00:00:00 2001
+From: Esteban Rodriguez Betancourt <estebarb@hpe.com>
+Date: Tue, 12 Jul 2016 10:05:48 -0600
+Subject: [PATCH] OVSDB: Wait Monitoring Functions
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Introduces new JSON-RPC methods that allows to monitor when
+an OVSDB client performs a “blocking_wait” operation, and
+allows the monitoring processes to unblock that request.
+
+This new set of operations allow to implement synchronization
+mechanisms between several OVSDB clients (e.g.: wait until
+the data have been written before attempting to read it.)
+
+Change-Id: I7308ce64e7a0d1adffb8c31ce3652c1b5b983e53
+Signed-off-by: Esteban Rodriguez Betancourt <estebarb@hpe.com>
+---
+ lib/ovsdb-idl-provider.h |   3 +
+ lib/ovsdb-idl.c          | 476 ++++++++++++++++++++++++++++++++++++++++++++++-
+ lib/ovsdb-idl.h          |  95 ++++++++++
+ lib/stream-fd.c          |   2 +-
+ ovsdb/column.c           |   2 +
+ ovsdb/column.h           |  11 ++
+ ovsdb/execution.c        | 468 ++++++++++++++++++++++++++++++++++++++++++++++
+ ovsdb/jsonrpc-server.c   | 316 +++++++++++++++++++++++++++++++
+ ovsdb/jsonrpc-server.h   |   8 +
+ ovsdb/ovsdb-idlc.in      |   2 +
+ ovsdb/ovsdb.c            |  79 ++++++++
+ ovsdb/ovsdb.h            |  60 ++++++
+ tests/ovsdb-idl.at       | 276 +++++++++++++++++++++++++++
+ tests/test-ovsdb.c       | 388 ++++++++++++++++++++++++++++++++++++++
+ 14 files changed, 2182 insertions(+), 4 deletions(-)
+
+diff --git a/lib/ovsdb-idl-provider.h b/lib/ovsdb-idl-provider.h
+index 446e357..ab19a61 100644
+--- a/lib/ovsdb-idl-provider.h
++++ b/lib/ovsdb-idl-provider.h
+@@ -59,6 +59,9 @@ struct ovsdb_idl_column {
+     char *name;
+     struct ovsdb_type type;
+     bool mutable;
++    bool wait_monitored;
++    struct ovs_list wait_monitor_change;
++    struct ovs_list wait_list;
+     void (*parse)(struct ovsdb_idl_row *, const struct ovsdb_datum *);
+     void (*unparse)(struct ovsdb_idl_row *);
+     int (*compare)(const void *, const void *); /* Perform a comparison over ovsrec_* */
+diff --git a/lib/ovsdb-idl.c b/lib/ovsdb-idl.c
+index cd4d719..9e5a107 100644
+--- a/lib/ovsdb-idl.c
++++ b/lib/ovsdb-idl.c
+@@ -29,11 +29,13 @@
+ #include "fatal-signal.h"
+ #include "json.h"
+ #include "jsonrpc.h"
++#include "list.h"
+ #include "ovsdb/ovsdb.h"
+ #include "ovsdb/table.h"
+ #include "ovsdb-data.h"
+ #include "ovsdb-error.h"
+ #include "ovsdb-idl-provider.h"
++#include "ovsdb-idl.h"
+ #include "ovsdb-parser.h"
+ #include "poll-loop.h"
+ #include "shash.h"
+@@ -110,6 +112,14 @@ struct ovsdb_idl {
+     char *session_name;               /* Identifier of this sessions */
+     struct json *identify_request_id; /* JSON-RPC ID of in-flight identify
+                                        * request. */
++    /* Wait monitor */
++    struct json *wait_monitor_request_id;
++    struct json *wait_monitor_cancel_request_id;
++    enum ovsdb_idl_wait_monitor_status wait_monitor_status;
++    enum ovsdb_idl_wait_monitor_status wait_monitor_cancel_status;
++    struct ovs_list wait_updates;      /* list of ovsdb_idl_wait_update
++                                        * messages being processed by this
++                                        * IDL */
+ 
+     /* Database locking. */
+     char *lock_name;            /* Name of lock we need, NULL if none. */
+@@ -143,6 +153,9 @@ struct ovsdb_idl_txn {
+     unsigned int inc_index;
+     int64_t inc_new_value;
+ 
++    /* Wait monitor */
++    struct ovs_list waits_until_unblock;
++
+     /* Inserted rows. */
+     struct hmap inserted_rows;  /* Contains "struct ovsdb_idl_txn_insert"s. */
+ };
+@@ -162,6 +175,13 @@ static void ovsdb_idl_send_identify(struct ovsdb_idl *);
+ static void ovsdb_idl_send_schema_request(struct ovsdb_idl *);
+ static void ovsdb_idl_send_monitor_request(struct ovsdb_idl *,
+                                            const struct json *schema_json);
++static void ovsdb_idl_wait_update_receive(struct ovsdb_idl *,
++                                          struct json *,
++                                          int *);
++static struct ovsdb_error *
++ovsdb_idl_wait_update_receive__(struct ovsdb_idl *,
++                                struct json *,
++                                int *);
+ static void ovsdb_idl_parse_update(struct ovsdb_idl *, const struct json *);
+ static struct ovsdb_error *ovsdb_idl_parse_update__(struct ovsdb_idl *,
+                                                     const struct json *);
+@@ -300,11 +320,30 @@ ovsdb_idl_create(const char *remote, const struct ovsdb_idl_class *class,
+     idl->session_name = NULL;
+ 
+     hmap_init(&idl->outstanding_txns);
++    list_init(&idl->wait_updates);
+     hmap_init(&idl->outstanding_fetch_reqs);
+ 
+     return idl;
+ }
+ 
++/* Returns the wait_update pending list associated to a given IDL */
++struct ovs_list *
++ovsdb_idl_wait_update_get_list(struct ovsdb_idl *idl) {
++    return &idl->wait_updates;
++}
++
++/* Removes an ovsbd_idl_wait_update request from the pending requests
++ * lists and releases the memory allocated for it. */
++void
++ovsdb_idl_wait_update_destroy(struct ovsdb_idl_wait_update *req)
++{
++    free(req->columns);
++    free(req->rows);
++    list_remove(&req->node);
++    free(req->state);
++    free(req);
++}
++
+ /* Destroys 'idl' and all of the data structures that it manages. */
+ void
+ ovsdb_idl_destroy(struct ovsdb_idl *idl)
+@@ -425,6 +464,7 @@ void
+ ovsdb_idl_run(struct ovsdb_idl *idl)
+ {
+     int i;
++    int wait_update_id;
+     struct hmap_node *fetch_node;
+ 
+     ovs_assert(!idl->txn);
+@@ -461,7 +501,12 @@ ovsdb_idl_run(struct ovsdb_idl *idl)
+             && msg->params->u.array.elems[0]->type == JSON_NULL) {
+             /* Database contents changed. */
+             ovsdb_idl_parse_update(idl, msg->params->u.array.elems[1]);
+-        } else if (msg->type == JSONRPC_REPLY
++        } else if (msg->type == JSONRPC_NOTIFY
++                   && !strcmp(msg->method, "wait_update")
++                   && msg->params->type == JSON_ARRAY) {
++            /* parse wait_update parameters */
++            ovsdb_idl_wait_update_receive(idl, msg->params, &wait_update_id);
++         } else if (msg->type == JSONRPC_REPLY
+                    && msg->result->type == JSON_ARRAY
+                    && (fetch_node = hmap_first_with_hash(
+                                         &idl->outstanding_fetch_reqs,
+@@ -515,6 +560,24 @@ ovsdb_idl_run(struct ovsdb_idl *idl)
+                     || msg->type == JSONRPC_REPLY)
+                    && ovsdb_idl_txn_process_reply(idl, msg)) {
+             /* ovsdb_idl_txn_process_reply() did everything needful. */
++        } else if ((msg->type == JSONRPC_REPLY || msg->type == JSONRPC_ERROR)
++                && idl->wait_monitor_request_id
++                && json_equal(idl->wait_monitor_request_id, msg->id)) {
++            idl->wait_monitor_request_id = NULL;
++            if (msg->type == JSONRPC_REPLY) {
++                idl->wait_monitor_status = WAIT_MONITOR_SUCCESS;
++            } else {
++                idl->wait_monitor_status = WAIT_MONITOR_FAIL;
++            }
++        } else if ((msg->type == JSONRPC_REPLY || msg->type == JSONRPC_ERROR)
++                && idl->wait_monitor_cancel_request_id
++                && json_equal(idl->wait_monitor_cancel_request_id, msg->id)) {
++            idl->wait_monitor_cancel_request_id = NULL;
++            if (msg->type == JSONRPC_REPLY) {
++                idl->wait_monitor_cancel_status = WAIT_MONITOR_SUCCESS;
++            } else {
++                idl->wait_monitor_cancel_status = WAIT_MONITOR_FAIL;
++            }
+         } else {
+             /* This can happen if ovsdb_idl_txn_destroy() is called to destroy
+              * a transaction before we receive the reply, so keep the log level
+@@ -746,6 +809,395 @@ ovsdb_idl_omit(struct ovsdb_idl *idl, const struct ovsdb_idl_column *column)
+     *ovsdb_idl_get_mode(idl, column) = 0;
+ }
+ 
++/* Creates a new ovsdb_idl_wait_monitor_request, for performing a new
++ * wait_monitor or wait_monitor_cancel request */
++void
++ovsdb_idl_wait_monitor_create_txn(struct ovsdb_idl *idl,
++                                  struct ovsdb_idl_wait_monitor_request *req)
++{
++    req->idl = idl;
++    shash_init(&req->added_columns);
++    shash_init(&req->removed_columns);
++}
++
++struct ovsdb_idl_wait_monitor_list_per_table {
++    struct ovs_list columns;
++};
++
++/* Adds a column to the set of columns wait monitored.
++ * Returns true if the column isn't already wait monitored, or false if
++ * the column was already being wait monitored. */
++bool
++ovsdb_idl_wait_monitor_add_column(struct ovsdb_idl_wait_monitor_request *req,
++                                  struct ovsdb_idl_table_class *t,
++                                  struct ovsdb_idl_column *c)
++{
++    if (c->wait_monitored) {
++        return false;
++    }
++    struct ovsdb_idl_wait_monitor_list_per_table *table_info;
++    table_info = shash_find_data(&req->added_columns, t->name);
++    if (!table_info) {
++        table_info = xmalloc(sizeof *table_info);
++        list_init(&table_info->columns);
++        shash_add(&req->added_columns, t->name, table_info);
++    }
++    c->wait_monitored = true;
++    list_insert(&table_info->columns, &c->wait_monitor_change);
++    return true;
++}
++
++/* Removes the column from the set of wait monitored columns.
++ * Returns true if the column was in the wait monitored columns set, or false
++ * if the column wasn't added already to the set.
++ * */
++bool
++ovsdb_idl_wait_monitor_remove_column(struct ovsdb_idl_wait_monitor_request *req,
++                                     struct ovsdb_idl_table_class *t,
++                                     struct ovsdb_idl_column *c)
++{
++    if (!c->wait_monitored) {
++        return false;
++    }
++    struct ovsdb_idl_wait_monitor_list_per_table *table_info;
++    table_info = shash_find_data(&req->removed_columns, t->name);
++    if (!table_info) {
++        table_info = xmalloc(sizeof *table_info);
++        list_init(&table_info->columns);
++        shash_add(&req->removed_columns, t->name, table_info);
++    }
++    c->wait_monitored = false;
++    list_insert(&table_info->columns, &c->wait_monitor_change);
++    return true;
++}
++
++static struct json *
++ovsdb_idl_wait_monitor_build_params(const char *db, struct shash *columns)
++{
++    struct json *params = json_array_create_1(json_string_create(db));
++    struct shash_node *node, *next;
++    struct ovsdb_idl_wait_monitor_list_per_table *table_info;
++    struct ovsdb_idl_column *col;
++    struct json *monitored_table, *monitored_columns;
++    SHASH_FOR_EACH_SAFE(node, next, columns) {
++        table_info = node->data;
++        if (!list_is_empty(&table_info->columns)) {
++            monitored_table = json_object_create();
++            json_object_put_string(monitored_table, "table", node->name);
++            monitored_columns = json_array_create_empty();
++            LIST_FOR_EACH_POP(col, wait_monitor_change, &table_info->columns) {
++                json_array_add(monitored_columns,
++                               json_string_create(col->name));
++            }
++            json_object_put(monitored_table, "columns", monitored_columns);
++            json_array_add(params, monitored_table);
++        }
++    }
++    shash_destroy_free_data(columns);
++    shash_init(columns);
++
++    return params;
++}
++
++/* Send to the OVSDB Server the new set of columns wait monitored by the IDL
++ * Returns false if there is already a wait_monitor or wait_monitor_cancel
++ * request in progress (and cancels the operation), otherwise returns true. */
++bool
++ovsdb_idl_wait_monitor_send_txn(struct ovsdb_idl_wait_monitor_request *req)
++{
++    if (req->idl->wait_monitor_cancel_request_id
++            || req->idl->wait_monitor_request_id) {
++        return false;
++    }
++    struct json *params;
++    req->idl->wait_monitor_status = WAIT_MONITOR_NO_CHANGE;
++    req->idl->wait_monitor_cancel_status = WAIT_MONITOR_NO_CHANGE;
++    if (!shash_is_empty(&req->added_columns)) {
++        /* Send wait_monitor request */
++        params = ovsdb_idl_wait_monitor_build_params(req->idl->class->database,
++                                                     &req->added_columns);
++        jsonrpc_session_send(req->idl->session,
++                             jsonrpc_create_request("wait_monitor",
++                                                    params,
++                                                    &req->idl->wait_monitor_request_id)
++                             );
++        req->idl->wait_monitor_status = WAIT_MONITOR_PENDING;
++    }
++    if (!shash_is_empty(&req->removed_columns)) {
++        /* Send wait_monitor_cancel request */
++        params = ovsdb_idl_wait_monitor_build_params(req->idl->class->database,
++                                                     &req->removed_columns);
++        jsonrpc_session_send(req->idl->session,
++                             jsonrpc_create_request("wait_monitor_cancel",
++                                                    params,
++                                                    &req->idl->wait_monitor_cancel_request_id)
++                             );
++        req->idl->wait_monitor_cancel_status = WAIT_MONITOR_PENDING;
++    }
++    return true;
++}
++
++enum ovsdb_idl_wait_monitor_status
++ovsdb_idl_wait_monitor_status(struct ovsdb_idl *idl)
++{
++    return idl->wait_monitor_status;
++}
++
++enum ovsdb_idl_wait_monitor_status
++ovsdb_idl_wait_monitor_cancel_status(struct ovsdb_idl *idl)
++{
++    return idl->wait_monitor_cancel_status;
++}
++
++/* Creates an empty wait until unblock operation */
++struct ovsdb_idl_txn_wait_unblock *
++ovsdb_idl_txn_create_wait_until_unblock(const struct ovsdb_idl_table_class * table,
++                                        unsigned int timeout)
++{
++    struct ovsdb_idl_txn_wait_unblock *wait = xmalloc(sizeof *wait);
++    wait->table = table;
++    shash_init(&wait->columns);
++    shash_init(&wait->rows);
++    wait->timeout = timeout;
++    return wait;
++}
++
++void
++ovsdb_idl_txn_add_wait_until_unblock(struct ovsdb_idl_txn *txn,
++                                     struct ovsdb_idl_txn_wait_unblock *wait)
++{
++    list_push_back(&txn->waits_until_unblock, &wait->node);
++}
++
++bool
++ovsdb_idl_txn_wait_until_unblock_add_column(
++        struct ovsdb_idl_txn_wait_unblock *wait,
++        const struct ovsdb_idl_column *column)
++{
++    return shash_add_once(&wait->columns, column->name, column);
++}
++
++bool
++ovsdb_idl_txn_wait_until_unblock_add_row(
++        struct ovsdb_idl_txn_wait_unblock *wait,
++        const struct ovsdb_idl_row *row)
++{
++    char *uuid = xmalloc(UUID_LEN+1);
++    sprintf(uuid, UUID_FMT, UUID_ARGS(&row->uuid));
++    return shash_add_once(&wait->rows, uuid, row);
++}
++
++static struct json *
++shash_keys_to_json_array(struct shash *ht)
++{
++    struct json *json = json_array_create_empty();
++    struct shash_node *node;
++    SHASH_FOR_EACH(node, ht) {
++        json_array_add(json, json_string_create(node->name));
++    }
++    return json;
++}
++
++static struct json *
++build_wait_until_unblock_op(struct ovsdb_idl_txn_wait_unblock *wait)
++{
++    struct json *json = json_object_create();
++    json_object_put_string(json, "op", "blocking_wait");
++    json_object_put_string(json, "table", wait->table->name);
++    json_object_put(json, "columns", shash_keys_to_json_array(&wait->columns));
++    json_object_put(json, "rows", shash_keys_to_json_array(&wait->rows));
++    if (wait->timeout > 0) {
++        json_object_put(json, "timeout", json_integer_create(wait->timeout));
++    }
++    return json;
++}
++
++
++/* Notifies the OVSDB Server that a wait_update request had been served */
++void
++ovsdb_idl_wait_unblock(struct ovsdb_idl *idl, struct ovsdb_idl_wait_update *r)
++{
++    jsonrpc_session_send(idl->session,
++        jsonrpc_create_request(
++            "wait_unblock",
++            json_array_create_2(
++                    json_string_create(idl->class->database),
++                    json_integer_create(r->update_id)),
++            NULL)
++        );
++}
++
++static void ovsdb_idl_wait_update_receive(
++        struct ovsdb_idl *idl,
++        struct json *params,
++        int *wait_update_id)
++{
++    struct ovsdb_error *error =
++            ovsdb_idl_wait_update_receive__(idl, params, wait_update_id);
++    if (error) {
++        if (!VLOG_DROP_WARN(&syntax_rl)) {
++            char *s = ovsdb_error_to_string(error);
++            VLOG_WARN_RL(&syntax_rl, "%s", s);
++            free(s);
++        }
++        ovsdb_error_destroy(error);
++    }
++}
++
++static struct ovsdb_error *
++ovsdb_idl_wait_update_receive__(
++        struct ovsdb_idl *idl,
++        struct json *params,
++        int *wait_update_id)
++{
++    struct ovsdb_error *error = NULL;
++    struct ovsdb_idl_wait_update *wait_update = xmalloc(sizeof *wait_update);
++    wait_update->rows = NULL;
++    wait_update->rows_n = 0;
++    wait_update->columns = NULL;
++    wait_update->columns_n = 0;
++    wait_update->table = NULL;
++
++    /* read information in wait_update params. Params is a JSON_ARRAY with
++     * only one element which is a JSON_OBJECT with the wait_update message */
++    struct shash_node *node;
++    struct json *update_data;
++
++    /* read the update_id from the message params */
++    node = shash_find(params->u.array.elems[0]->u.object, "update_id");
++    if (!node) {
++        error = ovsdb_syntax_error(params, NULL,
++                                   "wait_update: update_id field is mandatory");
++        goto error_handler;
++    }
++    update_data = (struct json *) node->data;
++    if (update_data->type != JSON_INTEGER) {
++        error = ovsdb_syntax_error(params, NULL,
++                                  "wait_update: <%s> is not an integer",
++                                  node->name);
++        goto error_handler;
++    }
++    wait_update->update_id = update_data->u.integer;
++    *wait_update_id = wait_update->update_id;
++
++    /* read the state from the message params */
++    node = shash_find(params->u.array.elems[0]->u.object, "state");
++    if (!node) {
++        error = ovsdb_syntax_error(params, NULL,
++                                   "wait_update: state field is mandatory");
++        goto error_handler;
++    }
++    update_data = (struct json *) node->data;
++    if (update_data->type != JSON_STRING) {
++        error = ovsdb_syntax_error(params, NULL,
++                                  "wait_update: <%s> is not a string",
++                                  node->name);
++        goto error_handler;
++    }
++    wait_update->state = xstrdup(update_data->u.string);
++
++    /* get table parameter */
++    node = shash_find(params->u.array.elems[0]->u.object, "table");
++    if (!node) {
++        error = ovsdb_syntax_error(params, NULL,
++                                   "wait_update: table field is mandatory");
++        goto error_handler;
++    }
++    update_data = (struct json *) node->data;
++    if (update_data->type != JSON_STRING) {
++        error = ovsdb_syntax_error(params, NULL,
++                                  "wait_update: <%s> is not a string",
++                                  node->name);
++        goto error_handler;
++    }
++    wait_update->table = shash_find_data(&idl->table_by_name,
++            update_data->u.string);
++    if (!wait_update->table) {
++        error = ovsdb_syntax_error(params, NULL,
++                                  "wait_update: <%s> isn't a table",
++                                  update_data->u.string);
++        goto error_handler;
++    }
++
++    /* get columns array */
++    node = shash_find(params->u.array.elems[0]->u.object, "columns");
++    if (!node) {
++        error = ovsdb_syntax_error(params, NULL,
++                                   "wait_update: columns field is mandatory");
++        goto error_handler;
++    }
++    update_data = (struct json *) node->data;
++    if (update_data->type != JSON_ARRAY) {
++        error = ovsdb_syntax_error(params, NULL,
++                                  "wait_update: <%s> is not an array",
++                                  node->name);
++        goto error_handler;
++    }
++
++    wait_update->columns = xmalloc(sizeof(struct ovsdb_idl_column *)
++                                     * update_data->u.array.n);
++    wait_update->columns_n = update_data->u.array.n;
++
++    for (int i = 0; i < update_data->u.array.n; i++) {
++        struct ovsdb_idl_column *column_schema_data;
++
++        column_schema_data = shash_find_data(
++                &wait_update->table->columns,
++                update_data->u.array.elems[i]->u.string);
++        if (!column_schema_data) {
++            error = ovsdb_syntax_error(params, NULL,
++                                       "wait_update: <%s> isn't a column of"
++                                       "table <%s>",
++                                       update_data->u.array.elems[i]->u.string,
++                                       wait_update->table->class->name);
++            goto error_handler;
++        }
++        wait_update->columns[i] = column_schema_data;
++    }
++
++    /* get rows array */
++    node = shash_find(params->u.array.elems[0]->u.object, "rows");
++    if (!node) {
++        error = ovsdb_syntax_error(params, NULL,
++                                   "wait_update: rows field is mandatory");
++        goto error_handler;
++    }
++    update_data = (struct json *) node->data;
++    if (update_data->type != JSON_ARRAY) {
++        error = ovsdb_syntax_error(params, NULL,
++                                  "wait_update: <%s> is not an array",
++                                  node->name);
++        goto error_handler;
++    }
++    wait_update->rows = xmalloc(sizeof(struct uuid)
++                                     * update_data->u.array.n);
++    wait_update->rows_n = update_data->u.array.n;
++
++    for (int i = 0; i < update_data->u.array.n; i++) {
++        if (!uuid_from_string(&wait_update->rows[i],
++                         update_data->u.array.elems[i]->u.string)) {
++            error = ovsdb_syntax_error(params, NULL,
++                                       "wait_update: <%s> is not a valid uuid",
++                                       update_data->u.array.elems[i]->u.string);
++            goto error_handler;
++        }
++    }
++
++    /* If the wait_update is an initial request then insert to the list */
++    if (!strcmp(wait_update->state, "start")) {
++        /* insert incoming wait_update id in the IDL list of pending
++         * updates */
++        list_insert(&idl->wait_updates, &wait_update->node);
++    }
++
++    /* Releases the wait_update memory and returns an error */
++error_handler:
++    if (error) {
++        ovsdb_idl_wait_update_destroy(wait_update);
++    }
++    return error;
++}
++
+ /* Returns the most recent IDL change sequence number that caused a
+  * insert, modify or delete update to the table with class 'table_class'.
+  */
+@@ -2630,6 +3082,8 @@ ovsdb_idl_txn_create(struct ovsdb_idl *idl)
+     txn->inc_table = NULL;
+     txn->inc_column = NULL;
+ 
++    list_init(&txn->waits_until_unblock);
++
+     hmap_init(&txn->inserted_rows);
+ 
+     return txn;
+@@ -2712,6 +3166,11 @@ ovsdb_idl_txn_destroy(struct ovsdb_idl_txn *txn)
+     HMAP_FOR_EACH_SAFE (insert, next, hmap_node, &txn->inserted_rows) {
+         free(insert);
+     }
++    struct ovsdb_idl_txn_wait_unblock *wait;
++    LIST_FOR_EACH_POP(wait, node, &txn->waits_until_unblock) {
++        shash_destroy(&wait->columns);
++        shash_destroy(&wait->rows);
++    }
+     hmap_destroy(&txn->inserted_rows);
+     free(txn);
+ }
+@@ -3010,7 +3469,7 @@ ovsdb_idl_txn_commit(struct ovsdb_idl_txn *txn)
+ {
+     struct ovsdb_idl_row *row;
+     struct json *operations;
+-    bool any_updates;
++    bool any_updates = false;
+ 
+     if (txn != txn->idl->txn) {
+         goto coverage_out;
+@@ -3033,6 +3492,18 @@ ovsdb_idl_txn_commit(struct ovsdb_idl_txn *txn)
+         json_object_put_string(op, "lock", txn->idl->lock_name);
+     }
+ 
++    /* Waits until unblocked requests
++     * Those operations could trigger collateral effects in the
++     * database, so the operation MUST be sent to the OVSDB,
++     * regardless that it doesn't perform any change to the data.
++     */
++    struct ovsdb_idl_txn_wait_unblock *wait;
++    LIST_FOR_EACH_POP(wait, node, &txn->waits_until_unblock) {
++        json_array_add(operations, build_wait_until_unblock_op(wait));
++        any_updates = true;
++        free(wait);
++    }
++
+     /* Add prerequisites and declarations of new rows. */
+     HMAP_FOR_EACH (row, txn_node, &txn->txn_rows) {
+         /* XXX check that deleted rows exist even if no prereqs? */
+@@ -3065,7 +3536,6 @@ ovsdb_idl_txn_commit(struct ovsdb_idl_txn *txn)
+     }
+ 
+     /* Add updates. */
+-    any_updates = false;
+     HMAP_FOR_EACH (row, txn_node, &txn->txn_rows) {
+         const struct ovsdb_idl_table_class *class = row->table->class;
+ 
+diff --git a/lib/ovsdb-idl.h b/lib/ovsdb-idl.h
+index 4d06b5c..1fb2fb9 100644
+--- a/lib/ovsdb-idl.h
++++ b/lib/ovsdb-idl.h
+@@ -38,6 +38,8 @@
+ #include <stdbool.h>
+ #include <stdint.h>
+ #include "compiler.h"
++#include "list.h"
++#include "shash.h"
+ #include "ovsdb-types.h"
+ #include "skiplist.h"
+ 
+@@ -148,6 +150,99 @@ void ovsdb_idl_add_table(struct ovsdb_idl *,
+ void ovsdb_idl_omit(struct ovsdb_idl *, const struct ovsdb_idl_column *);
+ void ovsdb_idl_omit_alert(struct ovsdb_idl *, const struct ovsdb_idl_column *);
+ 
++
++/* Wait Monitor
++ *
++ * The OVSDB clients can monitor and receive notifications when another client
++ * is waiting over a set of columns.
++ */
++
++struct ovsdb_idl_wait_update {
++    struct ovs_list node;                /* Node in IDL->wait_updates */
++    int    update_id;
++    char   *state;
++    struct ovsdb_idl_table *table;
++    struct uuid *rows;                   /* uuids of the requested rows */
++    size_t rows_n;                       /* Count of rows in wait_rows */
++    struct ovsdb_idl_column **columns;   /* requested ovsdb_idl_column-s */
++    size_t columns_n;                    /* Count of cols in wait_cols s*/
++};
++
++struct ovsdb_idl_published_cell {
++    struct ovs_list node;       /* Node in ovsdb_idl_wait_update->wait_cells */
++    char *table;
++    char *uuid;
++    char *column;
++};
++
++/*
++ * Structure used to save wait_monitor notification data
++ */
++struct ovsdb_idl_wait_monitor_request {
++    struct ovsdb_idl *idl;
++    struct shash added_columns;
++    struct shash removed_columns;
++};
++
++enum ovsdb_idl_wait_monitor_status {
++    WAIT_MONITOR_SUCCESS,
++    WAIT_MONITOR_FAIL,
++    WAIT_MONITOR_PENDING,
++    WAIT_MONITOR_NO_CHANGE
++};
++
++struct ovsdb_idl_txn;
++
++struct ovsdb_idl_txn_wait_unblock {
++    struct ovs_list node;
++    const struct ovsdb_idl_table_class *table;
++    struct shash columns;
++    struct shash rows;
++    unsigned int timeout;
++};
++
++void ovsdb_idl_wait_monitor_create_txn(struct ovsdb_idl *,
++                                       struct ovsdb_idl_wait_monitor_request *);
++bool ovsdb_idl_wait_monitor_add_column(struct ovsdb_idl_wait_monitor_request *,
++                                       struct ovsdb_idl_table_class *,
++                                       struct ovsdb_idl_column *);
++bool ovsdb_idl_wait_monitor_remove_column(
++        struct ovsdb_idl_wait_monitor_request *,
++        struct ovsdb_idl_table_class *,
++        struct ovsdb_idl_column *);
++
++bool ovsdb_idl_wait_monitor_send_txn(struct ovsdb_idl_wait_monitor_request *);
++enum ovsdb_idl_wait_monitor_status ovsdb_idl_wait_monitor_status(
++        struct ovsdb_idl *);
++
++enum ovsdb_idl_wait_monitor_status ovsdb_idl_wait_monitor_cancel_status(
++        struct ovsdb_idl *);
++
++struct ovsdb_idl_txn_wait_unblock *
++ovsdb_idl_txn_create_wait_until_unblock(const struct ovsdb_idl_table_class *,
++                                        unsigned int timeout);
++
++void ovsdb_idl_txn_add_wait_until_unblock(struct ovsdb_idl_txn *txn, struct ovsdb_idl_txn_wait_unblock *wait);
++
++bool ovsdb_idl_txn_wait_until_unblock_add_column(
++        struct ovsdb_idl_txn_wait_unblock *, const struct ovsdb_idl_column *);
++
++bool ovsdb_idl_txn_wait_until_unblock_add_row(
++        struct ovsdb_idl_txn_wait_unblock *, const struct ovsdb_idl_row *);
++
++void ovsdb_idl_wait_unblock(struct ovsdb_idl *, struct ovsdb_idl_wait_update *);
++
++struct ovs_list * ovsdb_idl_wait_update_get_list(struct ovsdb_idl *);
++
++/* Iterates over all the ovsdb_idl_wait_update requests.
++ * The client MUST release the request using
++ * ovsdb_idl_wait_update_destroy */
++#define WAIT_UPDATE_FOR_EACH_SAFE(REQ, NEXT, IDL) \
++    LIST_FOR_EACH_SAFE(REQ, NEXT, node, ovsdb_idl_wait_update_get_list(IDL))
++
++void ovsdb_idl_wait_update_destroy(struct ovsdb_idl_wait_update *);
++
++
+ /* Change tracking. */
+ enum ovsdb_idl_change {
+     OVSDB_IDL_CHANGE_INSERT,
+diff --git a/lib/stream-fd.c b/lib/stream-fd.c
+index 31bfc6e..e706527 100644
+--- a/lib/stream-fd.c
++++ b/lib/stream-fd.c
+@@ -125,7 +125,7 @@ fd_send(struct stream *stream, const void *buffer, size_t n)
+     ssize_t retval;
+     int error;
+ 
+-    retval = send(s->fd, buffer, n, 0);
++    retval = send(s->fd, buffer, n, MSG_NOSIGNAL);
+     if (retval < 0) {
+         error = sock_errno();
+ #ifdef _WIN32
+diff --git a/ovsdb/column.c b/ovsdb/column.c
+index 59452e6..bb6df36 100644
+--- a/ovsdb/column.c
++++ b/ovsdb/column.c
+@@ -22,6 +22,7 @@
+ #include "column.h"
+ #include "dynamic-string.h"
+ #include "json.h"
++#include "list.h"
+ #include "ovsdb-error.h"
+ #include "ovsdb-parser.h"
+ #include "table.h"
+@@ -39,6 +40,7 @@ ovsdb_column_create(const char *name,
+     column->name = xstrdup(name);
+     column->mutable = mutable;
+     column->persistent = persistent;
++    list_init(&column->wait_monitoring);
+     ovsdb_type_clone(&column->type, type);
+ 
+     return column;
+diff --git a/ovsdb/column.h b/ovsdb/column.h
+index f75a107..98a92aa 100644
+--- a/ovsdb/column.h
++++ b/ovsdb/column.h
+@@ -18,6 +18,8 @@
+ 
+ #include <stdbool.h>
+ #include "compiler.h"
++#include "hmap.h"
++#include "include/openvswitch/list.h"
+ #include "ovsdb-types.h"
+ 
+ struct ovsdb_table;
+@@ -31,6 +33,15 @@ struct ovsdb_column {
+     bool mutable;
+     bool persistent;
+     struct ovsdb_type type;
++
++    struct ovs_list wait_monitoring; /* List of ovsdb_wait_monitoring */
++};
++
++struct ovsdb_wait_monitoring {
++    struct ovs_list column_node;
++    struct hmap_node session_node;
++    struct ovsdb_column *column;
++    struct ovsdb_jsonrpc_session *session;
+ };
+ 
+ /* A few columns appear in every table with standardized column indexes.
+diff --git a/ovsdb/execution.c b/ovsdb/execution.c
+index 7a9758f..75a37c3 100644
+--- a/ovsdb/execution.c
++++ b/ovsdb/execution.c
+@@ -21,23 +21,28 @@
+ #include "condition.h"
+ #include "file.h"
+ #include "json.h"
++#include "jsonrpc-server.h"
++#include "list.h"
+ #include "mutation.h"
+ #include "ovsdb-data.h"
+ #include "ovsdb-error.h"
+ #include "ovsdb-parser.h"
+ #include "ovsdb.h"
++#include "poll-loop.h"
+ #include "query.h"
+ #include "row.h"
+ #include "server.h"
+ #include "table.h"
+ #include "timeval.h"
+ #include "transaction.h"
++#include "hash.h"
+ 
+ struct ovsdb_execution {
+     struct ovsdb *db;
+     const struct ovsdb_session *session;
+     struct ovsdb_txn *txn;
+     struct ovsdb_symbol_table *symtab;
++    struct ovsdb_txn_ctx *context;
+     bool durable;
+ 
+     /* Triggers. */
+@@ -45,6 +50,24 @@ struct ovsdb_execution {
+     long long int timeout_msec;
+ };
+ 
++enum wait_update_state {
++    WAIT_UPDATE_START,
++    WAIT_UPDATE_DONE
++};
++
++static bool ovsdb_wait_update_build_params(
++        struct blocked_wait *,
++        struct ovsdb_table *,
++        struct ovsdb_column_set *,
++        struct uuid *uuids,
++        size_t uuids_n);
++
++static void ovsdb_wait_update_send(
++        struct ovsdb_table *,
++        struct wait_monitored_data *,
++        int update_id,
++        enum wait_update_state);
++
+ typedef struct ovsdb_error *ovsdb_operation_executor(struct ovsdb_execution *,
+                                                      struct ovsdb_parser *,
+                                                      struct json *result);
+@@ -55,6 +78,7 @@ static ovsdb_operation_executor ovsdb_execute_update;
+ static ovsdb_operation_executor ovsdb_execute_mutate;
+ static ovsdb_operation_executor ovsdb_execute_delete;
+ static ovsdb_operation_executor ovsdb_execute_wait;
++static ovsdb_operation_executor ovsdb_execute_blocking_wait;
+ static ovsdb_operation_executor ovsdb_execute_commit;
+ static ovsdb_operation_executor ovsdb_execute_abort;
+ static ovsdb_operation_executor ovsdb_execute_comment;
+@@ -75,6 +99,7 @@ lookup_executor(const char *name)
+         { "mutate", ovsdb_execute_mutate },
+         { "delete", ovsdb_execute_delete },
+         { "wait", ovsdb_execute_wait },
++        { "blocking_wait", ovsdb_execute_blocking_wait },
+         { "commit", ovsdb_execute_commit },
+         { "abort", ovsdb_execute_abort },
+         { "comment", ovsdb_execute_comment },
+@@ -103,6 +128,13 @@ ovsdb_execute(struct ovsdb *db, const struct ovsdb_session *session,
+     size_t n_operations;
+     size_t i;
+ 
++    /* Load or create the context for this transaction */
++    struct ovsdb_txn_ctx *ctx = ovsdb_get_context(db, params);
++    if (!ctx) {
++        ctx = ovsdb_create_context(db, params);
++    }
++    ctx->session = session;
++
+     if (params->type != JSON_ARRAY
+         || !params->u.array.n
+         || params->u.array.elems[0]->type != JSON_STRING
+@@ -116,6 +148,9 @@ ovsdb_execute(struct ovsdb *db, const struct ovsdb_session *session,
+ 
+         results = ovsdb_error_to_json(error);
+         ovsdb_error_destroy(error);
++        if (results) {
++            ovsdb_destroy_context(db, params);
++        }
+         return results;
+     }
+ 
+@@ -126,6 +161,7 @@ ovsdb_execute(struct ovsdb *db, const struct ovsdb_session *session,
+     x.durable = false;
+     x.elapsed_msec = elapsed_msec;
+     x.timeout_msec = LLONG_MAX;
++    x.context = ctx;
+     results = NULL;
+ 
+     results = json_array_create_empty();
+@@ -138,6 +174,9 @@ ovsdb_execute(struct ovsdb *db, const struct ovsdb_session *session,
+         struct json *result;
+         const struct json *op;
+ 
++        /* Update the operation index in context */
++        ctx->current_operation = i;
++
+         /* Parse and execute operation. */
+         ovsdb_parser_init(&parser, operation,
+                           "ovsdb operation %"PRIuSIZE" of %"PRIuSIZE, i, n_operations);
+@@ -182,6 +221,8 @@ ovsdb_execute(struct ovsdb *db, const struct ovsdb_session *session,
+         json_array_add(results, result);
+         if (error) {
+             break;
++        } else {
++            ctx->max_successful_operation = i;
+         }
+     }
+ 
+@@ -202,6 +243,10 @@ exit:
+     ovsdb_error_destroy(error);
+     ovsdb_symbol_table_destroy(x.symtab);
+ 
++    if (results) {
++        ovsdb_destroy_context(db, params);
++    }
++
+     return results;
+ }
+ 
+@@ -603,6 +648,152 @@ ovsdb_execute_wait_query_cb(const struct ovsdb_row *row, void *aux_)
+     }
+ }
+ 
++/* ovsdb_wait_update_build_params_empty_columns builds a blocked_wait
++ * struct, when the columns ovsdb_column_set is EMPTY.
++ * WARNING: THIS FUNCTION PANICS IF THE COLUMN SET ISN'T EMPTY.
++ */
++static bool ovsdb_wait_update_build_params_empty_columns(
++        struct blocked_wait *blocked_wait,
++        struct ovsdb_table *table,
++        struct ovsdb_column_set *columns,
++        struct uuid *uuids,
++        size_t uuids_n)
++{
++    struct wait_monitored_data *monitored_data;
++    struct ovsdb_wait_monitoring *wm;
++    struct ovsdb_column *col;
++    struct shash_node *node;
++    bool exists_monitors;
++
++    hmap_init(&blocked_wait->wait_monitored_data);
++
++    if (columns->n_columns != 0) {
++        OVS_NOT_REACHED();
++    }
++
++    /* Checks that there is at least one session wait monitoring the columns */
++    exists_monitors = false;
++    SHASH_FOR_EACH(node, &table->schema->columns) {
++        col = node->data;
++        /* check if this column can be updated */
++        if (!list_is_empty(&col->wait_monitoring)) {
++            exists_monitors = true;
++            break;
++        }
++    }
++    if (!exists_monitors) {
++        return false;
++    }
++
++    /* no columns indicated only rows information is sent.
++     * Send wait update notifications to all  */
++    SHASH_FOR_EACH(node, &table->schema->columns) {
++        col = node->data;
++
++        LIST_FOR_EACH (wm, column_node, &col->wait_monitoring) {
++            bool session_found = false;
++            struct wait_monitored_data *wm_tmp;
++            HMAP_FOR_EACH_WITH_HASH(wm_tmp, hmap_node,
++                    hash_pointer(wm->session, 0),
++                    &blocked_wait->wait_monitored_data) {
++                /* check if this session is already listed */
++                if (wm_tmp->session == wm->session) {
++                    session_found = true;
++                    break;
++                }
++            }
++
++            if (!session_found) {
++                /* initialize column set and add column */
++                monitored_data = xmalloc(sizeof *monitored_data);
++                ovsdb_column_set_init(&monitored_data->columns);
++                monitored_data->session = wm->session;
++                monitored_data->uuid = uuids;
++                monitored_data->uuid_n = uuids_n;
++
++                hmap_insert(&blocked_wait->wait_monitored_data,
++                            &monitored_data->hmap_node,
++                            hash_pointer(wm->session, 0));
++            }
++        }
++    }
++
++    return true;
++}
++
++static bool ovsdb_wait_update_build_params(
++        struct blocked_wait *blocked_wait,
++        struct ovsdb_table *table,
++        struct ovsdb_column_set *columns,
++        struct uuid *uuids,
++        size_t uuids_n) {
++
++    int i;
++    const struct ovsdb_column *column_schema_data;
++    struct wait_monitored_data *monitored_data;
++    hmap_init(&blocked_wait->wait_monitored_data);
++
++    /* no columns indicated only rows information is sent.
++     * Send wait update notifications to all  */
++    if (columns->n_columns == 0) {
++        return ovsdb_wait_update_build_params_empty_columns(blocked_wait, table,
++                                                            columns, uuids,
++                                                            uuids_n);
++    }
++
++    /* check if all the requested columns can be updated, fail otherwise */
++    for (i = 0; i < columns->n_columns; i++) {
++        column_schema_data = columns->columns[i];
++        /* check if this column can be updated */
++        if (list_is_empty(&column_schema_data->wait_monitoring)) {
++            hmap_destroy(&blocked_wait->wait_monitored_data);
++            return false;
++        }
++    }
++
++    /* build a hash table with the list of cells for each column */
++    for (i = 0; i < columns->n_columns; i++) {
++        column_schema_data = columns->columns[i];
++
++        struct ovsdb_wait_monitoring *wm;
++        LIST_FOR_EACH(wm, column_node,
++                      &column_schema_data->wait_monitoring) {
++            /* search for this session in the hmap */
++            bool existing_session = false;
++            HMAP_FOR_EACH_WITH_HASH(monitored_data, hmap_node,
++                    hash_pointer(wm->session, 0),
++                    &blocked_wait->wait_monitored_data) {
++
++                if (monitored_data->session == wm->session) {
++                    existing_session = true;
++                    ovsdb_column_set_add(&monitored_data->columns,
++                                         column_schema_data);
++                    break;
++                }
++            }
++
++            if (!existing_session) {
++                /* initialize column set and add column */
++                monitored_data = xmalloc(sizeof *monitored_data);
++                ovsdb_column_set_init(&monitored_data->columns);
++                ovsdb_column_set_add(
++                        &monitored_data->columns,
++                        column_schema_data);
++
++                monitored_data->session = wm->session;
++                monitored_data->uuid = uuids;
++                monitored_data->uuid_n = uuids_n;
++
++                hmap_insert(&blocked_wait->wait_monitored_data,
++                            &monitored_data->hmap_node,
++                            hash_pointer(wm->session, 0));
++            }
++        }
++    }
++
++    return true;
++}
++
+ static struct ovsdb_error *
+ ovsdb_execute_wait(struct ovsdb_execution *x, struct ovsdb_parser *parser,
+                    struct json *result OVS_UNUSED)
+@@ -720,6 +911,227 @@ ovsdb_execute_wait(struct ovsdb_execution *x, struct ovsdb_parser *parser,
+ }
+ 
+ static struct ovsdb_error *
++ovsdb_execute_blocking_wait(struct ovsdb_execution *x,
++                                   struct ovsdb_parser *parser,
++                                   struct json *result OVS_UNUSED)
++{
++    struct uuid *uuid = NULL;
++    struct ovsdb_table *table;
++    const struct json *timeout, *columns_json, *rows;
++    struct ovsdb_column_set columns = OVSDB_COLUMN_SET_INITIALIZER;
++    struct ovsdb_error *error;
++    long long int timeout_msec = 0;
++    bool wait_unblocked = false; /* True if a blocked wait should be
++                                  * unblocked. */
++
++    timeout = ovsdb_parser_member(parser, "timeout", OP_NUMBER | OP_OPTIONAL);
++    /*TODO: why is columns marked as optional?
++     * The RFC defines it as required. */
++    columns_json = ovsdb_parser_member(parser, "columns",
++                                       OP_ARRAY | OP_OPTIONAL);
++    rows = ovsdb_parser_member(parser, "rows", OP_ARRAY);
++    table = parse_table(x, parser, "table");
++    error = ovsdb_parser_get_error(parser);
++
++    if (!error && x->context->blocking_wait_aborted) {
++        error = ovsdb_error("wait unsatisfiable",
++                            "wait condition cannot be unblocked by "
++                            "currently connected sessions");
++    }
++
++    /* Checks if the operation was already performed successfully */
++    if (!error &&
++        x->context->current_operation <= x->context->max_successful_operation) {
++        goto finish;
++    }
++    if (!error) {
++        error = ovsdb_column_set_from_json(columns_json, table->schema,
++                                           &columns);
++    }
++    if (!error) {
++        if (timeout) {
++            timeout_msec = MIN(LLONG_MAX, json_real(timeout));
++            if (timeout_msec < 0) {
++                error = ovsdb_syntax_error(timeout, NULL,
++                                           "timeout must be nonnegative");
++            } else if (timeout_msec < x->timeout_msec) {
++                x->timeout_msec = timeout_msec;
++            }
++        } else {
++            timeout_msec = LLONG_MAX;
++        }
++    }
++    if (!error) {
++        uuid = xmalloc(rows->u.array.n * sizeof *uuid);
++        for (int i = 0; i < rows->u.array.n; i++) {
++            if (!error) {
++                if (rows->u.array.elems[i]->type != JSON_STRING) {
++                    error = ovsdb_syntax_error(rows, NULL,
++                                           "Rows must contain a single "
++                                           "string element when \"until\" "
++                                           "equals \"unblocked\"");
++                }
++            }
++            if (!error) {
++                if (!uuid_from_string(&uuid[i], rows->u.array.elems[i]->u.string)) {
++                    error = ovsdb_syntax_error(rows, NULL,
++                                           "Rows must contain the UUID of "
++                                           "row that the wait is blocking "
++                                           "when \"until\" equals "
++                                           "\"unblocked\"");
++                }
++            }
++        }
++        if (!error) {
++            if (x->context->blocking_wait_id_is_set) {
++                /* Check if wait id is in the list of unblocked waits */
++                bool is_blocked = false;
++                struct blocked_wait *blocked_wait;
++                HMAP_FOR_EACH_WITH_HASH(blocked_wait, node,
++                        hash_int(x->context->blocking_wait_id, 0),
++                        &x->db->blocked_waits) {
++
++                    if (x->context->blocking_wait_id == blocked_wait->wait_id) {
++                        is_blocked = true;
++                        break;
++                    }
++                }
++
++                /* check if wait_monitor should be unblocked */
++                if (is_blocked && (blocked_wait->sessions_n == 0)) {
++                    poll_immediate_wake_at(NULL);
++                    x->db->run_triggers = true;
++                    hmap_remove(&x->db->blocked_waits, &blocked_wait->node);
++
++                    /* send final wait_update message */
++                    struct wait_monitored_data *monitored_data, *next;
++                    HMAP_FOR_EACH_SAFE(monitored_data, next, hmap_node,
++                            &blocked_wait->wait_monitored_data) {
++
++                        ovsdb_wait_update_send(table, monitored_data,
++                                               x->context->blocking_wait_id,
++                                               WAIT_UPDATE_DONE);
++                        /* Releases monitored_data */
++                        hmap_remove(&blocked_wait->wait_monitored_data,
++                                    &monitored_data->hmap_node);
++                        ovsdb_column_set_destroy(&monitored_data->columns);
++                        free(monitored_data);
++                    }
++                    /* Releases blocked_wait */
++                    hmap_destroy(&blocked_wait->wait_monitored_data);
++                    free(blocked_wait);
++                    wait_unblocked = true;
++                    x->context->blocking_wait_id_is_set = false;
++                }
++            } else { /* new blocked wait */
++
++                struct blocked_wait *blocked_wait = xmalloc(sizeof *blocked_wait);
++
++                bool params_status;
++                params_status = ovsdb_wait_update_build_params(
++                        blocked_wait,
++                        table,
++                        &columns,
++                        uuid,
++                        rows->u.array.n);
++
++                if (params_status) {
++                    x->context->blocking_wait_id = x->db->blocked_wait_id++;
++                    x->context->blocking_wait_id_is_set = true;
++                    blocked_wait->wait_id = x->context->blocking_wait_id;
++
++                    /* One wait_update request should be sent for each
++                     * IDL wait monitoring columns included in the client
++                     * request
++                     */
++                    struct wait_monitored_data *monitored_data;
++
++                    int wait_update_sessions = 0;
++
++                    /* send a wait_update request for each session
++                     * monitoring the wait */
++                    HMAP_FOR_EACH(monitored_data, hmap_node,
++                            &blocked_wait->wait_monitored_data) {
++
++                        ovsdb_jsonrpc_blocking_wait_add_to_txn(monitored_data->session, x->context);
++                        monitored_data->wait_updated = false;
++                        ovsdb_wait_update_send(table, monitored_data,
++                                               x->context->blocking_wait_id,
++                                               WAIT_UPDATE_START);
++
++
++                        wait_update_sessions++;
++                    }
++
++                    /* check sessions associated with this request*/
++                    blocked_wait->sessions_n = wait_update_sessions;
++
++                    /* insert monitor_wait to the database list */
++                    hmap_insert(&x->db->blocked_waits, &blocked_wait->node,
++                            hash_int(blocked_wait->wait_id, 0));
++                } else {
++                    /* blocking wait should fail immediately */
++                    error = ovsdb_error("wait unsatisfiable",
++                            "wait condition cannot be unblocked by "
++                            "currently connected sessions");
++                }
++            }
++        }
++    }
++    if (!error) {
++        if (timeout && x->elapsed_msec >= timeout_msec) {
++
++            /* Check if wait id is in the list of unblocked waits */
++            struct blocked_wait *blocked_wait;
++            HMAP_FOR_EACH_WITH_HASH(blocked_wait, node,
++                    hash_int(x->context->blocking_wait_id,0),
++                    &x->db->blocked_waits) {
++
++                if (x->context->blocking_wait_id == blocked_wait->wait_id) {
++                    break;
++                }
++            }
++
++            hmap_remove(&x->db->blocked_waits, &blocked_wait->node);
++
++            /* send final wait_update timeout*/
++            struct wait_monitored_data *monitored_data, *next;
++            HMAP_FOR_EACH_SAFE(monitored_data, next, hmap_node,
++                    &blocked_wait->wait_monitored_data) {
++
++                ovsdb_wait_update_send(table, monitored_data,
++                                       x->context->blocking_wait_id,
++                                       WAIT_UPDATE_DONE);
++                /* Releases monitored_data */
++                hmap_remove(&blocked_wait->wait_monitored_data,
++                            &monitored_data->hmap_node);
++                ovsdb_column_set_destroy(&monitored_data->columns);
++                free(monitored_data);
++            }
++            /* Releases blocked_wait */
++            hmap_destroy(&blocked_wait->wait_monitored_data);
++            free(blocked_wait);
++
++            if (x->elapsed_msec) {
++                error = ovsdb_error("timed out",
++                                    "\"wait until unblocked\" timed out after %lld ms",
++                                    x->elapsed_msec);
++            } else {
++                error = ovsdb_error("timed out", "\"wait until unblocked\" timed out");
++            }
++        } else if (!wait_unblocked) {
++            /* ovsdb_execute() will change this, if triggers really are
++             * supported. */
++            error = ovsdb_error("not supported", "triggers not supported");
++        }
++    }
++finish:
++    ovsdb_column_set_destroy(&columns);
++
++    return error;
++}
++
++static struct ovsdb_error *
+ ovsdb_execute_comment(struct ovsdb_execution *x, struct ovsdb_parser *parser,
+                       struct json *result OVS_UNUSED)
+ {
+@@ -758,3 +1170,59 @@ ovsdb_execute_assert(struct ovsdb_execution *x, struct ovsdb_parser *parser,
+     return ovsdb_error("not owner", "Asserted lock %s not held.",
+                        json_string(lock_name));
+ }
++
++static void
++ovsdb_wait_update_send(struct ovsdb_table *table,
++                       struct wait_monitored_data *monitored_data,
++                       int update_id,
++                       enum wait_update_state state)
++{
++    struct ovsdb_column_set *columns = &monitored_data->columns;
++    struct uuid *uuids = monitored_data->uuid;
++    size_t uuid_n = monitored_data->uuid_n;
++    struct ovsdb_jsonrpc_session *session = monitored_data->session;
++    size_t i;
++    struct json *wait_update_msg = json_object_create();
++    struct json *params = json_array_create_empty();
++    struct json *rows_array = json_array_create_empty();
++    struct json *columns_array = json_array_create_empty();
++    char uuid_buffer[UUID_LEN+1];
++
++    for (i = 0; i < columns->n_columns; i++) {
++        json_array_add(columns_array, json_string_create(
++                columns->columns[i]->name));
++    }
++
++    for (i = 0; i < uuid_n; i++) {
++        sprintf(uuid_buffer, UUID_FMT, UUID_ARGS(&uuids[i]));
++        json_array_add(rows_array, json_string_create(uuid_buffer));
++    }
++
++    /* wait_update message UUID */
++    json_object_put(wait_update_msg, "update_id", json_integer_create(update_id));
++
++    /* wait_update message table */
++    json_object_put(wait_update_msg, "table",
++            json_string_create(table->schema->name));
++
++    /* insert columns array */
++    json_object_put(wait_update_msg, "columns", columns_array);
++
++    /* insert rows array */
++    json_object_put(wait_update_msg, "rows", rows_array);
++
++    /* wait_update message state */
++    if (state == WAIT_UPDATE_START) {
++        json_object_put(wait_update_msg, "state", json_string_create("start"));
++    } else {
++        json_object_put(wait_update_msg, "state", json_string_create("done"));
++    }
++
++    /* params is required to be a JSON_ARRAY */
++    json_array_add(params, wait_update_msg);
++
++    /* send notification */
++    struct jsonrpc_msg *msg = jsonrpc_create_notify(
++                "wait_update", params);
++    ovsdb_jsonrpc_server_session_send(session, msg);
++}
+diff --git a/ovsdb/jsonrpc-server.c b/ovsdb/jsonrpc-server.c
+index cef3b71..762dd29 100644
+--- a/ovsdb/jsonrpc-server.c
++++ b/ovsdb/jsonrpc-server.c
+@@ -22,8 +22,11 @@
+ #include "bitmap.h"
+ #include "column.h"
+ #include "dynamic-string.h"
++#include "hash.h"
++#include "hmap.h"
+ #include "json.h"
+ #include "jsonrpc.h"
++#include "list.h"
+ #include "ovsdb-error.h"
+ #include "ovsdb-parser.h"
+ #include "ovsdb.h"
+@@ -88,6 +91,8 @@ static struct jsonrpc_msg *ovsdb_jsonrpc_monitor_cancel(
+     struct ovsdb_jsonrpc_session *,
+     struct json_array *params,
+     const struct json *request_id);
++static void ovsdb_jsonrpc_wait_monitor_remove_all(struct ovsdb_jsonrpc_session *);
++static void ovsdb_jsonrpc_blocking_wait_remove_all(struct ovsdb_jsonrpc_session *);
+ static void ovsdb_jsonrpc_monitor_remove_all(struct ovsdb_jsonrpc_session *);
+ static void ovsdb_jsonrpc_monitor_flush_all(struct ovsdb_jsonrpc_session *);
+ static bool ovsdb_jsonrpc_monitor_needs_flush(struct ovsdb_jsonrpc_session *);
+@@ -414,6 +419,8 @@ struct ovsdb_jsonrpc_session {
+ 
+     /* Monitors. */
+     struct hmap monitors;       /* Hmap of "struct ovsdb_jsonrpc_monitor"s. */
++    struct hmap wait_monitoring; /* List of ovsdb_wait_monitoring */
++    struct ovs_list blocking_waits; /* List of ctx_to_session (blocking_wait) */
+ 
+     /* Network connectivity. */
+     struct jsonrpc_session *js;  /* JSON-RPC session. */
+@@ -432,6 +439,10 @@ static int ovsdb_jsonrpc_session_run(struct ovsdb_jsonrpc_session *);
+ static void ovsdb_jsonrpc_session_wait(struct ovsdb_jsonrpc_session *);
+ static void ovsdb_jsonrpc_session_get_memory_usage(
+     const struct ovsdb_jsonrpc_session *, struct simap *usage);
++static struct jsonrpc_msg *ovsdb_jsonrpc_wait_monitor(
++        struct ovsdb_jsonrpc_session *, struct ovsdb *, struct jsonrpc_msg *);
++static struct jsonrpc_msg *ovsdb_jsonrpc_wait_unblock(
++        struct ovsdb_jsonrpc_session *, struct ovsdb *, struct jsonrpc_msg *);
+ static void ovsdb_jsonrpc_session_got_request(struct ovsdb_jsonrpc_session *,
+                                              struct jsonrpc_msg *);
+ static void ovsdb_jsonrpc_session_got_notify(struct ovsdb_jsonrpc_session *,
+@@ -447,6 +458,8 @@ ovsdb_jsonrpc_session_create(struct ovsdb_jsonrpc_remote *remote,
+     ovsdb_session_init(&s->up, &remote->server->up);
+     s->remote = remote;
+     list_push_back(&remote->sessions, &s->node);
++    hmap_init(&s->wait_monitoring);
++    list_init(&s->blocking_waits);
+     hmap_init(&s->triggers);
+     hmap_init(&s->monitors);
+     s->js = js;
+@@ -467,9 +480,12 @@ ovsdb_jsonrpc_session_close(struct ovsdb_jsonrpc_session *s)
+     ovsdb_jsonrpc_monitor_remove_all(s);
+     ovsdb_jsonrpc_session_unlock_all(s);
+     ovsdb_jsonrpc_trigger_complete_all(s);
++    ovsdb_jsonrpc_wait_monitor_remove_all(s);
++    ovsdb_jsonrpc_blocking_wait_remove_all(s);
+ 
+     hmap_destroy(&s->monitors);
+     hmap_destroy(&s->triggers);
++    hmap_destroy(&s->wait_monitoring);
+ 
+     jsonrpc_session_close(s->js);
+     list_remove(&s->node);
+@@ -884,6 +900,253 @@ execute_transaction(struct ovsdb_jsonrpc_session *s, struct ovsdb *db,
+     return NULL;
+ }
+ 
++static struct jsonrpc_msg *
++ovsdb_jsonrpc_wait_monitor(struct ovsdb_jsonrpc_session *s, struct ovsdb *db,
++                           struct jsonrpc_msg *request)
++{
++    if (request->params->type != JSON_ARRAY) {
++        VLOG_WARN("Method \"wait-monitor\" with invalid arguments");
++    }
++
++    /* Process a jsonrpc_msg, with the following format:
++     * params: ["database", {
++     *     "table": "name of the table",
++     *     "columns": ["col1", "col2", ..., "col n"]
++     *     }
++     * ]
++     */
++
++    size_t i, j;
++    size_t registered = 0;
++    char *table_name, *column_name;
++    struct json *table_info;
++    struct json *columns_info;
++    struct json *field;
++    for (i = 1; i < request->params->u.array.n; i++) {
++        struct ovsdb_table_schema *table_schema;
++
++        /* For each table in the request */
++        table_info = request->params->u.array.elems[i];
++        if (table_info->type != JSON_OBJECT) {
++            return jsonrpc_create_error(json_string_create("Invalid syntax"),
++                                        request->id);
++        }
++
++        /* Get the name of the table */
++        field = shash_find_data(table_info->u.object, "table");
++        if (!field || field->type != JSON_STRING) {
++            return jsonrpc_create_error(json_string_create("Invalid syntax"),
++                                        request->id);
++        }
++        table_name = field->u.string;
++
++        /* Retrieve the schema */
++        table_schema = shash_find_data(&db->schema->tables, table_name);
++        if (!table_schema) {
++            return jsonrpc_create_error(
++                    json_string_create("Table doesn't exist"),
++                    request->id);
++        }
++
++        /* Read the columns info */
++        columns_info = shash_find_data(table_info->u.object, "columns");
++        if (!columns_info || columns_info->type != JSON_ARRAY) {
++            return jsonrpc_create_error(json_string_create("Invalid syntax"),
++                                                    request->id);
++        }
++
++        for (j = 0; j < columns_info->u.array.n ; j++) {
++            struct ovsdb_column *column_schema;
++
++            /* Read the column */
++            field = columns_info->u.array.elems[j];
++            if (field->type != JSON_STRING) {
++                return jsonrpc_create_error(
++                        json_string_create("Invalid syntax"),
++                        request->id);
++            }
++            column_name = field->u.string;
++
++            /* Get the column schema */
++            column_schema = shash_find_data(&table_schema->columns, column_name);
++            if (!column_schema) {
++                return jsonrpc_create_error(
++                                        json_string_create("Invalid column"),
++                                        request->id);
++            }
++
++            /* Verifies that this session wasn't already wait-monitoring
++             * this column */
++            struct ovsdb_wait_monitoring *wm;
++            HMAP_FOR_EACH_WITH_HASH(wm, session_node,
++                                    hash_pointer(column_schema, 0),
++                                    &s->wait_monitoring) {
++                if (wm->column == column_schema) {
++                    return jsonrpc_create_error(
++                                json_string_create("Column was already monitored"),
++                                request->id);
++                }
++            }
++
++            /* Register the session as a wait monitor of the column */
++            wm = xmalloc(sizeof *wm);
++            wm->column = column_schema;
++            wm->session = s;
++            list_insert(&column_schema->wait_monitoring, &wm->column_node);
++            hmap_insert(&s->wait_monitoring, &wm->session_node,
++                        hash_pointer(column_schema, 0));
++            registered++;
++        }
++    }
++
++    return jsonrpc_create_reply(json_integer_create(registered), request->id);
++}
++
++static struct jsonrpc_msg *
++ovsdb_jsonrpc_wait_monitor_cancel(struct ovsdb_jsonrpc_session *s, struct ovsdb *db,
++                           struct jsonrpc_msg *request)
++{
++    if (request->params->type != JSON_ARRAY) {
++        VLOG_WARN("Method \"wait_monitor_cancel\" with invalid arguments");
++    }
++
++    /* Process a jsonrpc_msg, with the following format:
++     * params: ["database", {
++     *     "table": "name of the table",
++     *     "columns": ["col1", "col2", ..., "col n"]
++     *     }
++     * ]
++     */
++
++    size_t i, j;
++    size_t unmonitored = 0;
++    char *table_name, *column_name;
++    struct json *table_info;
++    struct json *columns_info;
++    struct json *field;
++    for (i = 1; i < request->params->u.array.n; i++) {
++        struct ovsdb_table_schema *table_schema;
++
++        /* For each table in the request */
++        table_info = request->params->u.array.elems[i];
++        if (table_info->type != JSON_OBJECT) {
++            return jsonrpc_create_error(json_string_create("Invalid syntax"),
++                                        request->id);
++        }
++
++        /* Get the name of the table */
++        field = shash_find_data(table_info->u.object, "table");
++        if (!field || field->type != JSON_STRING) {
++            return jsonrpc_create_error(json_string_create("Invalid syntax"),
++                                        request->id);
++        }
++        table_name = field->u.string;
++
++        /* Retrieve the schema */
++        table_schema = shash_find_data(&db->schema->tables, table_name);
++        if (!table_schema) {
++            return jsonrpc_create_error(
++                    json_string_create("Table doesn't exist"),
++                    request->id);
++        }
++
++        /* Read the columns info */
++        columns_info = shash_find_data(table_info->u.object, "columns");
++        if (!columns_info || columns_info->type != JSON_ARRAY) {
++            return jsonrpc_create_error(json_string_create("Invalid syntax"),
++                                                    request->id);
++        }
++
++        for (j = 0; j < columns_info->u.array.n ; j++) {
++            struct ovsdb_column *column_schema;
++
++            /* Read the column */
++            field = columns_info->u.array.elems[j];
++            if (field->type != JSON_STRING) {
++                return jsonrpc_create_error(
++                        json_string_create("Invalid syntax"),
++                        request->id);
++            }
++            column_name = field->u.string;
++
++            /* Get the column schema */
++            column_schema = shash_find_data(&table_schema->columns, column_name);
++            if (!column_schema) {
++                return jsonrpc_create_error(
++                                        json_string_create("Invalid column"),
++                                        request->id);
++            }
++
++            /* Verifies that this session wasn't already wait-monitoring
++             * this column */
++            struct ovsdb_wait_monitoring *wm;
++            bool valid_column = false;
++            HMAP_FOR_EACH_WITH_HASH(wm, session_node,
++                                    hash_pointer(column_schema, 0),
++                                    &s->wait_monitoring) {
++                if (wm->column == column_schema) {
++                    valid_column = true;
++                    hmap_remove(&s->wait_monitoring, &wm->session_node);
++                    list_remove(&wm->column_node);
++                    free(wm);
++                }
++            }
++            if (!valid_column) {
++                return jsonrpc_create_error(
++                        json_string_create("Column wasn't already monitored"),
++                        request->id);
++            }
++
++            unmonitored++;
++        }
++    }
++
++    return jsonrpc_create_reply(json_integer_create(unmonitored), request->id);
++}
++
++static struct jsonrpc_msg *
++ovsdb_jsonrpc_wait_unblock(struct ovsdb_jsonrpc_session *s OVS_UNUSED, struct ovsdb *db,
++                           struct jsonrpc_msg *req)
++{
++    if (!db) {
++        return jsonrpc_create_error(
++                        json_string_create("Database doesn't exists"),
++                        req->id);
++    }
++    if (req->params->type != JSON_ARRAY || req->params->u.array.n != 2) {
++        return jsonrpc_create_error(
++                json_string_create("Wrong params for wait_unblock"),
++                req->id);
++    }
++    struct json *id_json = req->params->u.array.elems[1];
++    if (id_json->type != JSON_INTEGER) {
++        return jsonrpc_create_error(
++                    json_string_create("Wrong params for wait_unblock. Expected integer."),
++                    req->id);
++    }
++    long long int id = id_json->u.integer;
++    struct blocked_wait *bw;
++    struct wait_monitored_data *monitored_data;
++    HMAP_FOR_EACH_WITH_HASH(bw, node, hash_int(id, 0), &db->blocked_waits) {
++        if (bw->wait_id == id) {
++            HMAP_FOR_EACH(monitored_data, hmap_node, &bw->wait_monitored_data) {
++                if (monitored_data->session == s && !monitored_data->wait_updated) {
++                    monitored_data->wait_updated = true;
++                    bw->sessions_n--;
++                }
++            }
++            if (!bw->sessions_n) {
++                db->run_triggers = true;
++                poll_immediate_wake_at(NULL);
++            }
++            return NULL;
++        }
++    }
++    return jsonrpc_create_error(
++            json_string_create("The unlocked id doesn't exist"),
++            req->id);
++}
++
+ static void
+ ovsdb_jsonrpc_session_got_request(struct ovsdb_jsonrpc_session *s,
+                                   struct jsonrpc_msg *request)
+@@ -929,6 +1192,17 @@ ovsdb_jsonrpc_session_got_request(struct ovsdb_jsonrpc_session *s,
+         reply = ovsdb_jsonrpc_session_lock(s, request, OVSDB_LOCK_STEAL);
+     } else if (!strcmp(request->method, "unlock")) {
+         reply = ovsdb_jsonrpc_session_unlock(s, request);
++    } else if (!strcmp(request->method, "wait_monitor")) {
++        struct ovsdb *db = ovsdb_jsonrpc_lookup_db(s, request, &reply);
++        reply = ovsdb_jsonrpc_wait_monitor(s, db, request);
++    } else if (!strcmp(request->method, "wait_monitor_cancel")) {
++        struct ovsdb *db = ovsdb_jsonrpc_lookup_db(s, request, &reply);
++        reply = ovsdb_jsonrpc_wait_monitor_cancel(s, db, request);
++    } else if (!strcmp(request->method, "wait_unblock")) {
++        struct ovsdb *db = ovsdb_jsonrpc_lookup_db(s, request, &reply);
++        if (db) {
++            reply = ovsdb_jsonrpc_wait_unblock(s, db, request);
++        }
+     } else if (!strcmp(request->method, "echo")) {
+         reply = jsonrpc_create_reply(json_clone(request->params), request->id);
+     } else if (!strcmp(request->method, "identify")) {
+@@ -1373,6 +1647,28 @@ ovsdb_jsonrpc_monitor_cancel(struct ovsdb_jsonrpc_session *s,
+ }
+ 
+ static void
++ovsdb_jsonrpc_blocking_wait_remove_all(struct ovsdb_jsonrpc_session *s)
++{
++    struct ctx_to_session *ctxs;
++    LIST_FOR_EACH_POP (ctxs, node_session, &s->blocking_waits) {
++        list_remove(&ctxs->node_ctx);
++        ctxs->ctx->blocking_wait_aborted = true;
++        free(ctxs);
++    }
++}
++
++static void
++ovsdb_jsonrpc_wait_monitor_remove_all(struct ovsdb_jsonrpc_session *s)
++{
++    struct ovsdb_wait_monitoring *wm, *next;
++    HMAP_FOR_EACH_SAFE (wm, next, session_node, &s->wait_monitoring) {
++        list_remove(&wm->column_node);
++        hmap_remove(&s->wait_monitoring, &wm->session_node);
++        free(wm);
++    }
++}
++
++static void
+ ovsdb_jsonrpc_monitor_remove_all(struct ovsdb_jsonrpc_session *s)
+ {
+     struct ovsdb_jsonrpc_monitor *m, *next;
+@@ -1533,3 +1829,23 @@ ovsdb_jsonrpc_set_priority_file(struct ovsdb_jsonrpc_server *jsonrpc, char *pf)
+ {
+     jsonrpc->priority_file = pf;
+ }
++
++void
++ovsdb_jsonrpc_server_session_send(struct ovsdb_jsonrpc_session * s,
++                                  struct jsonrpc_msg *msg)
++{
++    jsonrpc_session_send(s->js, msg);
++}
++
++void
++ovsdb_jsonrpc_blocking_wait_add_to_txn(struct ovsdb_jsonrpc_session *session,
++                                       struct ovsdb_txn_ctx *ctx)
++{
++    struct ctx_to_session *ctx_to_session;
++    ctx_to_session = xmalloc(sizeof *ctx_to_session);
++
++    ctx_to_session->ctx = ctx;
++    ctx_to_session->session = session;
++    list_insert(&ctx->blocking_sessions, &ctx_to_session->node_ctx);
++    list_insert(&session->blocking_waits, &ctx_to_session->node_session);
++}
+diff --git a/ovsdb/jsonrpc-server.h b/ovsdb/jsonrpc-server.h
+index 103aebc..4723666 100644
+--- a/ovsdb/jsonrpc-server.h
++++ b/ovsdb/jsonrpc-server.h
+@@ -18,6 +18,8 @@
+ 
+ #include <stdbool.h>
+ #include "openvswitch/types.h"
++#include "ovsdb.h"
++#include "jsonrpc.h"
+ 
+ struct ovsdb;
+ struct shash;
+@@ -79,6 +81,12 @@ void ovsdb_jsonrpc_server_get_memory_usage(const struct ovsdb_jsonrpc_server *,
+ struct ovsdb_jsonrpc_monitor;
+ void ovsdb_jsonrpc_monitor_destroy(struct ovsdb_jsonrpc_monitor *);
+ 
++struct ovsdb_jsonrpc_session;
++void ovsdb_jsonrpc_server_session_send(struct ovsdb_jsonrpc_session *,
++                                       struct jsonrpc_msg *);
++void ovsdb_jsonrpc_blocking_wait_add_to_txn(struct ovsdb_jsonrpc_session *,
++                                            struct ovsdb_txn_ctx *);
++
+ enum ovsdb_priority {
+     OVSDB_PRIORITY_UNDEFINED = -1,
+     OVSDB_PRIORITY_HIGHEST = 0,
+diff --git a/ovsdb/ovsdb-idlc.in b/ovsdb/ovsdb-idlc.in
+index ce81088..3d3e2b3 100755
+--- a/ovsdb/ovsdb-idlc.in
++++ b/ovsdb/ovsdb-idlc.in
+@@ -1146,6 +1146,8 @@ static void\n%s_columns_init(void)
+             print "    c->name = \"%(c)s\";" % d
+             print column.type.cInitType("    ", "c->type")
+             print "    c->mutable = %s;" % mutable
++            print "    list_init(&c->wait_monitor_change);"
++            print "    c->wait_monitored = false;"
+             print "    c->parse = %(s)s_parse_%(c)s;" % d
+             print "    c->unparse = %(s)s_unparse_%(c)s;" % d
+             if isColumnIndexable(column):
+diff --git a/ovsdb/ovsdb.c b/ovsdb/ovsdb.c
+index 56d2333..0f4d309 100644
+--- a/ovsdb/ovsdb.c
++++ b/ovsdb/ovsdb.c
+@@ -18,7 +18,9 @@
+ #include "ovsdb.h"
+ 
+ #include "column.h"
++#include "hash.h"
+ #include "json.h"
++#include "list.h"
+ #include "ovsdb-error.h"
+ #include "ovsdb-parser.h"
+ #include "ovsdb-types.h"
+@@ -26,6 +28,9 @@
+ #include "table.h"
+ #include "transaction.h"
+ 
++static void
++ovsdb_release_context(struct ovsdb_txn_ctx *ctx);
++
+ struct ovsdb_schema *
+ ovsdb_schema_create(const char *name, const char *version, const char *cksum)
+ {
+@@ -330,7 +335,9 @@ ovsdb_create(struct ovsdb_schema *schema)
+     db->schema = schema;
+     list_init(&db->replicas);
+     list_init(&db->triggers);
++    hmap_init(&db->blocked_waits);
+     db->run_triggers = false;
++    db->blocked_wait_id = 0;
+ 
+     shash_init(&db->tables);
+     SHASH_FOR_EACH (node, &schema->tables) {
+@@ -338,6 +345,8 @@ ovsdb_create(struct ovsdb_schema *schema)
+         shash_add(&db->tables, node->name, ovsdb_table_create(ts));
+     }
+ 
++    hmap_init(&db->contexts);
++
+     /* Set all the refTables. */
+     SHASH_FOR_EACH (node, &schema->tables) {
+         struct ovsdb_table_schema *table = node->data;
+@@ -375,12 +384,20 @@ ovsdb_destroy(struct ovsdb *db)
+         }
+         shash_destroy(&db->tables);
+ 
++        struct ovsdb_txn_ctx *ctx, *next;
++        HMAP_FOR_EACH_SAFE (ctx, next, node, &db->contexts) {
++            ovsdb_release_context(ctx);
++        }
++        hmap_destroy(&db->contexts);
++
+         /* The schemas, but not the table that points to them, were deleted in
+          * the previous step, so we need to clear out the table.  We can't
+          * destroy the table, because ovsdb_schema_destroy() will do that. */
+         shash_clear(&db->schema->tables);
+ 
+         ovsdb_schema_destroy(db->schema);
++        hmap_destroy(&db->blocked_waits);
++
+         free(db);
+     }
+ }
+@@ -409,6 +426,68 @@ ovsdb_get_table(const struct ovsdb *db, const char *name)
+ {
+     return shash_find_data(&db->tables, name);
+ }
++
++struct ovsdb_txn_ctx *
++ovsdb_get_context(const struct ovsdb *db, const struct json *params)
++{
++    struct ovsdb_txn_ctx *ctx;
++    HMAP_FOR_EACH_WITH_HASH(ctx, node, hash_pointer(params, 0), &db->contexts) {
++        if (ctx->params == params) {
++            return ctx;
++        }
++    }
++    return NULL;
++}
++
++struct ovsdb_txn_ctx *
++ovsdb_create_context(const struct ovsdb *db_, const struct json *params)
++{
++    struct ovsdb *db = CONST_CAST(struct ovsdb *, db_);
++    struct ovsdb_txn_ctx *ctx = xmalloc(sizeof *ctx);
++    hmap_insert(&db->contexts, &ctx->node, hash_pointer(params, 0));
++
++    /* Default values */
++    ctx->db = db;
++    ctx->params = params;
++
++    /* General values for transactions */
++    ctx->current_operation = 0;
++    ctx->max_successful_operation = 0;
++
++    /* Default values for wait until unblock */
++    list_init(&ctx->blocking_sessions);
++    ctx->blocking_wait_id = 0;
++    ctx->blocking_wait_id_is_set = false;
++    ctx->blocking_wait_aborted = false;
++
++    return ctx;
++}
++
++static void
++ovsdb_release_context(struct ovsdb_txn_ctx *ctx)
++{
++    struct ovsdb *db = CONST_CAST(struct ovsdb *, ctx->db);
++    hmap_remove(&db->contexts, &ctx->node);
++    struct ctx_to_session *ctx_session;
++    LIST_FOR_EACH_POP(ctx_session, node_ctx, &ctx->blocking_sessions) {
++        list_remove(&ctx_session->node_session);
++        free(ctx_session);
++    }
++    /* Free memory allocated within the context */
++    free(ctx);
++}
++
++void
++ovsdb_destroy_context(const struct ovsdb *db, const struct json *params)
++{
++    struct ovsdb_txn_ctx *ctx = ovsdb_get_context(db, params);
++    if (!ctx) {
++        return;
++    }
++    ovsdb_release_context(ctx);
++    return;
++}
++
+ 
+ void
+ ovsdb_replica_init(struct ovsdb_replica *r,
+diff --git a/ovsdb/ovsdb.h b/ovsdb/ovsdb.h
+index 04586e7..b858b7d 100644
+--- a/ovsdb/ovsdb.h
++++ b/ovsdb/ovsdb.h
+@@ -16,6 +16,7 @@
+ #ifndef OVSDB_OVSDB_H
+ #define OVSDB_OVSDB_H 1
+ 
++#include "column.h"
+ #include "compiler.h"
+ #include "hmap.h"
+ #include "list.h"
+@@ -59,11 +60,46 @@ struct ovsdb {
+     struct ovs_list replicas;   /* Contains "struct ovsdb_replica"s. */
+     struct shash tables;        /* Contains "struct ovsdb_table *"s. */
+ 
++    /* Transaction Context */
++    struct hmap contexts; /* Contains "struct ovsdb_txn_ctx"s. */
++
+     /* Triggers. */
+     struct ovs_list triggers;   /* Contains "struct ovsdb_trigger"s. */
++    /* TODO: what data structure fits best here?
++     * It will be storing ids and a counter?
++     */
++    struct hmap blocked_waits; /* Contains "struct ovsdb_blocked_wait"s.*/
++    size_t blocked_wait_id; /* Used to generate the blocked wait ids. */
++
+     bool run_triggers;
+ };
+ 
++struct ovsdb_txn_ctx {
++    struct hmap_node node;
++    const struct ovsdb *db;
++    const struct ovsdb_session *session;
++    const struct json *params;
++
++    /* General operation data */
++    size_t current_operation; /* Current operation index */
++    size_t max_successful_operation; /* Max operation index reached ever */
++
++    /* blocking_wait */
++    struct ovs_list blocking_sessions;
++    long long int blocking_wait_id;
++    bool blocking_wait_id_is_set;
++    bool blocking_wait_aborted;
++};
++
++/* struct ctx_to_session allows to model the relation between a transaction
++ * (transaction's context) and a session wait blocking that transaction.     */
++struct ctx_to_session {
++    struct ovs_list node_ctx;
++    struct ovs_list node_session;
++    struct ovsdb_txn_ctx *ctx;
++    struct ovsdb_jsonrpc_session *session;
++};
++
+ struct ovsdb *ovsdb_create(struct ovsdb_schema *);
+ void ovsdb_destroy(struct ovsdb *);
+ 
+@@ -75,6 +111,12 @@ struct json *ovsdb_execute(struct ovsdb *, const struct ovsdb_session *,
+                            const struct json *params,
+                            long long int elapsed_msec,
+                            long long int *timeout_msec);
++struct ovsdb_txn_ctx *ovsdb_get_context(const struct ovsdb *,
++                                        const struct json *);
++struct ovsdb_txn_ctx *ovsdb_create_context(const struct ovsdb *,
++                                           const struct json *params);
++void ovsdb_destroy_context(const struct ovsdb *db, const struct json *params);
++
+ 
+ /* Database replication. */
+ 
+@@ -95,4 +137,22 @@ void ovsdb_replica_init(struct ovsdb_replica *,
+ void ovsdb_add_replica(struct ovsdb *, struct ovsdb_replica *);
+ void ovsdb_remove_replica(struct ovsdb *, struct ovsdb_replica *);
+ 
++/* Wait monitor */
++struct wait_monitored_data {
++
++    struct ovsdb_jsonrpc_session *session;
++    bool wait_updated;                    /* Indicates if request sent to this session was responded */
++    struct uuid *uuid;
++    size_t uuid_n;
++    struct ovsdb_column_set columns;
++    struct hmap_node hmap_node;
++};
++
++struct blocked_wait {
++    struct hmap_node node;
++    long long int wait_id;
++    int sessions_n;
++    struct hmap wait_monitored_data; /* "struct wait_monitored_data" hashed by "struct ovsdb_jsonrpc_session *" */
++};
++
+ #endif /* ovsdb/ovsdb.h */
+diff --git a/tests/ovsdb-idl.at b/tests/ovsdb-idl.at
+index d3f4305..caceb5d 100644
+--- a/tests/ovsdb-idl.at
++++ b/tests/ovsdb-idl.at
+@@ -810,6 +810,282 @@ OVSDB_CHECK_IDL_PARTIAL_UPDATE_MAP_COLUMN([map, simple2 idl-partial-update-map-c
+ 010: End test
+ ]])
+ 
++m4_define([OVSDB_CHECK_WAIT_MONITOR],
++  [AT_SETUP([$1 - C])
++   AT_KEYWORDS([ovsdb server idl wait-monitor $5])
++   AT_CHECK([ovsdb-tool create db $abs_srcdir/idltest.ovsschema],
++                  [0], [stdout], [ignore])
++   AT_CHECK([ovsdb-server '-vPATTERN:console:ovsdb-server|%c|%m' --detach --no-chdir --pidfile="`pwd`"/pid --remote=punix:socket --unixctl="`pwd`"/unixctl db], [0], [ignore], [ignore])
++   m4_if([$2], [], [],
++     [AT_CHECK([ovsdb-client transact unix:socket $2], [0], [ignore], [ignore], [kill `cat pid`])])
++   AT_CHECK([test-ovsdb '-vPATTERN:console:test-ovsdb|%c|%m' -vjsonrpc -t10 -w0 -c wait-monitor unix:socket $3],
++            [0], [stdout], [ignore], [kill `cat pid`])
++   AT_CHECK([sort stdout | ${PERL} $srcdir/uuidfilt.pl]m4_if([$6],,, [[| $6]]),
++            [0], [$4], [], [kill `cat pid`])
++   OVSDB_SERVER_SHUTDOWN
++   AT_CLEANUP])
++
++OVSDB_CHECK_WAIT_MONITOR([map, simple wait-monitor, initially populated, wait-blocking-timeout 0s],
++[['["idltest",
++    {"op": "insert",
++    "table": "simple",
++    "row": {"i": 1,
++            "r": 2.0,
++            "b": true,
++            "s": "mystring",
++            "u": ["uuid", "84f5c8f5-ac76-4dbc-a24f-8860eb407fc1"],
++            "ia": ["set", [1, 2, 3]],
++            "ra": ["set", [-0.5]],
++            "ba": ["set", [true]],
++            "sa": ["set", ["abc", "def"]],
++            "ua": ["set", []]}},
++    {"op": "insert",
++    "table": "simple",
++    "row": {"i": 1,
++            "r": 2.0,
++            "b": true,
++            "s": "mystring",
++            "u": ["uuid", "84f5c8f5-ac76-4dbc-a24f-8860eb407fc2"],
++            "ia": ["set", [1, 2, 3]],
++            "ra": ["set", [-0.5]],
++            "ba": ["set", [true]],
++            "sa": ["set", ["abc", "def"]],
++            "ua": ["set", []]}}]']
++],
++[],
++[[000: Wait monitor result: 4
++]])
++
++m4_define([OVSDB_CHECK_WAIT_MONITOR],
++  [AT_SETUP([$1 - C])
++   AT_KEYWORDS([ovsdb server idl wait-monitor positive $5])
++   AT_CHECK([ovsdb-tool create db $abs_srcdir/idltest.ovsschema],
++                  [0], [stdout], [ignore])
++   AT_CHECK([ovsdb-server '-vPATTERN:console:ovsdb-server|%c|%m' --detach --no-chdir --pidfile="`pwd`"/pid --remote=punix:socket --unixctl="`pwd`"/unixctl db], [0], [ignore], [ignore])
++   m4_if([$2], [], [],
++     [AT_CHECK([ovsdb-client transact unix:socket $2], [0], [ignore], [ignore], [kill `cat pid`])])
++   AT_CHECK([test-ovsdb '-vPATTERN:console:test-ovsdb|%c|%m' -vjsonrpc -t10 -w10 -c wait-monitor unix:socket $3],
++            [0], [stdout], [ignore], [kill `cat pid`])
++   AT_CHECK([sort stdout | ${PERL} $srcdir/uuidfilt.pl]m4_if([$6],,, [[| $6]]),
++            [0], [$4], [], [kill `cat pid`])
++   OVSDB_SERVER_SHUTDOWN
++   AT_CLEANUP])
++
++OVSDB_CHECK_WAIT_MONITOR([map, simple wait-monitor, initially populated, wait-blocking-timeout 10s],
++[['["idltest",
++    {"op": "insert",
++    "table": "simple",
++    "row": {"i": 1,
++            "r": 2.0,
++            "b": true,
++            "s": "mystring",
++            "u": ["uuid", "84f5c8f5-ac76-4dbc-a24f-8860eb407fc1"],
++            "ia": ["set", [1, 2, 3]],
++            "ra": ["set", [-0.5]],
++            "ba": ["set", [true]],
++            "sa": ["set", ["abc", "def"]],
++            "ua": ["set", []]}},
++    {"op": "insert",
++    "table": "simple",
++    "row": {"i": 1,
++            "r": 2.0,
++            "b": true,
++            "s": "mystring",
++            "u": ["uuid", "84f5c8f5-ac76-4dbc-a24f-8860eb407fc2"],
++            "ia": ["set", [1, 2, 3]],
++            "ra": ["set", [-0.5]],
++            "ba": ["set", [true]],
++            "sa": ["set", ["abc", "def"]],
++            "ua": ["set", []]}}]']
++],
++[],
++[[000: Wait monitor result: 4
++]])
++
++m4_define([OVSDB_CHECK_WAIT_MONITOR],
++  [AT_SETUP([$1 - C])
++   AT_KEYWORDS([ovsdb server idl wait-monitor positive $5])
++   AT_CHECK([ovsdb-tool create db $abs_srcdir/idltest.ovsschema],
++                  [0], [stdout], [ignore])
++   AT_CHECK([ovsdb-server '-vPATTERN:console:ovsdb-server|%c|%m' --detach --no-chdir --pidfile="`pwd`"/pid --remote=punix:socket --unixctl="`pwd`"/unixctl db], [0], [ignore], [ignore])
++   m4_if([$2], [], [],
++     [AT_CHECK([ovsdb-client transact unix:socket $2], [0], [ignore], [ignore], [kill `cat pid`])])
++   AT_CHECK([test-ovsdb '-vPATTERN:console:test-ovsdb|%c|%m' -vjsonrpc -t10 -w4 -c wait-monitor unix:socket $3],
++            [0], [stdout], [ignore], [kill `cat pid`])
++   AT_CHECK([sort stdout | ${PERL} $srcdir/uuidfilt.pl]m4_if([$6],,, [[| $6]]),
++            [0], [$4], [], [kill `cat pid`])
++   OVSDB_SERVER_SHUTDOWN
++   AT_CLEANUP])
++
++OVSDB_CHECK_WAIT_MONITOR([map, simple wait-monitor, initially populated, wait-blocking-timeout 4s],
++[['["idltest",
++    {"op": "insert",
++    "table": "simple",
++    "row": {"i": 1,
++            "r": 2.0,
++            "b": true,
++            "s": "mystring",
++            "u": ["uuid", "84f5c8f5-ac76-4dbc-a24f-8860eb407fc1"],
++            "ia": ["set", [1, 2, 3]],
++            "ra": ["set", [-0.5]],
++            "ba": ["set", [true]],
++            "sa": ["set", ["abc", "def"]],
++            "ua": ["set", []]}},
++    {"op": "insert",
++    "table": "simple",
++    "row": {"i": 1,
++            "r": 2.0,
++            "b": true,
++            "s": "mystring",
++            "u": ["uuid", "84f5c8f5-ac76-4dbc-a24f-8860eb407fc2"],
++            "ia": ["set", [1, 2, 3]],
++            "ra": ["set", [-0.5]],
++            "ba": ["set", [true]],
++            "sa": ["set", ["abc", "def"]],
++            "ua": ["set", []]}}]']
++],
++[],
++[[000: Wait monitor result: 5
++]])
++
++m4_define([OVSDB_CHECK_WAIT_MONITOR],
++  [AT_SETUP([$1 - C])
++   AT_KEYWORDS([ovsdb server idl wait-monitor positive $5])
++   AT_CHECK([ovsdb-tool create db $abs_srcdir/idltest.ovsschema],
++                  [0], [stdout], [ignore])
++   AT_CHECK([ovsdb-server '-vPATTERN:console:ovsdb-server|%c|%m' --detach --no-chdir --pidfile="`pwd`"/pid --remote=punix:socket --unixctl="`pwd`"/unixctl db], [0], [ignore], [ignore])
++   m4_if([$2], [], [],
++     [AT_CHECK([ovsdb-client transact unix:socket $2], [0], [ignore], [ignore], [kill `cat pid`])])
++   AT_CHECK([test-ovsdb '-vPATTERN:console:test-ovsdb|%c|%m' -vjsonrpc -t10 -w10 -c -p wait-monitor unix:socket $3],
++            [0], [stdout], [ignore], [kill `cat pid`])
++   AT_CHECK([sort stdout | ${PERL} $srcdir/uuidfilt.pl]m4_if([$6],,, [[| $6]]),
++            [0], [$4], [], [kill `cat pid`])
++   OVSDB_SERVER_SHUTDOWN
++   AT_CLEANUP])
++
++OVSDB_CHECK_WAIT_MONITOR([map, simple wait-monitor, initially populated, not monitored cell],
++[['["idltest",
++    {"op": "insert",
++    "table": "simple",
++    "row": {"i": 1,
++            "r": 2.0,
++            "b": true,
++            "s": "mystring",
++            "u": ["uuid", "84f5c8f5-ac76-4dbc-a24f-8860eb407fc1"],
++            "ia": ["set", [1, 2, 3]],
++            "ra": ["set", [-0.5]],
++            "ba": ["set", [true]],
++            "sa": ["set", ["abc", "def"]],
++            "ua": ["set", []]}},
++    {"op": "insert",
++    "table": "simple",
++    "row": {"i": 1,
++            "r": 2.0,
++            "b": true,
++            "s": "mystring",
++            "u": ["uuid", "84f5c8f5-ac76-4dbc-a24f-8860eb407fc2"],
++            "ia": ["set", [1, 2, 3]],
++            "ra": ["set", [-0.5]],
++            "ba": ["set", [true]],
++            "sa": ["set", ["abc", "def"]],
++            "ua": ["set", []]}}]']
++],
++[],
++[[000: Wait monitor result: 7
++]])
++
++m4_define([OVSDB_CHECK_WAIT_MONITOR],
++  [AT_SETUP([$1 - C])
++   AT_KEYWORDS([ovsdb server idl wait-monitor positive $5])
++   AT_CHECK([ovsdb-tool create db $abs_srcdir/idltest.ovsschema],
++                  [0], [stdout], [ignore])
++   AT_CHECK([ovsdb-server '-vPATTERN:console:ovsdb-server|%c|%m' --detach --no-chdir --pidfile="`pwd`"/pid --remote=punix:socket --unixctl="`pwd`"/unixctl db], [0], [ignore], [ignore])
++   m4_if([$2], [], [],
++     [AT_CHECK([ovsdb-client transact unix:socket $2], [0], [ignore], [ignore], [kill `cat pid`])])
++   AT_CHECK([test-ovsdb '-vPATTERN:console:test-ovsdb|%c|%m' -vjsonrpc -t10 -w10 -c -r wait-monitor unix:socket $3],
++            [0], [stdout], [ignore], [kill `cat pid`])
++   AT_CHECK([sort stdout | ${PERL} $srcdir/uuidfilt.pl]m4_if([$6],,, [[| $6]]),
++            [0], [$4], [], [kill `cat pid`])
++   OVSDB_SERVER_SHUTDOWN
++   AT_CLEANUP])
++
++OVSDB_CHECK_WAIT_MONITOR([map, simple wait-monitor, initially populated, no rows specified],
++[['["idltest",
++    {"op": "insert",
++    "table": "simple",
++    "row": {"i": 1,
++            "r": 2.0,
++            "b": true,
++            "s": "mystring",
++            "u": ["uuid", "84f5c8f5-ac76-4dbc-a24f-8860eb407fc1"],
++            "ia": ["set", [1, 2, 3]],
++            "ra": ["set", [-0.5]],
++            "ba": ["set", [true]],
++            "sa": ["set", ["abc", "def"]],
++            "ua": ["set", []]}},
++    {"op": "insert",
++    "table": "simple",
++    "row": {"i": 1,
++            "r": 2.0,
++            "b": true,
++            "s": "mystring",
++            "u": ["uuid", "84f5c8f5-ac76-4dbc-a24f-8860eb407fc2"],
++            "ia": ["set", [1, 2, 3]],
++            "ra": ["set", [-0.5]],
++            "ba": ["set", [true]],
++            "sa": ["set", ["abc", "def"]],
++            "ua": ["set", []]}}]']
++],
++[],
++[[000: Wait monitor result: 4
++]])
++
++m4_define([OVSDB_CHECK_WAIT_MONITOR],
++  [AT_SETUP([$1 - C])
++   AT_KEYWORDS([ovsdb server idl wait-monitor positive $5])
++   AT_CHECK([ovsdb-tool create db $abs_srcdir/idltest.ovsschema],
++                  [0], [stdout], [ignore])
++   AT_CHECK([ovsdb-server '-vPATTERN:console:ovsdb-server|%c|%m' --detach --no-chdir --pidfile="`pwd`"/pid --remote=punix:socket --unixctl="`pwd`"/unixctl db], [0], [ignore], [ignore])
++   m4_if([$2], [], [],
++     [AT_CHECK([ovsdb-client transact unix:socket $2], [0], [ignore], [ignore], [kill `cat pid`])])
++   AT_CHECK([test-ovsdb '-vPATTERN:console:test-ovsdb|%c|%m' -vjsonrpc -t10 -w10 -c -m wait-monitor unix:socket $3],
++            [0], [stdout], [ignore], [kill `cat pid`])
++   AT_CHECK([sort stdout | ${PERL} $srcdir/uuidfilt.pl]m4_if([$6],,, [[| $6]]),
++            [0], [$4], [], [kill `cat pid`])
++   OVSDB_SERVER_SHUTDOWN
++   AT_CLEANUP])
++
++OVSDB_CHECK_WAIT_MONITOR([map, simple wait-monitor, initially populated, no columns specified],
++[['["idltest",
++    {"op": "insert",
++    "table": "simple",
++    "row": {"i": 1,
++            "r": 2.0,
++            "b": true,
++            "s": "mystring",
++            "u": ["uuid", "84f5c8f5-ac76-4dbc-a24f-8860eb407fc1"],
++            "ia": ["set", [1, 2, 3]],
++            "ra": ["set", [-0.5]],
++            "ba": ["set", [true]],
++            "sa": ["set", ["abc", "def"]],
++            "ua": ["set", []]}},
++    {"op": "insert",
++    "table": "simple",
++    "row": {"i": 1,
++            "r": 2.0,
++            "b": true,
++            "s": "mystring",
++            "u": ["uuid", "84f5c8f5-ac76-4dbc-a24f-8860eb407fc2"],
++            "ia": ["set", [1, 2, 3]],
++            "ra": ["set", [-0.5]],
++            "ba": ["set", [true]],
++            "sa": ["set", ["abc", "def"]],
++            "ua": ["set", []]}}]']
++],
++[],
++[[000: Wait monitor result: 4
++]])
++
+ if HALON
+ m4_define([OVSDB_CHECK_IDL_INFO_C],
+   [AT_SETUP([$1 - C])
+diff --git a/tests/test-ovsdb.c b/tests/test-ovsdb.c
+index 53b6eed..e6e36fa 100644
+--- a/tests/test-ovsdb.c
++++ b/tests/test-ovsdb.c
+@@ -22,6 +22,8 @@
+ #include <inttypes.h>
+ #include <stdio.h>
+ #include <stdlib.h>
++#include <unistd.h>
++#include <sys/wait.h>
+ 
+ #include "command-line.h"
+ #include "dynamic-string.h"
+@@ -50,9 +52,14 @@
+ #include "timeval.h"
+ #include "util.h"
+ #include "openvswitch/vlog.h"
++#include "vswitch-idl.h"
+ 
+ struct test_ovsdb_pvt_context {
+     bool track;
++    bool no_rows;
++    bool no_columns;
++    bool not_monitored_cell;
++    unsigned long int wait_block_timeout;
+ };
+ 
+ OVS_NO_RETURN static void usage(void);
+@@ -80,6 +87,10 @@ parse_options(int argc, char *argv[], struct test_ovsdb_pvt_context *pvt)
+         {"timeout", required_argument, NULL, 't'},
+         {"verbose", optional_argument, NULL, 'v'},
+         {"change-track", optional_argument, NULL, 'c'},
++        {"wait-block-timeout", optional_argument, NULL, 'w'},
++        {"cell-not-monitored", optional_argument, NULL, 'p'},
++        {"no-rows", optional_argument, NULL, 'r'},
++        {"no-columns", optional_argument, NULL, 'm'},
+         {"help", no_argument, NULL, 'h'},
+         {NULL, 0, NULL, 0},
+     };
+@@ -87,6 +98,7 @@ parse_options(int argc, char *argv[], struct test_ovsdb_pvt_context *pvt)
+ 
+     for (;;) {
+         unsigned long int timeout;
++        unsigned long int wait_block_timeout;
+         int c;
+ 
+         c = getopt_long(argc, argv, short_options, long_options, NULL);
+@@ -116,6 +128,23 @@ parse_options(int argc, char *argv[], struct test_ovsdb_pvt_context *pvt)
+             pvt->track = true;
+             break;
+ 
++        case 'p':
++            pvt->not_monitored_cell = true;
++            break;
++
++        case 'w':
++            wait_block_timeout = strtoul(optarg, NULL, 10);
++            pvt->wait_block_timeout = wait_block_timeout;
++            break;
++
++        case 'r':
++            pvt->no_rows = true;
++            break;
++
++        case 'm':
++            pvt->no_columns = true;
++            break;
++
+         case '?':
+             exit(EXIT_FAILURE);
+ 
+@@ -2694,6 +2723,364 @@ do_idl_compound_index(struct ovs_cmdl_context *ctx)
+     printf("%03d: done\n", step);
+ }
+ 
++/* Write the response time, the producer already write a valid response.
++ * 'update_counters' specifies if the function must update the counters or not.
++ * Updates the record of the current counters requests ('rec_request'). */
++static enum ovsdb_idl_txn_status
++update_data(struct ovsdb_idl *idl,
++             struct shash *rows,
++             struct shash *cols OVS_UNUSED,
++             int wait_monitorers)
++{
++    struct ovsdb_idl_txn *txn;
++    enum ovsdb_idl_txn_status status;
++    bool state = false;
++    struct uuid uuid;
++    const int64_t i_array[2] = {1, 2};
++    const char *s_array[2] = {"test1", "test2"};
++    const double r_array[] = {1.0, 2.0};
++    struct uuid u_array[2];
++
++    /* Update columns */
++    struct shash_node *node;
++    SHASH_FOR_EACH (node, rows) {
++        const struct idltest_simple *row = idltest_simple_get_for_uuid(idl, node->data);
++        do {
++            txn = ovsdb_idl_txn_create(idl);
++            switch (wait_monitorers) {
++                case 0:
++                    idltest_simple_set_b(row, false);
++                    idltest_simple_set_ba(row, &state, 3);
++                    idltest_simple_set_i(row, 24);
++                    idltest_simple_set_s(row, "test");
++                break;
++                case 1:
++                    uuid_generate(&uuid);
++                    idltest_simple_set_r(row, 1.6);
++                    idltest_simple_set_u(row, uuid);
++                    idltest_simple_set_ra(row, r_array, sizeof(r_array)/sizeof(r_array[0]));
++                    break;
++                case 2:
++                    uuid_generate(&u_array[0]);
++                    uuid_generate(&u_array[1]);
++                    idltest_simple_set_ia(row, i_array, sizeof(i_array)/sizeof(i_array[0]));
++                    idltest_simple_set_sa(row, s_array, sizeof(s_array)/sizeof(s_array[0]));
++                    idltest_simple_set_ua(row, u_array, sizeof(u_array)/sizeof(u_array[0]));
++                break;
++            }
++
++            status = ovsdb_idl_txn_commit_block(txn);
++            ovsdb_idl_txn_destroy(txn);
++        } while (status != TXN_SUCCESS && status != TXN_UNCHANGED);
++    }
++
++    return status;
++}
++
++#define WAIT_MONITOR_FREQUENCY_1       1
++#define WAIT_MONITOR_FREQUENCY_3       3
++#define WAIT_MONITOR_FREQUENCY_6       6
++
++static void
++wait_monitor_session(
++        struct ovs_cmdl_context *ctx,
++        int wait_monitorer,
++        bool enable_periodicity,
++        bool not_wait_monitored_cell)
++{
++    unsigned int frequency;
++    struct ovsdb_idl *idl;
++
++    idltest_init();
++    idl = ovsdb_idl_create(ctx->argv[1], &idltest_idl_class, false, true);
++    ovsdb_idl_add_table(idl, &idltest_table_simple);
++    ovsdb_idl_add_column(idl, &idltest_simple_col_b);
++    ovsdb_idl_add_column(idl, &idltest_simple_col_ba);
++    ovsdb_idl_add_column(idl, &idltest_simple_col_i);
++    ovsdb_idl_add_column(idl, &idltest_simple_col_s);
++    ovsdb_idl_add_column(idl, &idltest_simple_col_r);
++    ovsdb_idl_add_column(idl, &idltest_simple_col_u);
++    ovsdb_idl_add_column(idl, &idltest_simple_col_ra);
++    ovsdb_idl_add_column(idl, &idltest_simple_col_ia);
++    ovsdb_idl_add_column(idl, &idltest_simple_col_sa);
++    ovsdb_idl_add_column(idl, &idltest_simple_col_ua);
++    ovsdb_idl_get_initial_snapshot(idl);
++    ovsdb_idl_run(idl);
++
++    /* send wait monitor request */
++    enum ovsdb_idl_wait_monitor_status status = ovsdb_idl_wait_monitor_status(idl);
++    struct ovsdb_idl_wait_monitor_request wait_req;
++    ovsdb_idl_wait_monitor_create_txn(idl, &wait_req);
++
++    /* code common to the 3 monitoring sessions used.
++     * Each session updates two columns
++     * specified on each case
++     */
++    switch (wait_monitorer) {
++        case 0:
++            frequency = WAIT_MONITOR_FREQUENCY_1;
++            ovsdb_idl_wait_monitor_add_column(
++                    &wait_req, &idltest_table_simple, &idltest_simple_col_b);
++            ovsdb_idl_wait_monitor_add_column(
++                    &wait_req, &idltest_table_simple, &idltest_simple_col_ba);
++            ovsdb_idl_wait_monitor_add_column(
++                    &wait_req, &idltest_table_simple, &idltest_simple_col_i);
++            ovsdb_idl_wait_monitor_add_column(
++                    &wait_req, &idltest_table_simple, &idltest_simple_col_s);
++        break;
++        case 1:
++            frequency = WAIT_MONITOR_FREQUENCY_3;
++            ovsdb_idl_wait_monitor_add_column(
++                    &wait_req, &idltest_table_simple, &idltest_simple_col_r);
++            ovsdb_idl_wait_monitor_add_column(
++                    &wait_req, &idltest_table_simple, &idltest_simple_col_ra);
++            if (!not_wait_monitored_cell) {
++                ovsdb_idl_wait_monitor_add_column(
++                        &wait_req, &idltest_table_simple, &idltest_simple_col_u);
++            }
++        break;
++        case 2:
++            frequency = WAIT_MONITOR_FREQUENCY_6;
++            ovsdb_idl_wait_monitor_add_column(
++                    &wait_req, &idltest_table_simple, &idltest_simple_col_ia);
++            ovsdb_idl_wait_monitor_add_column(
++                    &wait_req, &idltest_table_simple, &idltest_simple_col_sa);
++            ovsdb_idl_wait_monitor_add_column(
++                    &wait_req, &idltest_table_simple, &idltest_simple_col_ua);
++        break;
++        default:
++            frequency = 0;
++            ovsdb_idl_wait_monitor_add_column(
++                    &wait_req, &idltest_table_simple, &idltest_simple_col_b);
++    }
++
++    if (!ovsdb_idl_wait_monitor_send_txn(&wait_req)) {
++        printf("Aborting: wait monitor send txn failed\n");
++        exit(-1);
++    }
++    while(ovsdb_idl_wait_monitor_status(idl) == status) {
++        ovsdb_idl_wait(idl);
++        poll_block();
++    }
++
++    /* wait for replica synched */
++    ovsdb_idl_run(idl);
++    while (!ovsdb_idl_has_ever_connected(idl)) {
++        ovsdb_idl_wait(idl);
++        poll_block();
++        ovsdb_idl_run(idl);
++    }
++
++    char uuid_buffer[UUID_LEN+1];
++    poll_immediate_wake_at(NULL);
++
++    while (true) {
++
++        ovsdb_idl_wait(idl);
++        poll_block();
++        ovsdb_idl_run(idl);
++        struct ovs_list *requests;
++        requests = ovsdb_idl_wait_update_get_list(idl);
++        struct ovsdb_idl_wait_update *req;
++
++        LIST_FOR_EACH_POP(req, node, requests) {
++
++            struct shash rows;
++            struct shash cols;
++            shash_init(&rows);
++            shash_init(&cols);
++
++            /* check for expected table */
++            if (strcmp(req->table->class->name, "simple")) {
++                printf("Expected simple, received \"%s\"\n", req->table->class->name);
++            }
++
++            /* include all the columns in the list */
++            int i;
++            struct shash_node *node;
++            if (req->columns_n == 0) {
++                SHASH_FOR_EACH(node, &wait_req.added_columns) {
++                    shash_add(&cols, node->name, NULL);
++                }
++            } else {
++                for (i = 0; i < req->columns_n; i++) {
++                    shash_add(&cols, req->columns[i]->name, NULL);
++                }
++            }
++
++            if (req->rows_n == 0) {
++                const struct idltest_simple *s;
++                IDLTEST_SIMPLE_FOR_EACH (s, idl) {
++                    sprintf(uuid_buffer, UUID_FMT, UUID_ARGS(&s->header_.uuid));
++                    shash_add(&rows, uuid_buffer, &s->header_.uuid);
++                }
++            }
++
++            else {
++                for (i = 0; i < req->rows_n; i++) {
++                    sprintf(uuid_buffer, UUID_FMT, UUID_ARGS(&req->rows[i]));
++                    shash_add(&rows, uuid_buffer, &req->rows[i]);
++                }
++            }
++
++            update_data(idl, &rows, &cols, wait_monitorer);
++
++            /* Simulated unblocking frequency: This is the time that should
++             * pass before the session that wait monitors sends the
++             * wait_unblock notification to the server. In case it is
++             * not needed the signal is sent immediately
++             */
++            if (enable_periodicity) {
++                sleep(frequency);
++            }
++            ovsdb_idl_wait_unblock(idl, req);
++
++            /* This too should be done by the IDL */
++            free(req->state);
++            free(req);
++        }
++    }
++
++    /* Free all the resources related to the IDL */
++    ovsdb_idl_destroy(idl);
++}
++
++/* Configure and send wait_until_unblock notification */
++static enum ovsdb_idl_txn_status
++process_wait_until_unblock(struct ovsdb_idl *idl,
++                           int wait_block_timeout,
++                           bool no_rows,
++                           bool no_columns) {
++
++    struct ovsdb_idl_txn *txn;
++    enum ovsdb_idl_txn_status status;
++    do {
++        txn = ovsdb_idl_txn_create(idl);
++        struct ovsdb_idl_txn_wait_unblock * wait;
++        wait = ovsdb_idl_txn_create_wait_until_unblock(
++                &idltest_table_simple, wait_block_timeout*1000);
++        if (!no_columns) {
++            ovsdb_idl_txn_wait_until_unblock_add_column(wait, &idltest_simple_col_b);
++            ovsdb_idl_txn_wait_until_unblock_add_column(wait, &idltest_simple_col_ba);
++            ovsdb_idl_txn_wait_until_unblock_add_column(wait, &idltest_simple_col_i);
++            ovsdb_idl_txn_wait_until_unblock_add_column(wait, &idltest_simple_col_s);
++            ovsdb_idl_txn_wait_until_unblock_add_column(wait, &idltest_simple_col_r);
++            ovsdb_idl_txn_wait_until_unblock_add_column(wait, &idltest_simple_col_u);
++            ovsdb_idl_txn_wait_until_unblock_add_column(wait, &idltest_simple_col_ra);
++            ovsdb_idl_txn_wait_until_unblock_add_column(wait, &idltest_simple_col_ia);
++            ovsdb_idl_txn_wait_until_unblock_add_column(wait, &idltest_simple_col_sa);
++            ovsdb_idl_txn_wait_until_unblock_add_column(wait, &idltest_simple_col_ua);
++        }
++        if (!no_rows) {
++            ovsdb_idl_txn_wait_until_unblock_add_row(wait,
++                    (struct ovsdb_idl_row*) idltest_simple_first(idl));
++        }
++        ovsdb_idl_txn_add_wait_until_unblock(txn, wait);
++        status = ovsdb_idl_txn_commit_block(txn);
++        ovsdb_idl_txn_destroy(txn);
++    } while (status == TXN_INCOMPLETE);
++
++    return status;
++}
++
++/* Tests for wait monitor operations */
++static void
++do_wait_monitor_test(struct ovs_cmdl_context *ctx)
++{
++    /* Test specification:
++     * The test uses three sessions P1, P3 and P6. Each one wait monitors data
++     * and unblocks the wait with simulated frequencies of P1=1s, P3=3s and
++     * P6=6s.
++     * Client waits response from three other clients.
++     */
++
++    /* Configure three clients and run each client in parallel to
++     * wait for notifications */
++    int step = 0;
++    int wait_block_timeout;
++    bool no_rows = false;
++    bool no_columns = false;
++    bool not_monitored_cell = false;
++    bool enable_periodicity = false;      /* Enable periodic updates */
++
++    /* Immediate tests: clients send the wait_unblock signal immediately
++     * after columns are updated.
++     * Wait timeout is set to 5s */
++    enable_periodicity = false;
++    no_rows =
++            ((struct test_ovsdb_pvt_context *)(ctx->pvt))->no_rows;
++    no_columns =
++            ((struct test_ovsdb_pvt_context *)(ctx->pvt))->no_columns;
++    not_monitored_cell =
++            ((struct test_ovsdb_pvt_context *)(ctx->pvt))->not_monitored_cell;
++    wait_block_timeout =
++            ((struct test_ovsdb_pvt_context *)(ctx->pvt))->wait_block_timeout;
++    if (wait_block_timeout) {
++        enable_periodicity = true;
++    }
++
++    int i;
++    int monitorers_num = 3;
++
++    idltest_init();
++    struct ovsdb_idl *idl_client = ovsdb_idl_create(ctx->argv[1],
++        &idltest_idl_class, false, true);
++
++    ovsdb_idl_add_table (idl_client, &idltest_table_simple);
++    ovsdb_idl_add_column(idl_client, &idltest_simple_col_b);
++    ovsdb_idl_add_column(idl_client, &idltest_simple_col_ba);
++    ovsdb_idl_add_column(idl_client, &idltest_simple_col_i);
++    ovsdb_idl_add_column(idl_client, &idltest_simple_col_s);
++    ovsdb_idl_add_column(idl_client, &idltest_simple_col_r);
++    ovsdb_idl_add_column(idl_client, &idltest_simple_col_u);
++    ovsdb_idl_add_column(idl_client, &idltest_simple_col_ra);
++    ovsdb_idl_add_column(idl_client, &idltest_simple_col_ia);
++    ovsdb_idl_add_column(idl_client, &idltest_simple_col_sa);
++    ovsdb_idl_add_column(idl_client, &idltest_simple_col_ua);
++    ovsdb_idl_run(idl_client);
++    ovsdb_idl_get_initial_snapshot(idl_client);
++
++    /* Three child processes wait monitors cells. Parent process is
++     * used for the client
++     */
++    pid_t pid_child[monitorers_num];
++    for (i = 0; i < monitorers_num; i++) {
++
++        pid_child[i] = fork();
++        if (pid_child[i] == -1) {
++            /* error handling here, if needed */
++            exit(1);
++        }
++        if (pid_child[i] == 0) {
++            wait_monitor_session(ctx, i, enable_periodicity, not_monitored_cell);
++            exit(0);
++        }
++    }
++
++    /* This pause is required in the client process to allow monitoring sessions
++     * to be properly set up before sending the blocking wait to the server
++     */
++    sleep(1);
++
++    enum ovsdb_idl_txn_status status;
++    status = process_wait_until_unblock(
++            idl_client,
++            wait_block_timeout,
++            no_rows,
++            no_columns);
++    printf("%03d: Wait monitor result: %d\n",
++            step, status);
++
++    /* Terminate all the sessions processes */
++    for (int i = 0; i < monitorers_num; ++i) {
++        kill(pid_child[i], SIGKILL);
++    }
++
++    ovsdb_idl_destroy(idl_client);
++    return;
++}
++
++
+ static struct ovs_cmdl_command all_commands[] = {
+     { "log-io", NULL, 2, INT_MAX, do_log_io },
+     { "default-atoms", NULL, 0, 0, do_default_atoms },
+@@ -2727,6 +3114,7 @@ static struct ovs_cmdl_command all_commands[] = {
+     { "idl-fetch-table", NULL, 1, INT_MAX, do_fetch_table },
+     { "idl-compound-index", NULL, 2, 2, do_idl_compound_index },
+     { "idl-priority-session", NULL, 1, 1, do_idl_priority_session },
++    { "wait-monitor", NULL, 1, INT_MAX, do_wait_monitor_test },
+     { "help", NULL, 0, INT_MAX, do_help },
+     { NULL, NULL, 0, 0, NULL },
+ };
+-- 
+2.7.4
+
