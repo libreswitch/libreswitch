@@ -27,4 +27,4 @@ do_install() {
 	oe_runmake install DESTDIR=${D} MAN1DIR=share/man/man1
 }
 
-BBCLASSEXTEND = "native"
+BBCLASSEXTEND = "native nativesdk"
