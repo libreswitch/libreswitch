@@ -1,12 +1,21 @@
-Author: Diego Dompe <dompe@hpe.com>
-Date:   Sat Jun 25 06:49:36 2016 -0600
-
-Add optional C extension wrapper for Python JSON parsing
+From 25c22f39a043b1683896a7f0509013ab73cf539a Mon Sep 17 00:00:00 2001
+From: Diego Dompe <dompe@hpe.com>
+Date: Wed, 13 Jul 2016 13:39:40 -0600
+Subject: [PATCH 31/32] Add optional C extension wrapper for Python JSON
+ parsing
 
 Backport from https://github.com/openvswitch/ovs/commit/e71d42188e08afdb8de04ebb860c895445b623a3
 
 Change-Id: Id64d5f874e2197e406d95fa894edcf339f20d634
 Signed-off-by: Diego Dompe <dompe@hpe.com>
+Signed-off-by: Esteban Rodriguez Betancourt <estebarb@hpe.com>
+---
+ python/automake.mk |   3 +
+ python/ovs/_json.c | 268 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ python/ovs/json.py |  11 +++
+ python/setup.py    |  57 +++++++++++-
+ 4 files changed, 337 insertions(+), 2 deletions(-)
+ create mode 100644 python/ovs/_json.c
 
 diff --git a/python/automake.mk b/python/automake.mk
 index 42b428a..69b42ef 100644
@@ -326,7 +335,7 @@ index 0c41fc0..bde0928 100644
          self.check_trailer = check_trailer
  
 diff --git a/python/setup.py b/python/setup.py
-index 889d215..cc4c82b 100644
+index 889d215..4307266 100644
 --- a/python/setup.py
 +++ b/python/setup.py
 @@ -13,7 +13,12 @@
@@ -407,3 +416,6 @@ index 889d215..cc4c82b 100644
 +    del(setup_args['cmdclass'])
 +    del(setup_args['ext_modules'])
 +    setuptools.setup(**setup_args)
+-- 
+2.7.4
+
