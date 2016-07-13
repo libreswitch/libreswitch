@@ -1,0 +1,36 @@
+From e0430064dc714d72a97a231a7315cdb27bf4c354 Mon Sep 17 00:00:00 2001
+From: midhan <nitish.midha@hpe.com>
+Date: Fri, 1 Jul 2016 13:21:18 -0700
+Subject: [PATCH 33/33] new: dev: Ofproto mirror bundle.
+
+The ofproto_mirror_bundle struct is to enable mirror_configure to pair a
+mirror source or destination port with whatever bridge or VRF ofproto it is
+currently associated with.
+This association of ofprotos with ports allows the PD layer to locate a given
+port via it's ofproto number when the mirror is created/modified via mirror_set.
+
+Change-Id: Ibe984dffd8c271d7bd771a547e68c433222abb3c
+Signed-off-by: midhan <nitish.midha@hpe.com>
+---
+ ofproto/ofproto.h | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/ofproto/ofproto.h b/ofproto/ofproto.h
+index a0b4a70..87bde1d 100644
+--- a/ofproto/ofproto.h
++++ b/ofproto/ofproto.h
+@@ -63,6 +63,11 @@ struct ofproto_controller_info {
+     struct smap pairs;
+ };
+ 
++struct ofproto_mirror_bundle {
++    struct ofproto *ofproto;
++    void *aux;
++};
++
+ struct ofproto_sflow_options {
+     struct sset targets;
+     uint32_t sampling_rate;
+-- 
+2.7.4
+
