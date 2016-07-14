@@ -15,10 +15,14 @@ SRCREV = "d117506c5c73dc88ad9dd71a7cf7a2e4aa5696a3"
 PV = "git${SRCPV}"
 
 S = "${WORKDIR}/git"
-
+FILES_${PN} += "/usr/share/opsplugins "
 do_install_append() {
      install -d ${D}${systemd_unitdir}/system
      install -m 0644 ${WORKDIR}/ops-portd.service ${D}${systemd_unitdir}/system/
+     install -d ${D}/usr/share/opsplugins
+     for plugin in $(find ${S}/ops/opsplugins -name "*.py"); do \
+         install -m 0644 ${plugin} ${D}/usr/share/opsplugins
+     done
 }
 
 SYSTEMD_PACKAGES = "${PN}"
