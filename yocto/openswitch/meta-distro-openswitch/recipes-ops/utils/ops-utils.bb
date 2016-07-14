@@ -6,7 +6,7 @@ DEPENDS = "ops-openvswitch"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-utils;protocol=https;branch=rel/dill"
 
-SRCREV = "fe1dbead98ee672cbb86c38cd7d6fa3fc74a7863"
+SRCREV = "2d5eeb4b857606657f6204f8a8c74c9d5d924373"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
