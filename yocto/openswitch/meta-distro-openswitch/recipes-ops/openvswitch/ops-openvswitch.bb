@@ -24,6 +24,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-openvswitch;protocol=http;bra
    file://0016-Adding-assert-strdup-vrf-name.patch \
    file://0017-setting-and-fetching-vlan-using-new-vlan_tag-column-.patch \
    file://0018-Add-optional-c-extension-wrapper-for-python-json-parsing.patch \
+   file://0019-Adding-support-for-10G-SFP_ER-module.patch \
 "
 
 SRCREV = "ae74c6e7d4086bdc9942b33f2410ef87403e336e"
