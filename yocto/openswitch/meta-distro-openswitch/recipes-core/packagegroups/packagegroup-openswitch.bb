@@ -36,6 +36,7 @@ RDEPENDS_packagegroup-ops-base = "\
     valgrind \
     valgrind-memcheck \
     valgrind-helgrind \
+    tacacs-plus-client \
     sudo \
     pwauth \
     shadow \
