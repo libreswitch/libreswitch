@@ -206,6 +206,9 @@ try:
     generate_config_file(config)
     system("logrotate /etc/logrotate-ops.conf")
 
+    if (os.path.isfile('/var/log/audit/audit.log.1.gz')):
+        system("mv audit/*.1.gz .")
+
     if cleanLogfiles("/var/log/") and target != "local":
         if protocol == 'tftp':
             sendLogFilesTftp("/var/log/")
