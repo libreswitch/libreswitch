@@ -1,6 +1,6 @@
 SUMMARY = "OpenNSL CDP Release"
 LICENSE = "Proprietary & Apache-2.0 & GPLv2"
-LIC_FILES_CHKSUM = "file://bin/LICENSE;md5=e4111c2d8b944da9d44a0c458635d87f \
+LIC_FILES_CHKSUM = "file://bin/LICENSE;md5=cc5f99ada679cad94d69b8ebd767e28a \
                     file://${COMMON_LICENSE_DIR}/GPL-2.0;md5=801f80980d171dd6425610833a22dbe6 \
                    "
 
