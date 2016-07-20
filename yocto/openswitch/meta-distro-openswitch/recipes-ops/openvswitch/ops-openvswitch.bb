@@ -26,6 +26,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-openvswitch;protocol=http;bra
    file://0019-Adding-support-for-10G-SFP_ER-module.patch \
    file://0020-new-dev-Ofproto-mirror-bundle.patch \
    file://0021-Strong-references-cascade-fix.patch \
+   file://0022-Reduce-number-of-operations-for-IDL-on-demand-fetchi.patch \
 "
 
 SRCREV = "ae74c6e7d4086bdc9942b33f2410ef87403e336e"
