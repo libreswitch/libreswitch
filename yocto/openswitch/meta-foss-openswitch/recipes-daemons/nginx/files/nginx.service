@@ -1,15 +1,12 @@
 [Unit]
 Description=The NGINX HTTP and reverse proxy server
-# TODO: We need to have restd start before us as it is the thing that generates the
-# certificates for us for now.
-After=syslog.target network.target remote-fs.target nss-lookup.target restd.service
+Requires=certificate.service
+After=syslog.target network.target remote-fs.target nss-lookup.target certificate.service
+ReloadPropagatedFrom=certificate.service
+PartOf=certificate.service
 
 [Service]
 Type=forking
-# This is needed because we have a dependency loop between nginx's SSL certificate
-# and ops-restd (which generates the certificates on startup). This is going away
-# when we move SSL generation.
-ExecStartPre=/bin/sh -c "while [ ! -f /etc/ssl/certs/server.crt ]; do /bin/sleep 0.1; done"
 ExecStartPre=/usr/bin/install -o www-data -m0700 -d /var/log/nginx /var/run/nginx
 ExecStartPre=/bin/rm -f /var/run/nginx/nginx.pid
 ExecStart=/usr/sbin/nginx

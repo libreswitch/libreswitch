@@ -4,7 +4,7 @@ LICENSE = "BSD"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=0bb58ed0dfd4f5dbece3b52aba79f023"
 
 DEPENDS = "openssl zlib libpcre"
-RDEPENDS_${PN} = "${PN}-config"
+RDEPENDS_${PN} = "${PN}-config ops-certificate"
 PACKAGES += "${PN}-config"
 
 SRC_URI = "http://nginx.org/download/nginx-1.9.11.tar.gz \
