@@ -7,7 +7,7 @@ BRANCH ?= "${OPS_REPO_BRANCH}"
 SRC_URI = "${OPS_REPO_BASE_URL}/ops-webui;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
 "
 
-SRCREV = "68a9426225bba1ea6f85e503635a9802a7050fa0"
+SRCREV = "52fec190b8cc5bb1c1cda1e78004f68e64c8c93c"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
@@ -37,11 +37,13 @@ do_compile() {
         ./tools/scripts/extract-node-tars
     fi
     oe_runnpm run buildprod
+    oe_runnpm run errorpages
 }
 
 do_install() {
-    install -d ${D}/srv/www/static
+    install -d ${D}/srv/www/static/errors
     cp -R build/* ${D}/srv/www/static
+    cp errors/build/* ${D}/srv/www/static/errors/
 }
 
 do_unittest() {
