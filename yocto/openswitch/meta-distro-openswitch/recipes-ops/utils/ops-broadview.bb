@@ -9,7 +9,7 @@ BRANCH ?= "${OPS_REPO_BRANCH}"
 SRC_URI = "${OPS_REPO_BASE_URL}/ops-broadview;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
           file://ops-broadview.service"
 
-SRCREV="22c967c526adaa2a1342b75d0f8fceedd177a137"
+SRCREV="b9002fab5fe1f27628bfd403631840ff4a118cf2"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
