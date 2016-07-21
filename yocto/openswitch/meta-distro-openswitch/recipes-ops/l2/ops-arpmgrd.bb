@@ -10,7 +10,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-arpmgrd;protocol=${OPS_REPO_PROTOCOL};branch
            file://ops-arpmgrd.service \
            "
 
-SRCREV = "bfe681ac58f746c9b07766c3e5aaf42245cfa77e"
+SRCREV = "cef0d480f1b59306c582fd2db29277975a67d4bc"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.

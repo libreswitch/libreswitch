@@ -10,7 +10,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-vrfmgrd;protocol=${OPS_REPO_PROTOCOL};branch
            file://ops-vrfmgrd.service \
            "
 
-SRCREV = "59badf6c38b3efe0821f58a648a1aba756749098"
+SRCREV = "728ef407d9fc742a4391ba99af967c8b77d9d820"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
