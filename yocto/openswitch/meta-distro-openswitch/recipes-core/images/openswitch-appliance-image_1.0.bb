@@ -14,7 +14,7 @@ IMAGE_ROOTFS_SIZE = "1015808"
 FINAL_ROOTFS_SIZE = "1048576"
 
 # Do a quiet boot with limited console messages
-APPEND += "quiet"
+APPEND += "quiet rootfstype=ext4"
 SYSLINUX_PROMPT ?= "0"
 SYSLINUX_TIMEOUT ?= "0"
 
