@@ -5,12 +5,11 @@ Description=OpenSwitch ops-ipsecd Module Daemon
 After=ovsdb-server.service ops-init.service
 
 [Service]
-Type=forking
+Type=simple
 CPUSchedulingPolicy=rr
 CPUSchedulingPriority=3
 ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-ipsecd.pid
-ExecStart=/sbin/ip netns exec swns /usr/bin/ops-ipsecd --detach --pidfile -vSYSLOG:INFO
-PIDFile=/var/run/openvswitch/ops-ipsecd.pid
+ExecStart=/sbin/ip netns exec swns /usr/bin/ops-ipsecd --pidfile -vSYSLOG:INFO
 Restart=on-abort
 
 [Install]

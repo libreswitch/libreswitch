@@ -5,10 +5,9 @@ Description=OpenSwitch VRRP Daemon
 After=ovsdb-server.service ops-init.service
 
 [Service]
-Type=forking
+Type=simple
 ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-vrrpd.pid
-ExecStart=/usr/bin/ops-vrrpd --detach --pidfile -vSYSLOG:INFO
-PIDFile=/var/run/openvswitch/ops-vrrpd.pid
+ExecStart=/usr/bin/ops-vrrpd --pidfile -vSYSLOG:INFO
 Restart=on-abort
 
 [Install]

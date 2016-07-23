@@ -5,10 +5,9 @@ Description=Open vSwitch Switch Daemon for the Simulator
 After=ovsdb-server-sim.service ops-init.service
 
 [Service]
-Type=forking
-ExecStart=/sbin/ip netns exec swns /opt/openvswitch/sbin/ovs-vswitchd-sim --no-chdir --pidfile --detach -vSYSLOG:INFO
+Type=simple
+ExecStart=/sbin/ip netns exec swns /opt/openvswitch/sbin/ovs-vswitchd-sim --no-chdir --pidfile -vSYSLOG:INFO
 WorkingDirectory=/var/run/openvswitch-sim
-PIDFile=/var/run/openvswitch-sim/ovs-vswitchd-sim.pid
 Restart=on-abort
 
 [Install]

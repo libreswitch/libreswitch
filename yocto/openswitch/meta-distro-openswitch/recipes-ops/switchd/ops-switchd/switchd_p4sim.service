@@ -5,10 +5,9 @@ Description=OpenSwitch Daemon for P4 Switch Simulator
 After=ovsdb-server.service ops-init.service simple_switch.service
 
 [Service]
-Type=forking
-ExecStart=/sbin/ip netns exec swns /usr/sbin/ops-switchd --no-chdir --pidfile --detach -vSYSLOG:INFO
+Type=simple
+ExecStart=/sbin/ip netns exec swns /usr/sbin/ops-switchd --no-chdir --pidfile -vSYSLOG:INFO
 WorkingDirectory=/var/run/openvswitch
-PIDFile=/var/run/openvswitch/ops-switchd.pid
 Restart=on-abort
 
 [Install]
