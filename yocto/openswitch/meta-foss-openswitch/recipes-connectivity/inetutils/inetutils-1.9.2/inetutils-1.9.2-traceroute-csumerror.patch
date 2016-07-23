@@ -1,0 +1,29 @@
+--- old/src/traceroute.c	2013-10-09 05:00:21.000000000 -0700
++++ new/src/traceroute.c	2016-07-23 02:11:46.226580091 -0700
+@@ -468,6 +468,7 @@
+ {
+   int fd;
+   const int *ttlp;
++  const int csum = 1;
+ 
+   assert (t);
+   ttlp = &t->ttl;
+@@ -485,7 +486,17 @@
+       if (setsockopt (t->udpfd, IPPROTO_IP, IP_TTL, ttlp,
+ 		      sizeof (*ttlp)) < 0)
+         error (EXIT_FAILURE, errno, "setsockopt");
+-    }
++
++      /* UDP checksum calculated by kernel is incorrect if packet
++         has ip options. Hence instructing kernel to not compute
++         checksum int his case */
++      if (len_ip_opts)
++      {
++          if (setsockopt (t->udpfd, SOL_SOCKET, SO_NO_CHECK,
++              (const void*) &csum, sizeof (csum)) < 0)
++            error (EXIT_FAILURE, errno, "setsockopt for no checksum");
++      }
++  }
+ 
+   if (t->type == TRACE_ICMP || t->type == TRACE_UDP)
+     {
