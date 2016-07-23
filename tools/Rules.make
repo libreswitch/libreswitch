@@ -41,7 +41,7 @@ DISTRO_VERSION=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bit
 STAGING_DIR_TARGET=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^STAGING_DIR_TARGET=/ { gsub(/"/, "", $$2); print $$2 }')
 STAGING_DIR_NATIVE=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^STAGING_DIR_NATIVE=/ { gsub(/"/, "", $$2); print $$2 }')
 DEPLOY_DIR_IMAGE=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^DEPLOY_DIR_IMAGE=/ { gsub(/"/, "", $$2); print $$2 }')
-DEPLOY_DIR_IMAGE_ALL=$(subst $(CONFIGURED_PLATFORM),,$(DEPLOY_DIR_IMAGE))
+DEPLOY_DIR_IMAGE_ALL=$(shell dirname $(DEPLOY_DIR_IMAGE))
 # Used to identify the valid layers
 YOCTO_LAYERS=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F'=' '/^BBLAYERS=/ { print $$2 }')
 BASE_UIMAGE_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/uImage
