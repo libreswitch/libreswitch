@@ -207,7 +207,7 @@ try:
     system("logrotate /etc/logrotate-ops.conf")
 
     if (os.path.isfile('/var/log/audit/audit.log.1.gz')):
-        system("mv audit/*.1.gz .")
+        system("mv /var/log/audit/*.1.gz /var/log/")
 
     if cleanLogfiles("/var/log/") and target != "local":
         if protocol == 'tftp':
