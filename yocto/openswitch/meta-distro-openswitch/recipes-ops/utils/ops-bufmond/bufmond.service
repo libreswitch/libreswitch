@@ -8,7 +8,7 @@ After=ovsdb-server.service ops-init.service
 Type=simple
 RemainAfterExit=yes
 ExecStartPre=/bin/rm -f /var/run/openvswitch/bufmond.pid
-ExecStart=/sbin/ip netns exec nonet /usr/bin/bufmond --pidfile -vSYSLOG:INFO
+ExecStart=/sbin/ip netns exec nonet /usr/bin/bufmond --pidfile
 
 [Install]
 WantedBy=multi-user.target

@@ -7,7 +7,7 @@ After=ops-sysd.service ops-init.service
 [Service]
 Type=simple
 ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-pmd.pid
-ExecStart=/sbin/ip netns exec nonet /usr/bin/ops-pmd --pidfile -vSYSLOG:INFO
+ExecStart=/sbin/ip netns exec nonet /usr/bin/ops-pmd --pidfile
 Restart=on-abort
 
 [Install]

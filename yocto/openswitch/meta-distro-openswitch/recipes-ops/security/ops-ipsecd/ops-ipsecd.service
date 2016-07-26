@@ -9,7 +9,7 @@ Type=simple
 CPUSchedulingPolicy=rr
 CPUSchedulingPriority=3
 ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-ipsecd.pid
-ExecStart=/sbin/ip netns exec swns /usr/bin/ops-ipsecd --pidfile -vSYSLOG:INFO
+ExecStart=/sbin/ip netns exec swns /usr/bin/ops-ipsecd --pidfile
 Restart=on-abort
 
 [Install]

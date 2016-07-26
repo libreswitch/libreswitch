@@ -6,7 +6,7 @@ After=ovsdb-server-sim.service ops-init.service
 
 [Service]
 Type=simple
-ExecStart=/sbin/ip netns exec swns /opt/openvswitch/sbin/ovs-vswitchd-sim --no-chdir --pidfile -vSYSLOG:INFO
+ExecStart=/sbin/ip netns exec swns /opt/openvswitch/sbin/ovs-vswitchd-sim --no-chdir --pidfile
 WorkingDirectory=/var/run/openvswitch-sim
 Restart=on-abort
 

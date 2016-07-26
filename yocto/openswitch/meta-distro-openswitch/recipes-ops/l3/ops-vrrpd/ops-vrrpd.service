@@ -7,7 +7,7 @@ After=ovsdb-server.service ops-init.service
 [Service]
 Type=simple
 ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-vrrpd.pid
-ExecStart=/usr/bin/ops-vrrpd --pidfile -vSYSLOG:INFO
+ExecStart=/usr/bin/ops-vrrpd --pidfile
 Restart=on-abort
 
 [Install]

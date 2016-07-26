@@ -6,7 +6,7 @@ After=ovsdb-server.service ops-init.service
 [Service]
 Type=simple
 ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-broadview.pid
-ExecStart= /usr/sbin/ops-broadview --pidfile -vSYSLOG:INFO
+ExecStart= /usr/sbin/ops-broadview --pidfile
 Restart=on-abort
 
 [Install]

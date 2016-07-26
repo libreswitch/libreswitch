@@ -7,5 +7,5 @@ After=ovsdb-server.service ops-init.service
 [Service]
 Type=simple
 ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-mclagkad.pid
-ExecStart=/sbin/ip netns exec swns /usr/bin/ops-mclagkad --pidfile -vSYSLOG:INFO
+ExecStart=/sbin/ip netns exec swns /usr/bin/ops-mclagkad --pidfile
 Restart=on-abort
