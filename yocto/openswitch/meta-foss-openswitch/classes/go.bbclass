@@ -8,29 +8,26 @@ def map_go_arch(a, d):
     else:
         bb.error("cannot map '%s' to a Go architecture" % a)
 
-
-def go_extldflags(d):
-    _, cc_args = d.getVar('CC').split(' ', 1)
-    return cc_args + d.getVar('CFLAGS')
-
-
 export GOOS = "linux"
 export GOARCH = "${@map_go_arch(d.getVar('TARGET_ARCH', True), d)}"
+# We do need to setup goroot, otherwise the sstate'ed go tool will inject
+# the calculate the wrong path
+export GOROOT = "${STAGING_DIR_NATIVE}/${libdir}/${TARGET_SYS}/go"
+export GOROOT_class-native = "${libdir}/go"
 export GOROOT_FINAL = "${libdir}/${TARGET_SYS}/go"
 export GOBIN_FINAL = "${GOROOT_FINAL}/bin/${GOOS}_${GOARCH}"
 export GOPKG_FINAL = "${GOROOT_FINAL}/pkg/${GOOS}_${GOARCH}"
 export GOSRC_FINAL = "${GOROOT_FINAL}/src"
-export CGO_CFLAGS = "${TARGET_CFLAGS}"
-export CGO_DFLAGS = "${TARGET_LDFLAGS}"
-
-# TODO(bluecmd): This is a hack to work around that Go doesn't have any
-# good ways of passing arguments down to an external linker and doesn't
-# fully respect CC due to a bug where the arguments passed inside CC are
-# ignored.
-# Use like "go build "-ldflags $CGO_LDFLAGS" x"
-export CGO_LDFLAGS = "-linkmode=external '-extldflags=${@go_extldflags(d)}'"
+export CFLAGS=""
+export LDFLAGS=""
+export CGO_CFLAGS="${BUILDSDK_CFLAGS} --sysroot=${STAGING_DIR_TARGET}"
+export CGO_LDFLAGS="${BUILDSDK_LDFLAGS} --sysroot=${STAGING_DIR_TARGET}"
+# The go code may fetch further code during the build
+export http_proxy
+export https_proxy
 
 DEPENDS += "go-cross"
+DEPENDS_class-native = "go-native"
 
 FILES_${PN}-staticdev += "${GOSRC_FINAL}/${GO_IMPORT}"
 FILES_${PN}-staticdev += "${GOPKG_FINAL}/${GO_IMPORT}*"

@@ -10,7 +10,10 @@ S = "${WORKDIR}/git"
 SRC_URI += " \
     file://node-exporter.service \
     file://node-exporter.nginx \
+    file://use-native-promu.patch \
 "
+
+DEPENDS = "prometheus-promu-native"
 
 inherit go useradd
 
@@ -21,6 +24,8 @@ do_compile() {
     mkdir -p go/src/github.com/prometheus
     ln -sf ${S} go/src/github.com/prometheus/node_exporter
     cd go/src/github.com/prometheus/node_exporter
+    # Use the native promu from the native sysroot path
+    export PROMU=promu
     GOPATH="${B}/go" make
 }
 
@@ -34,6 +39,8 @@ do_install() {
     install -m 0644 ${WORKDIR}/node-exporter.nginx \
         ${D}/etc/nginx/conf.d/backend-node-exporter.conf
 }
+
+CLEANBROKEN = "1"
 
 SYSTEMD_PACKAGES = "${PN}"
 SYSTEMD_SERVICE_${PN} = "node-exporter.service"
