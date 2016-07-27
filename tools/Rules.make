@@ -406,9 +406,12 @@ ifneq ($(GITREVIEWUSER),)
 endif
 REVIEWUSER?=$(USER)
 
+# Some build systems derivated from OpenSwitch may not have a .gitreview file
 setup-git-review:
-	$(V) $(ECHO) "$(BLUE)Setting up git-review system...$(GRAY)\n"
-	$(V)$(MAKE) _setup-git-review
+	$(V) if [ -f .gitreview ] ; then \
+	  $(ECHO) "$(BLUE)Setting up git-review system...$(GRAY)\n" ; \
+	  $(MAKE) _setup-git-review ; \
+	fi
 
 _setup-git-review:: $(addprefix .git/hooks/,$(notdir $(wildcard $(BUILD_ROOT)/tools/bin/hooks/*)))
 	$(V) if which git-review > /dev/null ; then \
