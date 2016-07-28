@@ -1,0 +1,110 @@
+From 9647ad32cfb9055db8df4268c15ca78fb2de7ea0 Mon Sep 17 00:00:00 2001
+From: Sudhakar Mohan <sudhakar.mohan@hpe.com>
+Date: Thu, 2 Jun 2016 13:32:59 -0700
+Subject: [PATCH 16/22] Fix static analysis issues
+
+Change-Id: If65ad2e837d048243a2d7baaf2a7b487e1b65c21
+Signed-off-by: Sudhakar Mohan <sudhakar.mohan@hpe.com>
+
+%% original patch: 0016-Adding-assert-strdup-vrf-name.patch
+
+%% original patch: 0016-Fix-static-analysis-issues.patch
+---
+ lib/ovsdb-idl.c       | 12 +++++++++---
+ lib/skiplist.c        |  3 +++
+ utilities/ovs-vsctl.c |  1 +
+ 3 files changed, 13 insertions(+), 3 deletions(-)
+
+diff --git a/lib/ovsdb-idl.c b/lib/ovsdb-idl.c
+index f8217af..de3ff97 100644
+--- a/lib/ovsdb-idl.c
++++ b/lib/ovsdb-idl.c
+@@ -1141,6 +1141,7 @@ ovsdb_idl_parse_fetch_reply__(struct ovsdb_idl *idl,
+     struct ovsdb_idl_table *table = fetch_node->table;
+     unsigned int column_idx;
+     struct ovsdb_datum *old;
++    struct ovsdb_error *error;
+
+     if (fetch_reply->type != JSON_OBJECT) {
+         return ovsdb_syntax_error(fetch_reply, NULL,
+@@ -1183,8 +1184,9 @@ ovsdb_idl_parse_fetch_reply__(struct ovsdb_idl *idl,
+                             "the requested table value", table->class->name);
+                 }
+
+-                if (ovsdb_datum_from_json(&column_data, &column->type,
+-                            column_value, NULL) != NULL) {
++                error = ovsdb_datum_from_json(&column_data, &column->type,
++                            column_value, NULL);
++                if (error != NULL) {
+                     /* In case this was a column request, remove it from the
+                      * outstanding_col_fetch_reqs */
+                     if (fetch_node->fetch_type == OVSDB_IDL_COLUMN_FETCH) {
+@@ -1192,7 +1194,7 @@ ovsdb_idl_parse_fetch_reply__(struct ovsdb_idl *idl,
+                                               column->name);
+                     }
+
+-                    return ovsdb_syntax_error(fetch_reply, NULL,
++                    return ovsdb_wrap_error(error,
+                             "Fetch reply for column %s contains bad column value",
+                             column->name);
+                 }
+@@ -1460,6 +1462,7 @@ ovsdb_idl_create_index_(const struct ovsdb_idl_table *table)
+     struct ovsdb_idl_index *index;
+     size_t max_columns = table->class->n_columns;
+     index = malloc(sizeof(struct ovsdb_idl_index));
++    ovs_assert(index);
+     index->n_columns = 0;
+     index->alloc_columns = max_columns;
+     index->skiplist = skiplist_create(64, ovsdb_idl_index_generic_comparer,
+@@ -1571,6 +1574,9 @@ ovsdb_idl_index_add_column(struct ovsdb_idl_index *index,
+         column_comparator *tmp_cmps = malloc(index->alloc_columns);
+         int *tmp_order = malloc(index->alloc_columns);
+
++        ovs_assert(*tmp_cols);
++        ovs_assert(tmp_cmps);
++        ovs_assert(tmp_order);
+         memcpy(tmp_cols, index->columns,
+                index->n_columns * sizeof(struct ovsdb_idl_column *));
+         memcpy(tmp_cmps, index->comparers,
+diff --git a/lib/skiplist.c b/lib/skiplist.c
+index 01e296c..3f2490e 100644
+--- a/lib/skiplist.c
++++ b/lib/skiplist.c
+@@ -26,6 +26,7 @@
+ #include <stdint.h>
+ #include <stdlib.h>
+ #include <string.h>
++#include <util.h>
+
+ #include "skiplist.h"
+ #include "random.h"
+@@ -83,6 +84,7 @@ skiplist_create(int max_levels, skiplist_comparator object_comparator,
+     random_init();
+     struct skiplist *sl;
+     sl = malloc(sizeof(struct skiplist));
++    ovs_assert(sl);
+     sl->cfg = configuration;
+     sl->max_levels = max_levels < SKIPLIST_MAX_LEVELS ?
+             max_levels : SKIPLIST_MAX_LEVELS;
+@@ -127,6 +129,7 @@ skiplist_create_node(int levels, const void *object)
+ {
+     struct skiplist_node *new_node = malloc(sizeof(struct skiplist_node) +
+                                   (levels+1) * sizeof(struct skiplist_node *));
++    ovs_assert(new_node);
+     new_node->data = object;
+     new_node->height = levels;
+     memset(new_node->forward, 0, (levels+1) * sizeof(struct skiplist_node *));
+diff --git a/utilities/ovs-vsctl.c b/utilities/ovs-vsctl.c
+index 3f06ee3..bcb94d3 100644
+--- a/utilities/ovs-vsctl.c
++++ b/utilities/ovs-vsctl.c
+@@ -681,6 +681,7 @@ add_vrf_to_cache(struct vsctl_context *ctx,
+     struct vsctl_vrf *vrf = xmalloc(sizeof *vrf);
+     vrf->vrf_cfg = vrf_cfg;
+     vrf->name = xstrdup(name);
++    ovs_assert(vrf->name);
+     list_init(&vrf->ports);
+     shash_add(&ctx->vrfs, vrf->name, vrf);
+     return vrf;
+--
+2.9.2

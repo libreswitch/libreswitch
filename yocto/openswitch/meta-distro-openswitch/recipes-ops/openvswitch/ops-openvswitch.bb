@@ -21,7 +21,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-openvswitch;protocol=http;bra
    file://0013-improve-mirror-PD-errors.patch \
    file://0014-Adding-support-for-SFP-ER-transceiver-modules.patch \
    file://0015-sFlow-CLI-restriction-changes.patch \
-   file://0016-Adding-assert-strdup-vrf-name.patch \
+   file://0016-Fix-static-analysis-issues.patch \
    file://0017-setting-and-fetching-vlan-using-new-vlan_tag-column-.patch \
    file://0018-Add-optional-c-extension-wrapper-for-python-json-parsing.patch \
    file://0019-Adding-support-for-10G-SFP_ER-module.patch \
