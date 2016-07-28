@@ -8,7 +8,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-broadview;protocol=https;bran
     file://ops-broadview.service"
 
 
-SRCREV="c98097852221dca1e98c1bcd390f4675c048e1d9"
+SRCREV="d1a6e7c908eaaa3726f3b412c4953e61cc1f9b9f"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
@@ -19,6 +19,7 @@ S = "${WORKDIR}/git"
 export  BV_OVS_INCLUDE="${STAGING_DIR_TARGET}/usr/include/ovs"
 export  BV_OUTPUT="${S}/output/deliverables"
 export  BV_TARGET_SYSROOT="${STAGING_DIR_TARGET}"
+export  BV_PLATFORM ?= "${MACHINE}"
 CFLAGS += "--sysroot=${STAGING_DIR_TARGET}"
 do_compile () {
     export CROSS_COMPILE="${TARGET_PREFIX}"
