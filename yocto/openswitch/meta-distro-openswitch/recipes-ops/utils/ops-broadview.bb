@@ -20,6 +20,7 @@ S = "${WORKDIR}/git"
 export  BV_OVS_INCLUDE="${STAGING_DIR_TARGET}/usr/include/ovs"
 export  BV_OUTPUT="${S}/output/deliverables"
 export  BV_TARGET_SYSROOT="${STAGING_DIR_TARGET}"
+export  BV_PLATFORM ?= "${MACHINE}"
 CFLAGS += "--sysroot=${STAGING_DIR_TARGET}"
 
 do_compile () {
