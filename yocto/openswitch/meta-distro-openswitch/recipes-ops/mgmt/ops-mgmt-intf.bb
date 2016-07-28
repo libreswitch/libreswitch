@@ -13,7 +13,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-mgmt-intf;protocol=${OPS_REPO_PROTOCOL};bran
            file://mgmt-intf.service \
          "
 
-SRCREV = "394601295f779fb6b82849901a98628ba2d825c7"
+SRCREV = "fdc8ab6562ffe3e9b2b4a4e30415d49782f19c04"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
