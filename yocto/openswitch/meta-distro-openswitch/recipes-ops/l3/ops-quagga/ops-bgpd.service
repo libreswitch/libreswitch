@@ -3,6 +3,7 @@
 [Unit]
 Description=OpenSwitch BGPD Daemon
 After=ovsdb-server.service ops-init.service
+OnFailure=switch-reboot@ops-bgpd.service
 
 [Service]
 Type=forking
