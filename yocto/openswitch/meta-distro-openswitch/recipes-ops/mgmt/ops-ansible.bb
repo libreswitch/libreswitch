@@ -6,7 +6,7 @@ RDEPENDS_${PN} = "python-syslog python-unixadmin python-compiler"
 
 SRC_URI = "git://git.openswitch.net/openswitch/ops-ansible;protocol=http;branch=rel/dill"
 
-SRCREV = "259d9168f7dbc57f4b89a31acd1867a00baa34f5"
+SRCREV = "e68a895900aebfc1c61c672505044962ecc1e835"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
