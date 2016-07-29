@@ -10,7 +10,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-restd;protocol=http;branch=re
            file://restd.service \
 "
 
-SRCREV = "52a0ea18595838dbbb229154d6a1dcb50dca9327"
+SRCREV = "2979c806384f914c8f1ac256060f9ec40fe8cfc1"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
