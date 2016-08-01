@@ -37,6 +37,8 @@ export https_proxy
 
 # Some well known locations
 KERNEL_STAGING_DIR=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^STAGING_KERNEL_DIR=/ { gsub(/"/, "", $$2); print $$2 }')
+KERNEL_PROVIDER=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^PREFERRED_PROVIDER_virtual\/kernel=/ { gsub(/"/, "", $$2); print $$2 }')
+STAGING_BINDIR_TOOLCHAIN=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^STAGING_BINDIR_TOOLCHAIN=/ { gsub(/"/, "", $$2); print $$2 }')
 DISTRO_VERSION=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^DISTRO_VERSION=/ { gsub(/"/, "", $$2); print $$2 }')
 STAGING_DIR_TARGET=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^STAGING_DIR_TARGET=/ { gsub(/"/, "", $$2); print $$2 }')
 STAGING_DIR_NATIVE=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^STAGING_DIR_NATIVE=/ { gsub(/"/, "", $$2); print $$2 }')
@@ -190,9 +192,12 @@ _kernel:
 	$(V) $(MAKE) _kernel_links
 	$(V) $(ECHO)
 
+KERNEL_BUILD_DIR=$(BUILDDIR)/tmp/work/$(CONFIGURED_MACHINE)*/$(KERNEL_PROVIDER)/*/*build/
+
 _kernel_links:
 	$(V)if test -f $(DISTRO_KERNEL_FILE) ; then ln -sf $(DISTRO_KERNEL_FILE) images/kernel-$(CONFIGURED_PLATFORM).bin ; fi
 	$(V)if test -f $(DISTRO_KERNEL_SYMBOLS_FILE) ; then ln -sf $(DISTRO_KERNEL_SYMBOLS_FILE) images/kernel-$(CONFIGURED_PLATFORM).elf ; fi
+	$(V)if [ -d $(KERNEL_BUILD_DIR) ] ; then ln -sf $(KERNEL_BUILD_DIR) images/kernel-src ; fi
 
 $(DISTRO_KERNEL_FILE) images/kernel-$(CONFIGURED_PLATFORM).bin:
 	$(V) $(MAKE) $(_KERNEL_TARGET)
@@ -336,6 +341,9 @@ endif
 # to fail. Unsetting it manually
 devshell: header
 	$(V)unset MAKEOVERRIDES ; $(call BITBAKE, -c devshell $(RECIPE))
+
+source_toolchain:
+	$(V)echo "export PATH=$(STAGING_BINDIR_TOOLCHAIN):$${PATH}"
 
 .PHONY: sdk _sdk
 sdk: header _sdk
