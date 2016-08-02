@@ -8,7 +8,7 @@ SRC_URI = "git://git.openswitch.net/openswitch/ops-powerd;protocol=http;branch=r
            file://ops-powerd.service \
 "
 
-SRCREV = "cfbadc6dd83ff7ae42556922d5e6ba728993308a"
+SRCREV = "5ed766b27d39e0001d72d0536876789a38598103"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
