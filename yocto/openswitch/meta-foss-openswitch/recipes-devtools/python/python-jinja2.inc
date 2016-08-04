@@ -17,10 +17,13 @@ S = "${WORKDIR}/${SRCNAME}-${PV}"
 CLEANBROKEN = "1"
 
 PR = "r3"
+
 RDEPENDS_${PN} += "${PYTHON_PN}-io ${PYTHON_PN}-pickle ${PYTHON_PN}-crypt \
     ${PYTHON_PN}-math ${PYTHON_PN}-netclient ${PYTHON_PN}-re ${PYTHON_PN}-textutils \
     ${PYTHON_PN}-lang ${PYTHON_PN}-pprint ${PYTHON_PN}-shell ${PYTHON_PN}-markupsafe"
 
-RDEPENDS_${PN}_class-native = "${PYTHON_PN} ${PYTHON_PN}-textutils ${PYTHON_PN}-markupsafe"
+RDEPENDS_${PN}_class-native = ""
+
+DEPENDS_class-native = "${PYTHON_PN}-native ${PYTHON_PN}-markupsafe-native"
 
 BBCLASSEXTEND = "native nativesdk"
