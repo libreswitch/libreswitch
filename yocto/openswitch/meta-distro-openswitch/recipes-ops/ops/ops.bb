@@ -10,12 +10,9 @@ SRCREV = "21d3b0c3e9faed2e6ae16c90364e0eba52b02342"
 
 DEPENDS = " \
            python-jsonref-native \
+           python-jsonschema-native \
            python-pycksum-native \
           "
-
-PYTHONPATH = "${STAGING_DIR_NATIVE}${PYTHON_SITEPACKAGES_DIR}"
-
-export PYTHONPATH
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
@@ -32,4 +29,4 @@ FILES_${PN} += " \
 
 OPS_SCHEMA_PATH="${S}/schema"
 
-inherit openswitch cmake
+inherit openswitch cmake pythonnative
