@@ -1,22 +1,58 @@
-From dd6e585e8e55aa339e57b1f6962bbc2ff5998fd9 Mon Sep 17 00:00:00 2001
+From 51f07a7df566a1407cabaeb74f5eb764b1cf2261 Mon Sep 17 00:00:00 2001
 From: Chinh Le <chinh.le@hpe.com>
 Date: Tue, 19 Jul 2016 20:30:03 -0700
-Subject: [PATCH] Reduce number of operations for IDL on-demand fetching.
+Subject: [PATCH 22/22] Reduce number of operations for IDL on-demand fetching.
 
 Reducing on-demand fetch operations for performance improvements.
-
 TG-1234
 
 Change-Id: Ie2e242f89acaf7bc8e63e8e29ab037e275ba0f23
 Signed-off-by: Chinh Le <chinh.le@hpe.com>
+
+%% original patch: 0022-Reduce-number-of-operations-for-IDL-on-demand-fetchi.patch
+Changing some logs to dbg level to improve performance.
+TG-1725
+
+Signed-off-by: Madhulika Madishetty <madhulika.madishetty@hpe.com>
 ---
- python/ovs/db/idl.py | 77 ++++++++++++++++++++++++++++++++++++++++++----------
- 1 file changed, 62 insertions(+), 15 deletions(-)
+ python/ovs/db/idl.py | 87 ++++++++++++++++++++++++++++++++++++++++------------
+ 1 file changed, 67 insertions(+), 20 deletions(-)
 
 diff --git a/python/ovs/db/idl.py b/python/ovs/db/idl.py
-index 764a930..87f9a52 100644
+index 764a930..3d8859b 100644
 --- a/python/ovs/db/idl.py
 +++ b/python/ovs/db/idl.py
+@@ -356,7 +356,7 @@ class Idl(object):
+         try:
+             self.__do_parse_update(update)
+         except error.Error, e:
+-            vlog.err("%s: error parsing update: %s"
++            vlog.dbg("%s: error parsing update: %s"
+                      % (self._session.get_name(), e))
+
+     def __do_parse_update(self, table_updates):
+@@ -424,8 +424,8 @@ class Idl(object):
+                 self.notify(ROW_DELETE, row)
+             else:
+                 # XXX rate-limit
+-                vlog.warn("cannot delete missing row %s from table %s"
+-                          % (uuid, table.name))
++                vlog.dbg("cannot delete missing row %s from table %s"
++                         % (uuid, table.name))
+         elif not old:
+             # Insert row.
+             if not row:
+@@ -452,8 +452,8 @@ class Idl(object):
+                 changed = True
+                 op = ROW_CREATE
+                 # XXX rate-limit
+-                vlog.warn("cannot modify missing row %s in table %s"
+-                          % (uuid, table.name))
++                vlog.dbg("cannot modify missing row %s in table %s"
++                         % (uuid, table.name))
+             if self.__row_update(table, row, new):
+                 changed = True
+                 self.notify(op, row, Row.from_json(self, table, uuid, old))
 @@ -939,7 +939,8 @@ class Transaction(object):
          self._inc_row = None
          self._inc_column = None
@@ -140,5 +176,5 @@ index 764a930..87f9a52 100644
  
          return update
 -- 
-1.9.1
+2.9.2
 
