@@ -14,6 +14,4 @@ SRC_URI[sha256sum] = "b7d5d688bdd345bfa897777d297756688cf02e1b3742c56885e2e5c2b9
 
 S = "${WORKDIR}/${SRCNAME}-${PV}"
 
-#RDEPENDS_${PN}_class-native = ""
-
 BBCLASSEXTEND = "native nativesdk"
