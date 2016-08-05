@@ -17,6 +17,6 @@ PYPI_PACKAGE_HASH = "496f183063f01aae1e025cf0130772b55848750a2f3a89bfa11b385b35d
 
 RDEPENDS_${PN} = "${PYTHON_PN}-email ${PYTHON_PN}-json ${PYTHON_PN}-netserver ${PYTHON_PN}-urllib3"
 
-RDEPENDS_${PN}_class_native = ""
+RDEPENDS_${PN}_class-native = ""
 
 BBCLASSEXTEND = "native nativesdk"
