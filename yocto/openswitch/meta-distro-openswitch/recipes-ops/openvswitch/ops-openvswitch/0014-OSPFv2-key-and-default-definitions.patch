@@ -51,5 +51,5 @@ index 42925a5..d404b8f 100644
      {&ovsrec_table_interface,
       {{&ovsrec_table_interface, &ovsrec_interface_col_name, NULL},
 -- 
-1.9.1
+2.7.4
 

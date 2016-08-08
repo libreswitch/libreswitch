@@ -36,11 +36,12 @@ SRC_URI = "git://github.com/openvswitch/ovs.git;protocol=https;branch=branch-2.5
            file://0028-Weak-references-performance-fix.patch \
            file://0029-Strong-references-cascade-fix.patch \
            file://0030-new-dev-OVSDB-Priority-Sessions.patch \
-           file://0031-Add-optional-c-extension-wrapper-for-python-json-parsing.patch \
+           file://0031-Add-optional-C-extension-wrapper-for-Python-JSON-par.patch \
            file://0032-OVSDB-Wait-Monitoring-Functions.patch \
            file://0033-Reduce-number-of-operations-for-IDL-on-demand-fetchi.patch \
            file://0034-Enable-OpenFlow.patch \
            file://0035-setting-and-fetching-vlan-using-new-vlan_tag-column-.patch \
+           file://0036-new-dev-Enable-OVS-tests-inside-OPS.patch \
           "
 
 SRCREV = "976b441345df85dd7adb973f8ae208f588d764a0"

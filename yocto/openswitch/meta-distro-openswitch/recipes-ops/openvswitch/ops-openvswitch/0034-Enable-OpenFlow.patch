@@ -1,14 +1,17 @@
-From 65f5e9277dcdfb4dac366815ded14fcf44210e7c Mon Sep 17 00:00:00 2001
+From 7393d0563cc2d91603ab1b39d45b3e9406da63c8 Mon Sep 17 00:00:00 2001
 From: Amitabha Sen <amitabha.sen@broadcom.com>
 Date: Wed, 22 Jun 2016 20:40:16 +0530
-Subject: [PATCH] Uncommented code in OVS to enable the OpenFlow agent. The
- OpenFlow agent runs in the ops-switchd process. It talks to the remote
- OpenFlow Controller and installs OpenFlow forwarding rules in the ASIC. The
- ASIC driver for Broadcom silicon is provided by the changes done in the
- opennsl-plugin.
+Subject: [PATCH] Enable OpenFlow
 
-Also made changes to switch to the Management namespace while creating
-a socket to be able to connect to the OpenFlow Controller via the service port.
+Uncommented code in OVS to enable the OpenFlow agent. The OpenFlow
+agent runs in the ops-switchd process. It talks to the remote
+OpenFlow Controller and installs OpenFlow forwarding rules in the
+ASIC. The ASIC driver for Broadcom silicon is provided by the
+changes done in the opennsl-plugin.
+
+Also made changes to switch to the Management namespace while
+creating a socket to be able to connect to the OpenFlow
+Controller via the service port.
 
 Change-Id: Ibc86f8645a2088bf074d3ab4367e25cbfe2d866c
 Signed-off-by: Amitabha Sen <amitabha.sen@broadcom.com>
@@ -27,7 +30,7 @@ index 4395840..d85a7c0 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -7,11 +7,7 @@
-
+ 
  AUTOMAKE_OPTIONS = foreign subdir-objects
  ACLOCAL_AMFLAGS = -I m4
 -if OPS
@@ -35,7 +38,7 @@ index 4395840..d85a7c0 100644
 -else
  SUBDIRS = datapath libltdl
 -endif
-
+ 
  AM_CPPFLAGS = $(SSL_CFLAGS)
  AM_LDFLAGS = $(SSL_LDFLAGS)
 diff --git a/lib/db-ctl-base.h b/lib/db-ctl-base.h
@@ -53,7 +56,7 @@ index bada320..c916dc2 100644
 +#endif
      const struct weak_ref_table wref_table;
  };
-
+ 
 diff --git a/lib/socket-util.c b/lib/socket-util.c
 index d053d37..c9db2a9 100644
 --- a/lib/socket-util.c
@@ -61,17 +64,17 @@ index d053d37..c9db2a9 100644
 @@ -46,11 +46,81 @@
  #include "netlink-socket.h"
  #endif
-
+ 
 +#ifdef OPS
 +#define OPS_SWITCH_NAMESPACE   "swns"
 +#define OPS_MAX_BUFFER_SIZE    128
 +#endif
 +
  VLOG_DEFINE_THIS_MODULE(socket_util);
-
+ 
  static int getsockopt_int(int fd, int level, int option, const char *optname,
                            int *valuep);
-
+ 
 +#ifdef OPS
 +/***************************************************************************
 + * enters OOBM namespace
@@ -148,7 +151,7 @@ index d053d37..c9db2a9 100644
 +    /* Switch to Management namespace */
 +    ops_setns_oobm ();
 +#endif
-
+ 
      /* Create non-blocking socket. */
      fd = socket(ss.ss_family, style, 0);
 +
@@ -163,7 +166,7 @@ index d053d37..c9db2a9 100644
 @@ -587,8 +667,19 @@ inet_open_passive(int style, const char *target, int default_port,
      }
      kernel_chooses_port = ss_get_port(&ss) == 0;
-
+ 
 +#ifdef OPS
 +    /* Switch to Management namespace */
 +    ops_setns_oobm ();
@@ -204,21 +207,21 @@ index 80b4255..bfafb93 100644
 @@ -131,7 +126,6 @@ man_MANS += \
  utilities_ovs_appctl_SOURCES = utilities/ovs-appctl.c
  utilities_ovs_appctl_LDADD = lib/libovscommon.la ovsdb/libovsdb.la
-
+ 
 -if !OPS
  utilities_ovs_testcontroller_SOURCES = utilities/ovs-testcontroller.c
  utilities_ovs_testcontroller_LDADD = lib/libovscommon.la ovsdb/libovsdb.la lib/libopenvswitch.la $(SSL_LIBS)
-
+ 
 @@ -144,10 +138,9 @@ utilities_ovs_ofctl_LDADD = \
  	lib/libovscommon.la \
  	ovsdb/libovsdb.la \
  	lib/libopenvswitch.la
 -endif
-
+ 
  utilities_ovs_vsctl_SOURCES = utilities/ovs-vsctl.c
 -utilities_ovs_vsctl_LDADD = lib/libovscommon.la ovsdb/libovsdb.la
 +utilities_ovs_vsctl_LDADD = lib/libovscommon.la ovsdb/libovsdb.la lib/libopenvswitch.la
-
+ 
  if LINUX
  sbin_PROGRAMS += utilities/ovs-vlan-bug-workaround
 diff --git a/utilities/ovs-ofctl.c b/utilities/ovs-ofctl.c
@@ -227,7 +230,7 @@ index 0d57f85..bdc3264 100644
 +++ b/utilities/ovs-ofctl.c
 @@ -1616,7 +1616,11 @@ monitor_vconn(struct vconn *vconn, bool reply_to_echo_requests)
      int error;
-
+ 
      daemon_save_fd(STDERR_FILENO);
 +#ifdef OPS
 +    daemonize_start();
@@ -244,13 +247,13 @@ index 60cc32f..b4ae357 100644
 @@ -147,7 +147,11 @@ main(int argc, char *argv[])
          ovs_fatal(0, "no active or passive switch connections");
      }
-
+ 
 +#ifdef OPS
 +    daemonize_start();
 +#else
      daemonize_start(false);
 +#endif
-
+ 
      retval = unixctl_server_create(unixctl_path, &unixctl);
      if (retval) {
 diff --git a/utilities/ovs-vsctl.c b/utilities/ovs-vsctl.c
@@ -259,18 +262,18 @@ index d404b8f..5b70cd5 100644
 +++ b/utilities/ovs-vsctl.c
 @@ -835,10 +835,8 @@ pre_get_info(struct ctl_context *ctx)
      ovsdb_idl_add_column(ctx->idl, &ovsrec_open_vswitch_col_bridges);
-
+ 
      ovsdb_idl_add_column(ctx->idl, &ovsrec_bridge_col_name);
 -#ifndef OPS_TEMP
      ovsdb_idl_add_column(ctx->idl, &ovsrec_bridge_col_controller);
      ovsdb_idl_add_column(ctx->idl, &ovsrec_bridge_col_fail_mode);
 -#endif
      ovsdb_idl_add_column(ctx->idl, &ovsrec_bridge_col_ports);
-
+ 
      ovsdb_idl_add_column(ctx->idl, &ovsrec_port_col_name);
 @@ -849,9 +847,7 @@ pre_get_info(struct ctl_context *ctx)
      ovsdb_idl_add_column(ctx->idl, &ovsrec_port_col_interfaces);
-
+ 
      ovsdb_idl_add_column(ctx->idl, &ovsrec_interface_col_name);
 -#ifndef OPS_TEMP
      ovsdb_idl_add_column(ctx->idl, &ovsrec_interface_col_ofport);
@@ -281,7 +284,7 @@ index d404b8f..5b70cd5 100644
 @@ -1151,7 +1147,6 @@ find_bridge(struct vsctl_context *vsctl_ctx, const char *name, bool must_exist)
      return br;
  }
-
+ 
 -#ifndef OPS_TEMP
  static struct vsctl_bridge *
  find_real_bridge(struct vsctl_context *vsctl_ctx,
@@ -310,7 +313,7 @@ index d404b8f..5b70cd5 100644
 @@ -1330,7 +1324,6 @@ static struct cmd_show_table cmd_show_tables[] = {
       {NULL, NULL, NULL}
      },
-
+ 
 -#ifndef OPS_TEMP
      {&ovsrec_table_controller,
       &ovsrec_controller_col_target,
@@ -326,7 +329,7 @@ index d404b8f..5b70cd5 100644
 @@ -1482,9 +1474,9 @@ pre_cmd_emer_reset(struct ctl_context *ctx)
      ovsdb_idl_add_column(ctx->idl, &ovsrec_open_vswitch_col_manager_options);
      ovsdb_idl_add_column(ctx->idl, &ovsrec_open_vswitch_col_ssl);
-
+ 
 -#ifndef OPS_TEMP
      ovsdb_idl_add_column(ctx->idl, &ovsrec_bridge_col_controller);
      ovsdb_idl_add_column(ctx->idl, &ovsrec_bridge_col_fail_mode);
@@ -347,7 +350,7 @@ index d404b8f..5b70cd5 100644
 @@ -1532,9 +1524,9 @@ cmd_emer_reset(struct ctl_context *ctx)
      OVSREC_BRIDGE_FOR_EACH (br, idl) {
          const char *hwaddr;
-
+ 
 -#ifndef OPS_TEMP
          ovsrec_bridge_set_controller(br, NULL, 0);
          ovsrec_bridge_set_fail_mode(br, NULL);
@@ -360,7 +363,7 @@ index d404b8f..5b70cd5 100644
          ovsrec_mirror_delete(mirror);
      }
 +#endif
-
+ 
      OVSREC_CONTROLLER_FOR_EACH_SAFE (ctrl, next_ctrl, idl) {
          ovsrec_controller_delete(ctrl);
      }
@@ -371,13 +374,13 @@ index d404b8f..5b70cd5 100644
 @@ -2867,7 +2859,6 @@ cmd_iface_to_br(struct ctl_context *ctx)
      ds_put_format(&ctx->output, "%s\n", iface->port->bridge->name);
  }
-
+ 
 -#ifndef OPS_TEMP
  static void
  verify_controllers(struct ovsrec_bridge *bridge)
  {
 @@ -3034,7 +3025,7 @@ cmd_set_fail_mode(struct ctl_context *ctx)
-
+ 
      ovsrec_bridge_set_fail_mode(br->br_cfg, fail_mode);
  }
 -#endif
@@ -388,7 +391,7 @@ index d404b8f..5b70cd5 100644
 @@ -3403,12 +3394,10 @@ static const struct ctl_table_class tables[] = {
  #endif
      }},
-
+ 
 -#ifndef OPS_TEMP
      {&ovsrec_table_controller,
       {{&ovsrec_table_bridge,
@@ -401,7 +404,7 @@ index d404b8f..5b70cd5 100644
 @@ -3959,7 +3948,6 @@ static const struct ctl_command_syntax vsctl_commands[] = {
      {"iface-to-br", 1, 1, "IFACE", pre_get_info, cmd_iface_to_br, NULL, "",
       RO},
-
+ 
 -#ifndef OPS_TEMP
      /* Controller commands. */
      {"get-controller", 1, 1, "BRIDGE", pre_controller, cmd_get_controller,
@@ -415,6 +418,6 @@ index d404b8f..5b70cd5 100644
      /* Manager commands. */
      {"get-manager", 0, 0, "", pre_manager, cmd_get_manager, NULL, "", RO},
      {"del-manager", 0, 0, "", pre_manager, cmd_del_manager, NULL, "", RW},
---
-1.9.1
+-- 
+2.7.4
 

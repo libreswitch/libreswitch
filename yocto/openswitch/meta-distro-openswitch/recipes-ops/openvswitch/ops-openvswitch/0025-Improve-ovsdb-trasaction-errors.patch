@@ -1,4 +1,4 @@
-From 6d1ef18fe5486ebe3300af3b945fdf43ded34b15 Mon Sep 17 00:00:00 2001
+From 5f1592fa599991bea7d0dadb4dd6f8869ff0a765 Mon Sep 17 00:00:00 2001
 From: Surya Tatapudi <surya.tatapudi@hpe.com>
 Date: Mon, 13 Jun 2016 17:02:05 -0600
 Subject: [PATCH] Improve ovsdb trasaction errors.
@@ -210,5 +210,5 @@ index 26ff90e..997dfd8 100644
 +  [[parse-table mytable '{"columns": {"name": {}}}']],
 +  [[syntax "{}": syntax error: Table - "mytable": Parsing schema for column name failed: Required 'type' member is missing.]])
 -- 
-1.9.1
+2.7.4
 

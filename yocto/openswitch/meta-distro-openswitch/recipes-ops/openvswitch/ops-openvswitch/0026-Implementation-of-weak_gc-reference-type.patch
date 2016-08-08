@@ -1,4 +1,4 @@
-From b9a60078d080d213f05efd36827f3f84b8e478cd Mon Sep 17 00:00:00 2001
+From 3302ba574a61d7dfd22aa4eaadd955a966c4bcad Mon Sep 17 00:00:00 2001
 From: Ligeo George <ligeo.george@hpe.com>
 Date: Tue, 21 Jun 2016 14:35:38 -0700
 Subject: [PATCH] Implementation of weak_gc reference type
@@ -9,6 +9,7 @@ or index violation of the referencing row, the transaction
 will not be cancelled and the referencing row would be
 garbage collected instead.
 
+Change-Id: Ie1f6f340ee0af3d3b9c2b37bcd63680012f8d80f
 Signed-off-by: Ligeo George <ligeo.george@hpe.com>
 ---
  lib/ovsdb-data.c         |   1 +
@@ -446,5 +447,5 @@ index 10986b0..926a764 100644
  
  OVSDB_CHECK_EXECUTION([immutable columns],
 -- 
-1.9.1
+2.7.4
 

@@ -53,5 +53,5 @@ index 0fe37e4..52f5f48 100755
  if test "X$sum" = "X$expected"; then
      touch $stamp
 -- 
-1.9.1
+2.7.4
 

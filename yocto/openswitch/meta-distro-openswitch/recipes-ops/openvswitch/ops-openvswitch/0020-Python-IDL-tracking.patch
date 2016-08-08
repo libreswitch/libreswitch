@@ -262,5 +262,5 @@ index b6c986e..764a930 100644
 +    def __len__(self):
 +        return len(self.store)
 -- 
-1.9.1
+2.7.4
 

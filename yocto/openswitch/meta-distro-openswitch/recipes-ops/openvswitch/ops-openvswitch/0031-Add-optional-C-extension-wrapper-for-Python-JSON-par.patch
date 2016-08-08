@@ -1,17 +1,14 @@
-From 51a6db496ca1fd3c5d16bd1b69d47afaaea2092c Mon Sep 17 00:00:00 2001
+From 8dc9f87bfb629b21cb2c86fb4c47add278d29fe9 Mon Sep 17 00:00:00 2001
 From: Diego Dompe <dompe@hpe.com>
-Date: Sat, 25 Jun 2016 06:49:36 -0600
-Subject: [PATCH 18/18] Add optional C extension wrapper for Python JSON
- parsing
+Date: Wed, 13 Jul 2016 13:39:40 -0600
+Subject: [PATCH] Add optional C extension wrapper for Python JSON parsing
 
 Backport from https://github.com/openvswitch/ovs/commit/e71d42188e08afdb8de04ebb860c895445b623a3
-fix memory leak issue by calling json_destroy
+Fix memory leak issue in _json.c
 
 Change-Id: Id64d5f874e2197e406d95fa894edcf339f20d634
 Signed-off-by: Diego Dompe <dompe@hpe.com>
-
-%% original patch: 0018-Add-optional-c-extension-wrapper-for-python-json-parsing.patch
-
+Signed-off-by: Esteban Rodriguez Betancourt <estebarb@hpe.com>
 Signed-off-by: Madhulika Madishetty <madhulika.madishetty@hpe.com>
 ---
  python/automake.mk |   3 +
@@ -421,3 +418,6 @@ index 889d215..4307266 100644
 +    del(setup_args['cmdclass'])
 +    del(setup_args['ext_modules'])
 +    setuptools.setup(**setup_args)
+-- 
+2.7.4
+
