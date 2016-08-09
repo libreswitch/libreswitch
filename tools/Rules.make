@@ -180,7 +180,7 @@ header:: build/conf/site.conf build/conf/local.conf
 export PLATFORM_DTS_FILE
 
 ########## Common targets shared by most platforms ##############
-HOST_ARCH=$(shell uname -m)
+HOST_ARCH:=$(shell uname -m)
 
 .PHONY: kernel _kernel _kernel_links kernelconfig
 kernel: header _kernel
