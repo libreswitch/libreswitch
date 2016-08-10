@@ -6,7 +6,7 @@ BRANCH ?= "${OPS_REPO_BRANCH}"
 
 SRC_URI = "${OPS_REPO_BASE_URL}/ops;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH}"
 
-SRCREV = "15b7cd2d6493b1c0e0619cfeeebcec344e2fc933"
+SRCREV = "7f62e6d25d0c1b7aa950186a2d31874885078aae"
 
 DEPENDS = " \
            python-jsonref-native \
