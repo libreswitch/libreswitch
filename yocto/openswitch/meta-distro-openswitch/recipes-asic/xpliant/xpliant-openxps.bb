@@ -13,7 +13,7 @@ DEPENDS_${PN} += "systemd"
 
 SRC_URI = "git://github.com/xpliant/OpenXPS;protocol=http"
 
-SRCREV = "ced9c1dac6589e84d68beff2167c197287b3fbb1"
+SRCREV = "d4b89d86a06552811254776841d08027797811e6"
 
 # When using AUTOREV, we need to force the package version
 # to the revision of git in order to avoid stale shared states.
