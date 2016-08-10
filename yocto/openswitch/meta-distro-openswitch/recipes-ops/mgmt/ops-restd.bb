@@ -45,6 +45,7 @@ do_install_append () {
 
 SYSTEMD_PACKAGES = "${PN}"
 SYSTEMD_SERVICE_${PN} = "restd.service"
+SYSTEMD_AUTO_ENABLE_${PN}="disable"
 
 inherit openswitch setuptools systemd pythonnative
 
