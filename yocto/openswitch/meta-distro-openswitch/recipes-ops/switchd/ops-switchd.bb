@@ -2,7 +2,7 @@ SUMMARY = "OpenSwitch Switch Daemon"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
-DEPENDS = "ops ops-openvswitch ops-ovsdb ops-utils systemd libyaml jemalloc ops-cli"
+DEPENDS = "ops ops-openvswitch ops-ovsdb ops-utils libyaml jemalloc ops-cli"
 
 BRANCH ?= "${OPS_REPO_BRANCH}"
 

@@ -9,8 +9,6 @@ DEPENDS = "libxml2 libpcap lmsensors"
 
 RDEPENDS_${PN} = "libpcap python-doctest"
 
-DEPENDS_${PN} += "systemd"
-
 SRC_URI = "git://github.com/xpliant/OpenXPS;protocol=http"
 
 SRCREV = "d4b89d86a06552811254776841d08027797811e6"

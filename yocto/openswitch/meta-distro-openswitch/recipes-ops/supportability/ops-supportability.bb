@@ -2,7 +2,7 @@ SUMMARY = "OpenSwitch Supportability Features"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
-DEPENDS = "ops-ovsdb libyaml ops-cli"
+DEPENDS = "ops-ovsdb libyaml systemd ops-cli"
 
 RDEPENDS_${PN} = "python-pyinotify python-xattr python-argparse python-json python-ops-ovsdb python-distribute python-pyyaml python-systemd"
 
