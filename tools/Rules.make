@@ -54,6 +54,8 @@ BASE_SIMPLEIMAGE_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/sim
 BASE_SIMPLEIMAGE_INITRAMFS_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/simpleImage.$(CONFIGURED_PLATFORM)-initramfs-$(CONFIGURED_PLATFORM).bin
 BASE_VMLINUX_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/vmlinux
 BASE_CPIO_FS_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(DISTRO_FS_TARGET)-$(CONFIGURED_PLATFORM).cpio.gz
+BASE_TAR_FS_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(DISTRO_FS_TARGET)-$(CONFIGURED_PLATFORM).tar
+BASE_TAR_DBG_FS_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(DISTRO_FS_TARGET)-$(CONFIGURED_PLATFORM).dbg.tar
 BASE_TARGZ_FS_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(DISTRO_FS_TARGET)-$(CONFIGURED_PLATFORM).tar.gz
 BASE_TARGZ_DBG_FS_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(DISTRO_FS_TARGET)-$(CONFIGURED_PLATFORM).dbg.tar.gz
 BASE_HDDIMG_FS_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(DISTRO_FS_TARGET)-$(CONFIGURED_PLATFORM).hddimg
@@ -219,7 +221,9 @@ _fs images/fs-$(CONFIGURED_PLATFORM):
 _fs_links:
 	$(V)ln -sf $(DISTRO_FS_FILE) images/`basename $(DISTRO_FS_FILE)`
 	$(V)for extra_fs in $(DISTRO_EXTRA_FS_FILES) ; do ln -sf $$extra_fs images/`basename $$extra_fs` ; done
-	@# If we have a tar.gz file, also link it, useful for docker images
+	@# If we have a tar file, also link it, useful for docker images
+	$(V)if [ -f $(BASE_TAR_FS_FILE) ] ; then ln -sf $(BASE_TAR_FS_FILE) images/`basename $(BASE_TAR_FS_FILE)` ; fi
+	$(V)if [ -f $(BASE_TAR_DBG_FS_FILE) ] ; then ln -sf $(BASE_TAR_DBG_FS_FILE) images/`basename $(BASE_TAR_DBG_FS_FILE)` ; fi
 	$(V)if [ -f $(BASE_TARGZ_FS_FILE) ] ; then ln -sf $(BASE_TARGZ_FS_FILE) images/`basename $(BASE_TARGZ_FS_FILE)` ; fi
 	$(V)if [ -f $(BASE_TARGZ_DBG_FS_FILE) ] ; then ln -sf $(BASE_TARGZ_DBG_FS_FILE) images/`basename $(BASE_TARGZ_DBG_FS_FILE)` ; fi
 	$(V)ln -sf `basename $(DISTRO_FS_FILE)` images/fs-$(CONFIGURED_PLATFORM)
@@ -257,8 +261,8 @@ deploy_lxc:
 	$(V) if ! which lxc-create > /dev/null ; then \
 	  $(call FATAL_ERROR,LXC does not seems installed, could not find lxc-create) ; \
 	fi
-	$(V) if ! test -f images/`basename $(BASE_TARGZ_FS_FILE)` ; then \
-	  $(call FATAL_ERROR,Your platform has not generated a .tar.gz file that can be used to create the LXC container) ; \
+	$(V) if ! test -f images/`basename $(BASE_TAR_FS_FILE)` ; then \
+	  $(call FATAL_ERROR,Your platform has not generated a .tar file that can be used to create the LXC container) ; \
 	fi
 	$(V) $(ECHO) "Exporting an LXC container with name '$(CONTAINER_NAME)' may ask for admin password..."
 	$(V) $(ECHO) -n "Checking that no LXC container with the same name already exists..."
@@ -268,7 +272,7 @@ deploy_lxc:
 	else \
 	  echo done ; \
 	fi
-	$(V) export OPENSWITCH_IMAGE=$(BUILD_ROOT)/images/`basename $(BASE_TARGZ_FS_FILE)` ; \
+	$(V) export OPENSWITCH_IMAGE=$(BUILD_ROOT)/images/`basename $(BASE_TAR_FS_FILE)` ; \
 	export BUILD_ROOT ; \
 	$(SUDO) -E lxc-create -n $(CONTAINER_NAME) -f /dev/null -t $(BUILD_ROOT)/tools/lxc/lxc-openswitch
 	$(V) $(ECHO) "Exporting completed.\nRun with 'sudo lxc-start -n $(CONTAINER_NAME)'"
@@ -288,12 +292,12 @@ export_docker_image:
 	    $(call FATAL_ERROR, Docker image '$(DOCKER_IMAGE)' is already created.\n \
 	                       \tYou can remove it using - docker rmi $(DOCKER_IMAGE)) ; \
 	fi
-	$(V) if ! test -f images/`basename $(BASE_TARGZ_FS_FILE)` ; then \
-	    $(call FATAL_ERROR, Unable to find $(BASE_TARGZ_FS_FILE)\n \
+	$(V) if ! test -f images/`basename $(BASE_TAR_FS_FILE)` ; then \
+	    $(call FATAL_ERROR, Unable to find $(BASE_TAR_FS_FILE)\n \
 	                       \tRun 'make' at the top level to create root-fs.) ; \
 	fi
-	$(V) $(ECHO) "$(BLUE)Exporting '$(BASE_TARGZ_FS_FILE)' as image '$(DOCKER_IMAGE)'...$(GRAY)\n"
-	$(V) /bin/zcat $(BASE_TARGZ_FS_FILE) | docker import - $(DOCKER_IMAGE)
+	$(V) $(ECHO) "$(BLUE)Exporting '$(BASE_TAR_FS_FILE)' as image '$(DOCKER_IMAGE)'...$(GRAY)\n"
+	$(V) docker import $(BASE_TAR_FS_FILE) $(DOCKER_IMAGE)
 	$(V) $(ECHO)
 
 .PHONY: deploy_nfsroot
@@ -303,8 +307,8 @@ deploy_nfsroot:
 	$(V) if ! which exportfs > /dev/null ; then \
 	  $(call FATAL_ERROR,Missing exportfs utility, unable to export rootfs. Did you install the NFS server package?) ; \
 	fi
-	$(V) if ! test -f images/$(notdir $(BASE_TARGZ_FS_FILE)) ; then \
-	  $(call FATAL_ERROR,Your platform has not generated a .tar.gz file that can be used to deploy the NFS root) ; \
+	$(V) if ! test -f images/$(notdir $(BASE_TAR_FS_FILE)) ; then \
+	  $(call FATAL_ERROR,Your platform has not generated a .tar file that can be used to deploy the NFS root) ; \
 	fi
 	$(V) if [ -d $(NFSROOTPATH) ] ; then \
 	  $(call WARNING,Removing previous deployed nfsroot directory at $(NFSROOTPATH) before re-deploying) ; \
@@ -314,7 +318,7 @@ deploy_nfsroot:
 	fi
 	$(V) mkdir -p $(NFSROOTPATH)
 	$(V) $(ECHO) -n "Extracting the NFS root into $(NFSROOTPATH)... "
-	$(V) tar -xzf images/$(notdir $(BASE_TARGZ_FS_FILE)) -C $(NFSROOTPATH)
+	$(V) tar -xf images/$(notdir $(BASE_TAR_FS_FILE)) -C $(NFSROOTPATH)
 	$(V) $(ECHO) done
 	$(V) if ! [ -f /etc/exports.d/$(notdir $(NFSROOTPATH)).exports ] ; then \
 	  $(ECHO) "\nExporting NFS directory, may ask for admin password..." ; \
