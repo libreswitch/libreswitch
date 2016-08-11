@@ -1,4 +1,4 @@
-From 5bbd3f7925b316ff7b696ce7da9d32cd96a59bce Mon Sep 17 00:00:00 2001
+From 724fe68ca117be8b64803d52cb84dbfdca364ed2 Mon Sep 17 00:00:00 2001
 From: Harshvardhan <harshvardhan@hpe.com>
 Date: Fri, 8 Jul 2016 14:17:47 -0700
 Subject: [PATCH] setting and fetching vlan using new vlan_tag column for port
