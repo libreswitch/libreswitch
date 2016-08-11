@@ -42,6 +42,7 @@ SRC_URI = "git://github.com/openvswitch/ovs.git;protocol=https;branch=branch-2.5
            file://0034-Enable-OpenFlow.patch \
            file://0035-setting-and-fetching-vlan-using-new-vlan_tag-column-.patch \
            file://0036-new-dev-Enable-OVS-tests-inside-OPS.patch \
+           file://0037-ovsdb-pkg-config.patch \
           "
 
 SRCREV = "976b441345df85dd7adb973f8ae208f588d764a0"
