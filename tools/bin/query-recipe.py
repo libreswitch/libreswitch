@@ -50,9 +50,6 @@ def _parse_recipe(workspace_path, tinfoil, pn, appends=True):
     # gather append files
     if appends:
         append_files = tinfoil.cooker.collection.get_file_appends(recipefile)
-        # Filter out appends from the workspace
-        append_files = [path for path in append_files if
-                        not path.startswith(workspace_path)]
     else:
         append_files = []
 
@@ -152,7 +149,10 @@ def main():
         if len(args.var) == 1:
             val = _getvar(rd, args.var[0])
             if not val is None:
-                print("{}".format(val))
+                if args.shellsyntax :
+                    print("export {}_{}={}".format(args.var[0],package.replace("-","_"),val))
+                else:
+                    print("{}".format(val))
         else:
             for var in args.var:
                 val = _getvar(rd, var)

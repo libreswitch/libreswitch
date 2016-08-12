@@ -429,6 +429,7 @@ _setup-git-review:: $(addprefix .git/hooks/,$(notdir $(wildcard $(BUILD_ROOT)/to
 
 .PHONY: devenv_init devenv_clean devenv_add devenv_rm devenv_status devenv_cscope devenv_list_all
 .PHONY: check_devenv devenv_import dev_header devenv_refresh _devenv_refresh
+.PHONY: extract_debugfs devenv_generate_gdbinit
 
 -include src/Rules.make
 
@@ -599,6 +600,34 @@ _devenv_refresh:
 	  popd >/dev/null ; \
 	done < .devenv
 	$(V) $(ECHO) "\n$(PURPLE)Update completed$(GRAY)"
+
+$(BASE_TAR_DBG_FS_FILE):
+	$(V) if [ ! -f $(BASE_TAR_DBG_FS_FILE) ] ; then \
+          $(call FATAL_ERROR, Debug filesystem tarball not found, please build the filesystem first) ; \
+         fi
+
+DEBUGFS_LOCATION = $(BUILDDIR)/debugfs
+
+extract_debugfs: $(DEBUGFS_LOCATION)
+	$(V) $(ECHO) "Debug filesystem extraction to \"$(DEBUGFS_LOCATION)\" completed"
+
+$(DEBUGFS_LOCATION): $(BASE_TAR_DBG_FS_FILE)
+	$(V) $(ECHO) "$(BLUE) Extracting the latest version of the debug filesystem...$(GRAY)"
+	$(V) rm -Rf $(DEBUGFS_LOCATION)
+	$(V) mkdir -p $(DEBUGFS_LOCATION)
+	$(V) tar xf $(BASE_TAR_DBG_FS_FILE) -C $(DEBUGFS_LOCATION)
+	$(V) touch $(DEBUGFS_LOCATION)
+
+devenv_generate_gdbinit: check_devenv $(DEBUGFS_LOCATION)
+	$(V)$$(query-recipe.py -s -v WORKDIR $$(cat .devenv)) ; \
+	 echo "set sysroot $(STAGING_DIR_TARGET)" ; \
+	 for component in `cat .devenv` ; do \
+	   variable=WORKDIR_$$(echo $${component} | sed -e 's/-/_/g') ; \
+	   echo "set substitute-path /usr/src/debug/$${component} $$(eval echo \$$$$variable)/package/usr/src/debug/$$component" ; \
+	   echo "set substitute-path /usr/lib/debug/$${component} $$(eval echo \$$$$variable)/package/usr/lib/debug/$$component" ; \
+	 done ; \
+	 echo "set substitute-path /usr/src/debug $(DEBUGFS_LOCATION)/usr/src/debug" ; \
+	 echo "set substitute-path /usr/lib/debug $(DEBUGFS_LOCATION)/usr/lib/debug" ;
 
 # Test environment
 
