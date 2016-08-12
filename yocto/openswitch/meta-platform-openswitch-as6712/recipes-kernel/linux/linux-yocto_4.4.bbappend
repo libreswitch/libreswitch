@@ -11,4 +11,5 @@ FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
 
 SRC_URI += "\
     file://accton-hw-peripherals.cfg \
+    file://bcm-knet-requirements.cfg \
 "
