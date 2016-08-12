@@ -27,7 +27,7 @@ do_install () {
     install -m 0644 ${WORKDIR}/ops-first-boot.service ${D}${systemd_unitdir}/system
     install -m 0644 ${WORKDIR}/ops-init.service ${D}${systemd_unitdir}/system
     install -m 0755 ${WORKDIR}/ops-init.sh ${D}${sbindir}/ops-init
-    install -m 0755 ${WORKDIR}/ops-profile.sh ${D}${sysconfdir}/profile.d/ops-profile
+    install -m 0755 ${WORKDIR}/ops-profile.sh ${D}${sysconfdir}/profile.d/ops-profile.sh
     install -m 0755 ${WORKDIR}/ops-vrf-sysctl-set.conf ${D}${sysconfdir}/ops/sysctl.d/ops-vrf-sysctl-set.conf
     install -m 0755 ${WORKDIR}/ops-vrf-sysctl-unset.conf ${D}${sysconfdir}/ops/sysctl.d/ops-vrf-sysctl-unset.conf
     install -m 0644 ${WORKDIR}/ops-arp-sysctl-set.conf ${D}${sysconfdir}/sysctl.d/
