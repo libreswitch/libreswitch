@@ -19,7 +19,7 @@ pep8-naming
 
 pytest==2.8.4
 pytest-random
-pytest-xdist
+#pytest-xdist
 pytest-timeout
 pytest-logging
 pyyaml==3.11
