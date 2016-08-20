@@ -5,7 +5,7 @@ After=ovsdb-server.service ops-init.service
 [Service]
 Type=simple
 ExecStart=/usr/bin/node_exporter \
-    -web.listen-address=:9100 \
+    -web.listen-address=localhost:9100 \
     -collector.ntp.server=localhost \
     -collectors.enabled=conntrack,diskstats,entropy,filefd,filesystem,loadavg,meminfo,netdev,netstat,stat,time,vmstat,bonding,interrupts,ipvs,ksmd,logind,ntp,systemd,tcpstat
 User=node-exporter
