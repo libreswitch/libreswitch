@@ -7,7 +7,8 @@ DEPENDS = "ops-openvswitch ops-ovsdb ops-cli"
 BRANCH ?= "${OPS_REPO_BRANCH}"
 
 SRC_URI = "${OPS_REPO_BASE_URL}/ops-broadview;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
-          file://ops-broadview.service"
+          file://ops-broadview.service \
+          file://ops-broadview.nginx"
 
 SRCREV="b9002fab5fe1f27628bfd403631840ff4a118cf2"
 
@@ -36,11 +37,13 @@ do_install() {
     install -m 0644 ${WORKDIR}/ops-broadview.service ${D}${systemd_unitdir}/system/
     install -d ${D}/usr/lib/cli/plugins
     install -m 0755 ${S}/output/deliverables/libbroadview_cli.so.1 ${D}/usr/lib/cli/plugins/libbroadview_cli.so
+    install -d ${D}/etc/nginx/conf.d
+    install -m 0644 ${WORKDIR}/ops-broadview.nginx ${D}/etc/nginx/conf.d/backend-broadview.conf
 }
 
 
 SYSTEMD_PACKAGES = "${PN}"
 SYSTEMD_SERVICE_${PN} = "ops-broadview.service"
-FILES_${PN} += "/usr/lib/cli/plugins/"
+FILES_${PN} += "/usr/lib/cli/plugins/ /etc/nginx/conf.d"
 
 inherit openswitch systemd
