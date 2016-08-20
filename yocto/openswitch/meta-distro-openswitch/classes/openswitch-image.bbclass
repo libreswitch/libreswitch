@@ -12,6 +12,7 @@ EXTRA_USERS_PARAMS = "\
          usermod -s /usr/bin/vtysh netop;\
          "
 IMAGE_FEATURES += "ssh-server-openssh"
+IMAGE_FEATURES += "package-management"
 
 IMAGE_GEN_DEBUGFS = "1"
 IMAGE_FSTYPES += "dbg.tar"
