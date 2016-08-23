@@ -16,8 +16,6 @@ DEPENDS = " \
     python-sphinx-native \
     python-sphinx-rtd-theme-native \
 "
->>>>>>> origin/master
-
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
 PV = "git${SRCPV}"
