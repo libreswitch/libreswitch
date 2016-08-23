@@ -10,7 +10,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-lldpd;protocol=${OPS_REPO_PROTOCOL};branch=$
           file://ops-lldpd.service \
 "
 
-SRCREV = "5f8080af9d2110450aeca1490ce2d5b637fa961a"
+SRCREV = "fd74e10ef2f3beaf57ff0e39c5e611b41f83f18c"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
