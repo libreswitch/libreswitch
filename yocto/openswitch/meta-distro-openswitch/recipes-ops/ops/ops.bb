@@ -28,6 +28,7 @@ FILES_${PN} += " \
     /usr/share/openvswitch/*.extschema \
     /usr/share/openvswitch/*.ovsschema \
     /usr/share/openvswitch/*.xml \
+    /usr/include/*_empty_values.h \
 "
 
 OPS_SCHEMA_PATH="${S}/schema"
