@@ -56,6 +56,7 @@ do_install () {
   install -m 0644 ${WORKDIR}/nginx.conf ${D}${sysconfdir}/nginx/
   install -m 0644 ${WORKDIR}/dhparam.pem ${D}${sysconfdir}/nginx/
   install -m 0644 ${WORKDIR}/nginx-*.conf ${D}${sysconfdir}/nginx/conf.d/
+  install -m 0644 ${S}/conf/mime.types ${D}${sysconfdir}/nginx/conf.d/nginx-mime.conf
   mkdir -p ${D}${systemd_unitdir}/system
   install -m 0644 ${WORKDIR}/nginx.service ${D}${systemd_unitdir}/system/
 }

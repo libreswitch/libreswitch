@@ -5,6 +5,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 BRANCH ?= "${OPS_REPO_BRANCH}"
 
 SRC_URI = "${OPS_REPO_BASE_URL}/ops-restapi;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
+    file://ops-restapi.nginx \
 "
 
 SRCREV = "e1763eced3c53f7855de8c2ae9770a091c3d9e1c"
@@ -16,11 +17,14 @@ PV = "git${SRCPV}"
 S = "${WORKDIR}/git"
 B = "${S}"
 
-FILES_${PN} += "/srv/www/api"
+FILES_${PN} += "/srv/www/api /etc/nginx/conf.d"
 
 do_install_append () {
     # Install Swagger-UI files with modification to point to OpenSwitch
     # REST API file
     install -d ${D}/srv/www/api
     cp -R ${S}/src/* ${D}/srv/www/api
+
+    install -d ${D}/etc/nginx/conf.d
+    install -m 0644 ${WORKDIR}/ops-restapi.nginx ${D}/etc/nginx/conf.d/backend-restapi.conf
 }
