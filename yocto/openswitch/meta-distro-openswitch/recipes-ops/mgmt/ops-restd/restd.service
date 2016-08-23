@@ -7,7 +7,7 @@ After=cfgd.service
 [Service]
 Type=simple
 ExecStartPre=/bin/rm -f /var/run/restd.pid
-ExecStart=/usr/bin/restd
+ExecStart=/usr/bin/restd --HTTPS=f --create_ssl=f --HTTP_port=8091 --force_https=f
 PIDFile=/var/run/restd.pid
 Restart=always
 

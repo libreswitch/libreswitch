@@ -9,6 +9,7 @@ build
 tools/bin/python
 tools/bin/corkscrew
 nfsroot*
+*~
 
 # Exclude layers providing additional functionality ...
 /yocto/*/

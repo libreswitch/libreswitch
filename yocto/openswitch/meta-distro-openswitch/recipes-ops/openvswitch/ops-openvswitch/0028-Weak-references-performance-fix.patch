@@ -1,7 +1,7 @@
 From bcba7d39b25f478149859bac7e5672f9fcaa0816 Mon Sep 17 00:00:00 2001
 From: Esteban Rodriguez Betancourt <estebarb@hpe.com>
 Date: Mon, 20 Jun 2016 13:48:34 -0600
-Subject: [PATCH 28/33] Weak references performance fix
+Subject: [PATCH] Weak references performance fix
 
 Prevents the cloning of rows with outgoing or
 incoming weak references when those rows aren't

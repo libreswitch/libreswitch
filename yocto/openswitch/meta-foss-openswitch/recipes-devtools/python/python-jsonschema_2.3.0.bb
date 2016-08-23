@@ -34,4 +34,8 @@ RDEPENDS_${PN} = "\
     python-contextlib \
 "
 
+RDEPENDS_${PN}_class-native = ""
+
+DEPENDS_class-native = "${PYTHON_PN}-native"
+
 BBCLASSEXTEND = "native nativesdk"

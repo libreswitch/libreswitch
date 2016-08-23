@@ -1,0 +1,700 @@
+From 9cea81bddb37f3c12a5e21c13dd467d794a04fc9 Mon Sep 17 00:00:00 2001
+From: "arnoldo.lutz.guevara@hpe.com" <arnoldo.lutz.guevara@hpe.com>
+Date: Thu, 21 Jul 2016 15:43:29 -0700
+Subject: [PATCH] new: dev: Enable OVS tests inside OPS
+
+This patch enables must of the tests from the OVS repo to be run inside
+the OPS repo.
+Two scripts (run-ovs-tests.sh and ovs-tests.sh) are added that make the
+changes needed.
+To run the tests just need to execute run-ovs-tests.sh from the
+ops-openvswitch folder.
+Review the comments inside the scripts to get more information.
+
+Change-Id: Iac1fd909529d1a4d16655a5a19d7cbed31ef18b6
+Signed-off-by: arnoldo.lutz.guevara@hpe.com <arnoldo.lutz.guevara@hpe.com>
+---
+ Makefile.am            | 24 +++++++++++++--------
+ Rules-ops-build.make   | 10 +++++++++
+ configure.ac           |  2 ++
+ lib/socket-util-unix.c |  9 +++++++-
+ lib/string.h.in        |  4 ++--
+ ovs-test.sh            | 44 ++++++++++++++++++++++++++++++++++++++
+ run-ovs-tests.sh       | 36 +++++++++++++++++++++++++++++++
+ tests/automake.mk      | 57 ++++++++++++++------------------------------------
+ tests/bundle.at        |  5 +++++
+ tests/multipath.at     |  5 +++++
+ tests/ovs-macros.at    |  1 -
+ tests/ovsdb-idl.at     |  5 ++++-
+ tests/ovsdb-macros.at  |  9 +++++++-
+ tests/ovsdb-server.at  |  1 +
+ tests/test-netflow.c   |  4 ++++
+ tests/test-sflow.c     |  4 ++++
+ tests/testsuite.at     | 37 ++------------------------------
+ tests/unixctl-py.at    |  6 +++---
+ tests/vlog.at          |  8 +++----
+ 19 files changed, 173 insertions(+), 98 deletions(-)
+ create mode 100644 Rules-ops-build.make
+ create mode 100755 ovs-test.sh
+ create mode 100755 run-ovs-tests.sh
+
+diff --git a/Makefile.am b/Makefile.am
+index d85a7c0..8280702 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -32,6 +32,9 @@ AM_CPPFLAGS += -I $(top_builddir)/libltdl
+ AM_CPPFLAGS += $(SSL_INCLUDES)
+ 
+ AM_CFLAGS = -Wstrict-prototypes -DOPS -DOPS_TEMP
++if OVS_TEST
++AM_CFLAGS += -DOVS_TEST
++endif
+ AM_CFLAGS += $(WARNING_FLAGS)
+ AM_CFLAGS += $(OVS_CFLAGS)
+ 
+@@ -377,14 +380,17 @@ nodist_ovslibinclude_HEADERS = config.h
+ #nodist_ovslibinclude_HEADERS += include/odp-netlink.h
+ endif
+ 
+-include m4/automake.mk
+-include lib/automake.mk
+-include ofproto/automake.mk
+-include utilities/automake.mk
+-include include/automake.mk
++include $(srcdir)/m4/automake.mk
++include $(srcdir)/lib/automake.mk
++include $(srcdir)/ofproto/automake.mk
++include $(srcdir)/utilities/automake.mk
++include $(srcdir)/include/automake.mk
+ if OVS_VSWITCHD
+-include vswitchd/automake.mk
++include $(srcdir)/vswitchd/automake.mk
+ endif
+-include ovsdb/automake.mk
+-include python/automake.mk
+-include vtep/automake.mk
++include $(srcdir)/ovsdb/automake.mk
++include $(srcdir)/python/automake.mk
++include $(srcdir)/vtep/automake.mk
++if OVS_TEST
++include $(srcdir)/tests/automake.mk
++endif
+\ No newline at end of file
+diff --git a/Rules-ops-build.make b/Rules-ops-build.make
+new file mode 100644
+index 0000000..28f4406
+--- /dev/null
++++ b/Rules-ops-build.make
+@@ -0,0 +1,10 @@
++# Copyright (C) 2016 Hewlett-Packard Development Company, L.P.
++# All Rights Reserved.
++#
++
++.PHONY: ops-openvswitch-ovstests
++
++# Add option to run OVS tests inside ops-openvswitch folder
++ops-openvswitch-ovstests:
++	$(V)$(call BITBAKE, -f -c ovstests ops-openvswitch)
++	$(V)$(call BITBAKE, -f -c configure ops-openvswitch)
+diff --git a/configure.ac b/configure.ac
+index c04e017..869daf3 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -182,6 +182,8 @@ AM_CONDITIONAL([OVS_VSWITCHD], [test "$BUILD_OVS_VSWITCHD" = "1"])
+ OVS_CHECK_PRAGMA_MESSAGE
+ AC_SUBST([OVS_CFLAGS])
+ AC_SUBST([OVS_LDFLAGS])
++AC_SUBST([OVS_TEST])
++AM_CONDITIONAL([OVS_TEST], [test "$OVS_TEST" = "1"])
+ 
+ PKG_CHECK_MODULES([YAML], [yaml-0.1])
+ AC_SUBST([YAML_CFLAGS])
+diff --git a/lib/socket-util-unix.c b/lib/socket-util-unix.c
+index dac1fdf..3a8577b 100644
+--- a/lib/socket-util-unix.c
++++ b/lib/socket-util-unix.c
+@@ -354,7 +354,14 @@ make_unix_socket(int style, bool nonblock,
+         error = make_sockaddr_un(bind_path, &un, &un_len, &dirfd, linkname);
+         if (!error) {
+             error = bind_unix_socket(fd, (struct sockaddr *) &un, un_len);
+-#ifdef OPS
++
++/* TBD:
++ * There is a need to define a way to avoid this part of code when running tests
++ * in native mode.
++ * Local host doesn't have defined OVSDB_GROUP_ID (used in targets)
++ * It was define as  #ifdef OPS originaly and changed this way to be able to run tests.
++ */
++#if defined OPS && !defined OVS_TEST
+             if(0 != chmod(bind_path, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP))
+             {
+               VLOG_ERR("\nError while changing mode of socket file - %s.\n", bind_path);
+diff --git a/lib/string.h.in b/lib/string.h.in
+index bbdaeb4..2ceb2e7 100644
+--- a/lib/string.h.in
++++ b/lib/string.h.in
+@@ -14,11 +14,11 @@
+  * limitations under the License.
+  */
+ 
++#@INCLUDE_NEXT@ @NEXT_STRING_H@
++
+ #ifndef STRING_WRAPPER_H
+ #define STRING_WRAPPER_H 1
+ 
+-#@INCLUDE_NEXT@ @NEXT_STRING_H@
+-
+ /* Glibc 2.7 has a bug in strtok_r when compiling with optimization that can
+  * cause segfaults if the delimiters argument is a compile-time constant that
+  * has exactly 1 character:
+diff --git a/ovs-test.sh b/ovs-test.sh
+new file mode 100755
+index 0000000..1b14ced
+--- /dev/null
++++ b/ovs-test.sh
+@@ -0,0 +1,44 @@
++#! /bin/sh
++# Copyright (C) 2016 Hewlett-Packard Development Company, L.P.
++# All Rights Reserved.
++#
++# This script prepares the environment needed to run OVS tests
++# inside an ops-build repo.
++# 1. Verify the existance of the schema.
++# 2. Verify the existance of the folder for the new compiling
++# 3. Check if a previous compilation was done in order to clean
++#    the folder.
++# 4. Prepare the environment for the local target host.
++# 5. Execute the tests
++# 6. Delete the folder of tools modified in 4. in the base
++#    folder.
++# The results are displayed in screen and also can be found in
++# folder ovs_test_build/tests/testsuite.log.
++
++if ! test -f vswitchd/vswitch.ovsschema; then
++    echo "============================================="
++    echo "Schema files are needed to compile this "
++    echo "module and run the tests."
++    echo "Please build ops-openvswitch first"
++    echo "============================================="
++    exit 1
++fi
++if ! test -d ovs_test_build; then
++	mkdir ovs_test_build
++fi
++cd ovs_test_build
++if test -f Makefile; then
++    echo "Cleanning previous makes"
++    make clean
++fi
++export OVS_TEST=1
++autoreconf --install --force ../configure.ac
++../configure --build=x86_64-linux --host=x86_64-linux --target=x86_64-linux --prefix=/usr --exec_prefix=/usr --bindir=/usr/bin --sbindir=/usr/sbin --libexecdir=/usr/lib/ops-openvswitch --datadir=/usr/share --sysconfdir=/etc --sharedstatedir=/com --localstatedir=/var --libdir=/usr/lib --includedir=/usr/include --oldincludedir=/usr/include --infodir=/usr/share/info --mandir=/usr/share/man --disable-silent-rules --disable-dependency-tracking --with-libtool-sysroot=$(pwd)/../../build/tmp/sysroots/genericx86-64 TARGET_PYTHON=/usr/bin/python TARGET_PERL=/usr/bin/perl --disable-static --enable-shared LIBS=-ljemalloc --enable-simulator-provider
++make check TESTSUITEFLAGS='-j'$(nproc)
++unset OVS_TEST
++cd ../
++# Deleting this folder because it is created for each compilation for the target
++# been compiled, no matter if you compile in $src_dir or in ovs_test_build dir and
++# yocto don't update if it's found, so after running the tests, this folder targets for
++# local host libraries instead of the desired yocto target.
++rm -rf libltdl/
+diff --git a/run-ovs-tests.sh b/run-ovs-tests.sh
+new file mode 100755
+index 0000000..f92f706
+--- /dev/null
++++ b/run-ovs-tests.sh
+@@ -0,0 +1,36 @@
++#!/bin/bash
++# Copyright (C) 2016 Hewlett-Packard Development Company, L.P.
++# All Rights Reserved.
++#
++
++OVSTESTDIR="/ovstest"
++DOCKERIMAGE="openswitch/ubuntudev"
++TESTCONTAINER="test"
++ERRORS=0
++
++echo "Loading docker"
++# If docker image is not available, it will be downloaded from openswitch docker hub.
++if [ $(docker images | grep -ic $DOCKERIMAGE) -le 1 ]; then
++    docker pull $DOCKERIMAGE
++    if [ $(echo $?) -eq 1 ]; then
++        echo "Docker image not found"
++        exit 1;
++    fi
++    until [ $(docker images | grep -ic $DOCKERIMAGE) -eq 1 ]; do
++       sleep 0.1;
++    done;
++fi
++docker run --rm -v $(pwd):${OVSTESTDIR} --name ${TESTCONTAINER} ${DOCKERIMAGE} &
++sleep 2
++echo "Waiting docker to be ready"
++until [ "`/usr/bin/docker inspect -f {{.State.Running}} ${TESTCONTAINER}`"=="true" ]; do
++    sleep 0.1;
++done;
++echo "Configuring options in docker"
++# Need to create an user in the docker with the same attributes as in local host
++# to avoid creating files with root permits
++docker exec  ${TESTCONTAINER} groupadd -g $(id -g ${USER}) $(stat -c "%G" .)
++docker exec  ${TESTCONTAINER} useradd  -u $(id -u ${USER}) ${USER}
++echo "Running tests in docker"
++docker exec  ${TESTCONTAINER} /bin/sh -c "cd ${OVSTESTDIR} && sudo -u ${USER} ./ovs-test.sh"
++docker stop test
+diff --git a/tests/automake.mk b/tests/automake.mk
+index 6413b56..bc724bc 100644
+--- a/tests/automake.mk
++++ b/tests/automake.mk
+@@ -19,47 +19,24 @@ COMMON_MACROS_AT = \
+ 
+ TESTSUITE_AT = \
+ 	tests/testsuite.at \
+-	tests/completion.at \
+ 	tests/library.at \
+-	tests/heap.at \
+ 	tests/bundle.at \
+-	tests/classifier.at \
++	tests/heap.at \
+ 	tests/check-structs.at \
+ 	tests/daemon.at \
+ 	tests/daemon-py.at \
+-	tests/ofp-actions.at \
+-	tests/ofp-print.at \
+-	tests/ofp-util.at \
+-	tests/ofp-errors.at \
+-	tests/ovs-ofctl.at \
+ 	tests/odp.at \
+-	tests/mpls-xlate.at \
+ 	tests/multipath.at \
+-	tests/bfd.at \
+-	tests/cfm.at \
+-	tests/lacp.at \
+ 	tests/lib.at \
+-	tests/learn.at \
+ 	tests/vconn.at \
+ 	tests/file_name.at \
+ 	tests/aes128.at \
+-	tests/unixctl-py.at \
+ 	tests/uuid.at \
+ 	tests/json.at \
+ 	tests/jsonrpc.at \
+ 	tests/jsonrpc-py.at \
+-	tests/tunnel.at \
+-	tests/tunnel-push-pop.at \
+-	tests/tunnel-push-pop-ipv6.at \
+ 	tests/lockfile.at \
+ 	tests/reconnect.at \
+-	tests/ovs-vswitchd.at \
+-	tests/dpif-netdev.at \
+-	tests/dpctl.at \
+-	tests/ofproto-dpif.at \
+-	tests/bridge.at \
+-	tests/vlan-splinters.at \
+-	tests/ofproto.at \
+ 	tests/ovsdb.at \
+ 	tests/ovsdb-log.at \
+ 	tests/ovsdb-types.at \
+@@ -81,17 +58,9 @@ TESTSUITE_AT = \
+ 	tests/ovs-vsctl.at \
+ 	tests/ovs-monitor-ipsec.at \
+ 	tests/ovs-xapi-sync.at \
+-	tests/stp.at \
+-	tests/rstp.at \
+-	tests/interface-reconfigure.at \
+-	tests/vlog.at \
+ 	tests/vtep-ctl.at \
+-	tests/auto-attach.at \
+-	tests/ovn.at \
+-	tests/ovn-nbctl.at \
+-	tests/ovn-sbctl.at \
+-	tests/ovn-controller.at \
+-	tests/ovn-controller-vtep.at
++	tests/vlog.at \
++	tests/auto-attach.at
+ 
+ SYSTEM_KMOD_TESTSUITE_AT = \
+ 	tests/system-common-macros.at \
+@@ -112,7 +81,7 @@ SYSTEM_KMOD_TESTSUITE = $(srcdir)/tests/system-kmod-testsuite
+ SYSTEM_USERSPACE_TESTSUITE = $(srcdir)/tests/system-userspace-testsuite
+ DISTCLEANFILES += tests/atconfig tests/atlocal
+ 
+-AUTOTEST_PATH = utilities:vswitchd:ovsdb:vtep:tests:$(PTHREAD_WIN32_DIR_DLL):ovn:ovn/controller-vtep:ovn/northd:ovn/utilities:ovn/controller
++AUTOTEST_PATH = utilities:vswitchd:ovsdb:vtep:tests:$(PTHREAD_WIN32_DIR_DLL)
+ 
+ check-local: tests/atconfig tests/atlocal $(TESTSUITE)
+ 	$(SHELL) '$(TESTSUITE)' -C tests AUTOTEST_PATH=$(AUTOTEST_PATH) $(TESTSUITEFLAGS)
+@@ -258,12 +227,12 @@ noinst_PROGRAMS += tests/test-ovsdb
+ tests_test_ovsdb_SOURCES = tests/test-ovsdb.c
+ nodist_tests_test_ovsdb_SOURCES = tests/idltest.c tests/idltest.h
+ EXTRA_DIST += tests/uuidfilt.pl tests/ovsdb-monitor-sort.pl
+-tests_test_ovsdb_LDADD = ovsdb/libovsdb.la lib/libopenvswitch.la
++tests_test_ovsdb_LDADD = ovsdb/libovsdb.la lib/libopenvswitch.la lib/.libs/libovscommon.la
+ 
+ noinst_PROGRAMS += tests/test-lib
+ tests_test_lib_SOURCES = \
+ 	tests/test-lib.c
+-tests_test_lib_LDADD = lib/libopenvswitch.la
++tests_test_lib_LDADD = lib/libopenvswitch.la lib/.libs/libovscommon.la
+ 
+ # idltest schema and IDL
+ OVSIDL_BUILT += tests/idltest.c tests/idltest.h tests/idltest.ovsidl
+@@ -306,7 +275,6 @@ tests_ovstest_SOURCES = \
+ 	tests/test-netflow.c \
+ 	tests/test-odp.c \
+ 	tests/test-ofpbuf.c \
+-	tests/test-ovn.c \
+ 	tests/test-packets.c \
+ 	tests/test-random.c \
+ 	tests/test-reconnect.c \
+@@ -327,11 +295,18 @@ tests_ovstest_SOURCES += \
+ endif
+ 
+ if LINUX
+-tests_ovstest_SOURCES += \
+-	tests/test-netlink-conntrack.c
++if !OVS_TEST
++	tests_ovstest_SOURCES += \
++		tests/test-netlink-conntrack.c
++endif
++endif
++
++tests_ovstest_LDADD = lib/libopenvswitch.la lib/.libs/libovscommon.la
++
++if !OVS_TEST
++	tests_ovstest_LADD += ovn/lib/libovn.la
+ endif
+ 
+-tests_ovstest_LDADD = lib/libopenvswitch.la ovn/lib/libovn.la
+ dist_check_SCRIPTS = tests/flowgen.pl
+ 
+ noinst_PROGRAMS += tests/test-strtok_r
+diff --git a/tests/bundle.at b/tests/bundle.at
+index bf62b2c..a34eaa8 100644
+--- a/tests/bundle.at
++++ b/tests/bundle.at
+@@ -164,30 +164,35 @@ AT_CLEANUP
+ #: disruption=0.00 (perfect=0.00)
+ 
+ AT_SETUP([bundle action missing argument])
++AT_SKIP_IF(test OPS)
+ AT_CHECK([ovs-ofctl parse-flow actions=bundle], [1], [],
+   [ovs-ofctl: : not enough arguments to bundle action
+ ])
+ AT_CLEANUP
+ 
+ AT_SETUP([bundle action bad fields])
++AT_SKIP_IF(test OPS)
+ AT_CHECK([ovs-ofctl parse-flow 'actions=bundle(xyzzy,60,hrw,ofport,slaves:1,2))'], [1], [],
+   [ovs-ofctl: xyzzy,60,hrw,ofport,slaves:1,2: unknown fields `xyzzy'
+ ])
+ AT_CLEANUP
+ 
+ AT_SETUP([bundle action bad algorithm])
++AT_SKIP_IF(test OPS)
+ AT_CHECK([ovs-ofctl parse-flow 'actions=bundle(symmetric_l4,60,fubar,ofport,slaves:1,2))'], [1], [],
+   [ovs-ofctl: symmetric_l4,60,fubar,ofport,slaves:1,2: unknown algorithm `fubar'
+ ])
+ AT_CLEANUP
+ 
+ AT_SETUP([bundle action bad slave type])
++AT_SKIP_IF(test OPS)
+ AT_CHECK([ovs-ofctl parse-flow 'actions=bundle(symmetric_l4,60,hrw,robot,slaves:1,2))'], [1], [],
+   [ovs-ofctl: symmetric_l4,60,hrw,robot,slaves:1,2: unknown slave_type `robot'
+ ])
+ AT_CLEANUP
+ 
+ AT_SETUP([bundle action bad slave delimiter])
++AT_SKIP_IF(test OPS)
+ AT_CHECK([ovs-ofctl parse-flow 'actions=bundle(symmetric_l4,60,hrw,ofport,robot:1,2))'], [1], [],
+   [ovs-ofctl: symmetric_l4,60,hrw,ofport,robot:1,2: missing slave delimiter, expected `slaves' got `robot'
+ ])
+diff --git a/tests/multipath.at b/tests/multipath.at
+index b5a3099..947cb7a 100644
+--- a/tests/multipath.at
++++ b/tests/multipath.at
+@@ -280,30 +280,35 @@ AT_CHECK([[ovstest test-multipath 'eth_src,50,iter_hash,1,0,NXM_NX_REG0[]']],
+ AT_CLEANUP
+ 
+ AT_SETUP([multipath action missing argument])
++AT_SKIP_IF(test OPS)
+ AT_CHECK([ovs-ofctl parse-flow actions=multipath], [1], [],
+   [ovs-ofctl: : not enough arguments to multipath action
+ ])
+ AT_CLEANUP
+ 
+ AT_SETUP([multipath action bad fields])
++AT_SKIP_IF(test OPS)
+ AT_CHECK([ovs-ofctl parse-flow 'actions=multipath(xyzzy,50,modulo_n,1,0,NXM_NX_REG0[[]])'], [1], [],
+   [ovs-ofctl: xyzzy,50,modulo_n,1,0,NXM_NX_REG0[[]]: unknown fields `xyzzy'
+ ])
+ AT_CLEANUP
+ 
+ AT_SETUP([multipath action bad algorithm])
++AT_SKIP_IF(test OPS)
+ AT_CHECK([ovs-ofctl parse-flow 'actions=multipath(eth_src,50,fubar,1,0,NXM_NX_REG0[[]])'], [1], [],
+   [ovs-ofctl: eth_src,50,fubar,1,0,NXM_NX_REG0[[]]: unknown algorithm `fubar'
+ ])
+ AT_CLEANUP
+ 
+ AT_SETUP([multipath action bad n_links])
++AT_SKIP_IF(test OPS)
+ AT_CHECK([ovs-ofctl parse-flow 'actions=multipath(eth_src,50,modulo_n,0,0,NXM_NX_REG0[[]])'], [1], [],
+   [ovs-ofctl: eth_src,50,modulo_n,0,0,NXM_NX_REG0[[]]: n_links 0 is not in valid range 1 to 65536
+ ])
+ AT_CLEANUP
+ 
+ AT_SETUP([multipath action destination too narrow])
++AT_SKIP_IF(test OPS)
+ AT_CHECK([ovs-ofctl parse-flow 'actions=multipath(eth_src,50,modulo_n,1024,0,NXM_NX_REG0[[0..7]])'], [1], [],
+   [ovs-ofctl: eth_src,50,modulo_n,1024,0,NXM_NX_REG0[[0..7]]: 8-bit destination field has 256 possible values, less than specified n_links 1024
+ ])
+diff --git a/tests/ovs-macros.at b/tests/ovs-macros.at
+index bfd0681..67e9c9a 100644
+--- a/tests/ovs-macros.at
++++ b/tests/ovs-macros.at
+@@ -1,4 +1,3 @@
+-AT_TESTED([ovs-vswitchd])
+ AT_TESTED([ovs-vsctl])
+ AT_TESTED([perl])
+ 
+diff --git a/tests/ovsdb-idl.at b/tests/ovsdb-idl.at
+index caceb5d..f0c15ca 100644
+--- a/tests/ovsdb-idl.at
++++ b/tests/ovsdb-idl.at
+@@ -580,7 +580,7 @@ AT_CHECK([sort stdout | ${PERL} $srcdir/uuidfilt.pl], [0],
+ ]], [], [kill `cat pid`])
+ 
+ # Check that ovsdb-idl figured out that table link2 and column l2 are missing.
+-AT_CHECK([grep ovsdb_idl stderr | sort], [0], [dnl
++AT_CHECK([grep -v "DEBUG"  stderr | grep ovsdb_idl | sort], [0], [dnl
+ test-ovsdb|ovsdb_idl|idltest database lacks link2 table (database needs upgrade?)
+ test-ovsdb|ovsdb_idl|link1 table in idltest database lacks l2 column (database needs upgrade?)
+ ])
+@@ -777,6 +777,7 @@ OVSDB_CHECK_IDL_TRACK([track, simple idl, initially empty, various ops],
+ 015: done
+ ]])
+ 
++
+ m4_define([OVSDB_CHECK_IDL_PARTIAL_UPDATE_MAP_COLUMN],
+   [AT_SETUP([$1 - C])
+    AT_KEYWORDS([ovsdb server idl partial update map column positive $5])
+@@ -1089,6 +1090,7 @@ OVSDB_CHECK_WAIT_MONITOR([map, simple wait-monitor, initially populated, no colu
+ if HALON
+ m4_define([OVSDB_CHECK_IDL_INFO_C],
+   [AT_SETUP([$1 - C])
++   AT_SKIP_IF( test OPS )
+    AT_KEYWORDS([ovsdb server idl seqno positive $5])
+    OVS_RUNDIR=`pwd`; export OVS_RUNDIR
+    AT_CHECK([ovsdb-tool create db $abs_srcdir/idltest.ovsschema],
+@@ -1123,6 +1125,7 @@ OVSDB_CHECK_IDL_INFO_C([simple idl, insert and modify seqno increment],
+ m4_define([OVSDB_CHECK_IDL_DELETE_SEQNO_C],
+   [AT_SETUP([$1 - C])
+    AT_KEYWORDS([ovsdb server idl delete seqno positive $5])
++   AT_SKIP_IF( test OPS )
+    OVS_RUNDIR=`pwd`; export OVS_RUNDIR
+    AT_CHECK([ovsdb-tool create db $abs_srcdir/idltest.ovsschema],
+                   [0], [stdout], [ignore])
+diff --git a/tests/ovsdb-macros.at b/tests/ovsdb-macros.at
+index c1aa619..1179a96 100644
+--- a/tests/ovsdb-macros.at
++++ b/tests/ovsdb-macros.at
+@@ -5,10 +5,17 @@ m4_define([OVSDB_INIT],
+   [AT_CHECK(
+      [ovsdb-tool create $1 $abs_top_srcdir/vswitchd/vswitch.ovsschema],
+      [0], [stdout], [ignore])
++   m4_if([OPS], AT_CHECK(
++     [[ovsdb-tool transact $1 \
++        '["OpenSwitch",
++          {"op": "insert",
++           "table": "System",
++           "row": {}}]']],
++     [0], [ignore], [ignore]),
+    AT_CHECK(
+      [[ovsdb-tool transact $1 \
+         '["Open_vSwitch",
+           {"op": "insert",
+            "table": "Open_vSwitch",
+            "row": {}}]']],
+-     [0], [ignore], [ignore])])
++     [0], [ignore], [ignore]))])
+diff --git a/tests/ovsdb-server.at b/tests/ovsdb-server.at
+index fe11b7b..54bfe2e 100644
+--- a/tests/ovsdb-server.at
++++ b/tests/ovsdb-server.at
+@@ -673,6 +673,7 @@ AT_CLEANUP
+ 
+ AT_SETUP([ovsdb-server combines updates on backlogged connections])
+ on_exit 'kill `cat *.pid`'
++AT_SKIP_IF(test OPS)
+ 
+ # The maximum socket receive buffer size is important for this test, which
+ # tests behavior when the receive buffer overflows.
+diff --git a/tests/test-netflow.c b/tests/test-netflow.c
+index 2abc57f..235a9ed 100644
+--- a/tests/test-netflow.c
++++ b/tests/test-netflow.c
+@@ -195,7 +195,11 @@ test_netflow_main(int argc, char *argv[])
+     }
+ 
+     daemon_save_fd(STDOUT_FILENO);
++#ifdef OPS
++    daemonize_start();
++#else
+     daemonize_start(false);
++#endif
+ 
+     error = unixctl_server_create(NULL, &server);
+     if (error) {
+diff --git a/tests/test-sflow.c b/tests/test-sflow.c
+index e18532f..a9d7dd6 100644
+--- a/tests/test-sflow.c
++++ b/tests/test-sflow.c
+@@ -683,7 +683,11 @@ test_sflow_main(int argc, char *argv[])
+     }
+ 
+     daemon_save_fd(STDOUT_FILENO);
++#ifdef OPS
++    daemonize_start();
++#else
+     daemonize_start(false);
++#endif
+ 
+     error = unixctl_server_create(NULL, &server);
+     if (error) {
+diff --git a/tests/testsuite.at b/tests/testsuite.at
+index 7e3f193..93fac06 100644
+--- a/tests/testsuite.at
++++ b/tests/testsuite.at
+@@ -18,58 +18,25 @@ m4_include([tests/ovs-macros.at])
+ m4_include([tests/ovsdb-macros.at])
+ m4_include([tests/ofproto-macros.at])
+ 
+-m4_include([tests/completion.at])
+-m4_include([tests/bfd.at])
+-m4_include([tests/cfm.at])
+-m4_include([tests/lacp.at])
+ m4_include([tests/library.at])
+ m4_include([tests/heap.at])
+ m4_include([tests/bundle.at])
+-m4_include([tests/classifier.at])
+ m4_include([tests/check-structs.at])
+-m4_include([tests/daemon.at])
+ m4_include([tests/daemon-py.at])
+-m4_include([tests/ofp-actions.at])
+-m4_include([tests/ofp-print.at])
+-m4_include([tests/ofp-util.at])
+-m4_include([tests/ofp-errors.at])
+-m4_include([tests/ovs-ofctl.at])
+ m4_include([tests/odp.at])
+-m4_include([tests/mpls-xlate.at])
+ m4_include([tests/multipath.at])
+-m4_include([tests/learn.at])
+ m4_include([tests/vconn.at])
+ m4_include([tests/file_name.at])
+ m4_include([tests/aes128.at])
+-m4_include([tests/unixctl-py.at])
+ m4_include([tests/uuid.at])
+ m4_include([tests/json.at])
+ m4_include([tests/jsonrpc.at])
+ m4_include([tests/jsonrpc-py.at])
+-m4_include([tests/tunnel.at])
+-m4_include([tests/tunnel-push-pop.at])
+-m4_include([tests/tunnel-push-pop-ipv6.at])
+ m4_include([tests/lockfile.at])
+ m4_include([tests/reconnect.at])
+-m4_include([tests/ovs-vswitchd.at])
+-m4_include([tests/ofproto.at])
+-m4_include([tests/dpif-netdev.at])
+-m4_include([tests/dpctl.at])
+-m4_include([tests/ofproto-dpif.at])
+-m4_include([tests/bridge.at])
+-m4_include([tests/vlan-splinters.at])
+ m4_include([tests/ovsdb.at])
+-m4_include([tests/ovs-vsctl.at])
+-m4_include([tests/ovs-monitor-ipsec.at])
+-m4_include([tests/ovs-xapi-sync.at])
+-m4_include([tests/interface-reconfigure.at])
+-m4_include([tests/stp.at])
+-m4_include([tests/rstp.at])
+ m4_include([tests/vlog.at])
+ m4_include([tests/vtep-ctl.at])
+ m4_include([tests/auto-attach.at])
+-m4_include([tests/ovn.at])
+-m4_include([tests/ovn-nbctl.at])
+-m4_include([tests/ovn-sbctl.at])
+-m4_include([tests/ovn-controller.at])
+-m4_include([tests/ovn-controller-vtep.at])
++m4_include([tests/daemon.at])
++m4_include([tests/unixctl-py.at])
+diff --git a/tests/unixctl-py.at b/tests/unixctl-py.at
+index ec029fc..380b9d7 100644
+--- a/tests/unixctl-py.at
++++ b/tests/unixctl-py.at
+@@ -4,7 +4,7 @@ m4_define([APPCTL], [ovs-appctl --timeout 20])
+ m4_define([PYAPPCTL], [$PYTHON $srcdir/appctl.py --timeout 20])
+ 
+ AT_SETUP([unixctl ovs-vswitchd exit - Python])
+-AT_SKIP_IF([test $HAVE_PYTHON = no])
++AT_SKIP_IF([test $HAVE_PYTHON = no] || [test OVS_TEST])
+ OVS_VSWITCHD_START
+ 
+ AT_CHECK([PYAPPCTL -t ovs-vswitchd exit], [0], [])
+@@ -15,7 +15,7 @@ OVS_WAIT_WHILE([test -s ovsdb-server.pid])
+ AT_CLEANUP
+ 
+ AT_SETUP([unixctl ovs-vswitchd list-commands - Python])
+-AT_SKIP_IF([test $HAVE_PYTHON = no])
++AT_SKIP_IF([test $HAVE_PYTHON = no] || [test OVS_TEST])
+ OVS_VSWITCHD_START
+ 
+ AT_CHECK([APPCTL list-commands], [0], [stdout])
+@@ -30,7 +30,7 @@ AT_CLEANUP
+ 
+ 
+ AT_SETUP([unixctl ovs-vswitchd arguments - Python])
+-AT_SKIP_IF([test $HAVE_PYTHON = no])
++AT_SKIP_IF([test $HAVE_PYTHON = no] || [test OVS_TEST])
+ OVS_VSWITCHD_START
+ 
+ AT_CHECK([APPCTL bond/hash], [2], [], [stderr])
+diff --git a/tests/vlog.at b/tests/vlog.at
+index 99565db..7aa23aa 100644
+--- a/tests/vlog.at
++++ b/tests/vlog.at
+@@ -102,7 +102,7 @@ AssertionError
+ AT_CLEANUP
+ 
+ AT_SETUP([vlog - vlog/reopen - Python])
+-AT_SKIP_IF([test $HAVE_PYTHON = no])
++AT_SKIP_IF([test $HAVE_PYTHON = no] || [test OPS])
+ on_exit 'kill `cat test-unixctl.py.pid`'
+ 
+ AT_CAPTURE_FILE([log])
+@@ -127,7 +127,7 @@ AT_CHECK([sed 's/.*|//' log], [0], [dnl
+ AT_CLEANUP
+ 
+ AT_SETUP([vlog - vlog/reopen without log file - Python])
+-AT_SKIP_IF([test $HAVE_PYTHON = no])
++AT_SKIP_IF([test $HAVE_PYTHON = no] || [test OPS])
+ on_exit 'kill `cat test-unixctl.py.pid`'
+ 
+ AT_CHECK([$PYTHON $srcdir/test-unixctl.py --pidfile --detach])
+@@ -141,7 +141,7 @@ dnl This checks that if vlog/reopen can't reopen the log file,
+ dnl nothing particularly bad (e.g. Python throws an exception and
+ dnl aborts the program) happens.
+ AT_SETUP([vlog - vlog/reopen can't reopen log file - Python])
+-AT_SKIP_IF([test $HAVE_PYTHON = no])
++AT_SKIP_IF([test $HAVE_PYTHON = no] || [test OPS])
+ 
+ # Verify that /dev/full is a character device that fails writes.
+ AT_SKIP_IF([test ! -c /dev/full])
+@@ -169,7 +169,7 @@ AT_CHECK([sed 's/.*|//' log], [0], [dnl
+ AT_CLEANUP
+ 
+ AT_SETUP([vlog - vlog/set and vlog/list - Python])
+-AT_SKIP_IF([test $HAVE_PYTHON = no])
++AT_SKIP_IF([test $HAVE_PYTHON = no] || [test OPS])
+ on_exit 'kill `cat test-unixctl.py.pid`'
+ 
+ AT_CAPTURE_FILE([log])
+-- 
+2.7.4
+

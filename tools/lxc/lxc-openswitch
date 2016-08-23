@@ -63,7 +63,7 @@ install_openswitch()
 {
     rootfs=$1
     mkdir -p $rootfs
-    tar xzf $OPENSWITCH_IMAGE -C $rootfs 
+    tar xf $OPENSWITCH_IMAGE -C $rootfs
 }
 
 configure_systemd() {

@@ -1,8 +1,6 @@
 SUMMARY = "OpenNSL Switch Specification and Software"
 LICENSE = "Proprietary & Apache-2.0 & GPLv2"
 
-DEPENDS += "systemd"
-
 PROVIDES = "virtual/opennsl"
 RPROVIDES_${PN} = "virtual/opennsl"
 

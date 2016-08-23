@@ -5,10 +5,9 @@ Description=OpenSwitch Pluggable Module Daemon
 After=ops-sysd.service ops-init.service
 
 [Service]
-Type=forking
+Type=simple
 ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-pmd.pid
-ExecStart=/sbin/ip netns exec nonet /usr/bin/ops-pmd --detach --pidfile -vSYSLOG:INFO
-PIDFile=/var/run/openvswitch/ops-pmd.pid
+ExecStart=/sbin/ip netns exec nonet /usr/bin/ops-pmd --pidfile
 Restart=on-abort
 
 [Install]

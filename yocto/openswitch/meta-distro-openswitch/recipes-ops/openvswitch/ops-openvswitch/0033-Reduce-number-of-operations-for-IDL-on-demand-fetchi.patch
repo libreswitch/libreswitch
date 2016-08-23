@@ -1,0 +1,144 @@
+From 6c66dd65fe4993f6263e1c7a3d750793c2595e59 Mon Sep 17 00:00:00 2001
+From: Chinh Le <chinh.le@hpe.com>
+Date: Tue, 19 Jul 2016 20:30:03 -0700
+Subject: [PATCH] Reduce number of operations for IDL on-demand fetching.
+
+Reducing on-demand fetch operations for performance improvements.
+
+TG-1234
+
+Change-Id: Ie2e242f89acaf7bc8e63e8e29ab037e275ba0f23
+Signed-off-by: Chinh Le <chinh.le@hpe.com>
+---
+ python/ovs/db/idl.py | 77 ++++++++++++++++++++++++++++++++++++++++++----------
+ 1 file changed, 62 insertions(+), 15 deletions(-)
+
+diff --git a/python/ovs/db/idl.py b/python/ovs/db/idl.py
+index 764a930..87f9a52 100644
+--- a/python/ovs/db/idl.py
++++ b/python/ovs/db/idl.py
+@@ -939,7 +939,8 @@ class Transaction(object):
+         self._inc_row = None
+         self._inc_column = None
+ 
+-        self._fetch_requests = []
++        self._fetch_requests = {}
++        self._fetch_tables = {}
+ 
+         self._inserted_rows = {}  # Map from UUID to _InsertedRow
+ 
+@@ -1112,13 +1113,22 @@ class Transaction(object):
+                     operations.append(op)
+ 
+         if self._fetch_requests:
+-            for fetch in self._fetch_requests:
+-                fetch["index"] = len(operations) - 1
++            for row, data_dict in self._fetch_requests.iteritems():
++                data_dict["index"] = len(operations) - 1
+                 operations.append({"op": "select",
+-                                   "table": fetch["row"]._table.name,
++                                   "table": row._table.name,
+                                    "where": self._substitute_uuids(
+-                                       _where_uuid_equals(fetch["row"].uuid)),
+-                                   "columns": [fetch["column_name"]]})
++                                       _where_uuid_equals(row.uuid)),
++                                   "columns": list(data_dict["column_names"])})
++            any_updates = True
++
++        if self._fetch_tables:
++            for table_name, data_dict in self._fetch_tables.iteritems():
++                data_dict["index"] = len(operations) - 1
++                operations.append({"op": "select",
++                                   "table": table_name,
++                                   "where": [],
++                                   "columns": list(data_dict["column_names"])})
+             any_updates = True
+ 
+         # Add increment.
+@@ -1232,7 +1242,16 @@ class Transaction(object):
+         self._inc_column = column
+ 
+     def _fetch(self, row, column_name):
+-        self._fetch_requests.append({"row":row, "column_name":column_name})
++        if row not in self._fetch_requests:
++            self._fetch_requests[row] = {"column_names": set([])}
++
++        self._fetch_requests[row]["column_names"].add(column_name)
++
++    def fetch_table(self, table_name, column_name):
++        if table_name not in self._fetch_tables:
++            self._fetch_tables[table_name] = {"column_names": set(["_uuid"])}
++
++        self._fetch_tables[table_name]["column_names"].add(column_name)
+ 
+     def _write(self, row, column, datum):
+         assert row._changes is not None
+@@ -1322,6 +1341,11 @@ class Transaction(object):
+                     else:
+                         hard_errors = True
+ 
++                if self._fetch_tables:
++                    if self.__process_fetch_tables_reply(ops):
++                        self.idl.change_seqno += 1
++                    else:
++                        hard_errors = True
+                 for insert in self._inserted_rows.itervalues():
+                     if not self.__process_insert_reply(insert, ops):
+                         hard_errors = True
+@@ -1350,10 +1374,8 @@ class Transaction(object):
+ 
+     def __process_fetch_reply(self, ops):
+         update = False
+-        for fetch_request in self._fetch_requests:
+-            row = fetch_request["row"]
+-            column_name = fetch_request["column_name"]
+-            index = fetch_request["index"]
++        for row, data_dict in self._fetch_requests.iteritems():
++            index = data_dict["index"]
+             table = row._table
+ 
+             select = ops[index]
+@@ -1371,11 +1393,36 @@ class Transaction(object):
+                                                  '"select" reply row'):
+                 continue
+ 
+-            column = table.columns.get(column_name)
+-            datum_json = fetched_row.get(column_name)
+-            datum = ovs.db.data.Datum.from_json(column.type, datum_json)
++            for column_name in data_dict["column_names"]:
++                column = table.columns.get(column_name)
++                datum_json = fetched_row.get(column_name)
++                datum = ovs.db.data.Datum.from_json(column.type, datum_json)
++                row._data[column_name] = datum
++
++            update = True
++
++        return update
++
++    def __process_fetch_tables_reply(self, ops):
++        update = False
++        for table_name, data_dict in self._fetch_tables.iteritems():
++            index = data_dict["index"]
++            table = self.idl.tables[table_name]
++
++            select = ops[index]
++            fetched_rows = select.get("rows")
++
++            for fetched_row in fetched_rows:
++                for column_name in data_dict["column_names"]:
++                    if column_name == '_uuid':
++                        continue
++                    column = table.columns.get(column_name)
++                    datum_json = fetched_row.get(column_name)
++                    datum = ovs.db.data.Datum.from_json(column.type,
++                                                        datum_json)
++                    uuid = ovs.ovsuuid.from_string(fetched_row["_uuid"][1])
++                    table.rows[uuid]._data[column_name] = datum
+ 
+-            row._data[column_name] = datum
+             update = True
+ 
+         return update
+-- 
+2.7.4
+

@@ -2,7 +2,7 @@ SUMMARY = "OpenVSwitch for OpenSwitch"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 
-DEPENDS = "openssl python perl systemd libtool libyaml jemalloc ops"
+DEPENDS = "openssl python perl libtool libyaml jemalloc ops"
 
 SRC_URI = "git://github.com/openvswitch/ovs.git;protocol=https;branch=branch-2.5 \
            file://ovsdb-server.service \
@@ -36,7 +36,13 @@ SRC_URI = "git://github.com/openvswitch/ovs.git;protocol=https;branch=branch-2.5
            file://0028-Weak-references-performance-fix.patch \
            file://0029-Strong-references-cascade-fix.patch \
            file://0030-new-dev-OVSDB-Priority-Sessions.patch \
+           file://0031-Add-optional-C-extension-wrapper-for-Python-JSON-par.patch \
            file://0032-OVSDB-Wait-Monitoring-Functions.patch \
+           file://0033-Reduce-number-of-operations-for-IDL-on-demand-fetchi.patch \
+           file://0034-Enable-OpenFlow.patch \
+           file://0035-setting-and-fetching-vlan-using-new-vlan_tag-column-.patch \
+           file://0036-new-dev-Enable-OVS-tests-inside-OPS.patch \
+           file://0037-ovsdb-pkg-config.patch \
           "
 
 SRCREV = "976b441345df85dd7adb973f8ae208f588d764a0"
@@ -47,48 +53,13 @@ PV = "git${SRCPV}"
 
 S = "${WORKDIR}/git"
 
-PACKAGES =+ "ops-ovsdb python-ops-ovsdb"
-PROVIDES = "${PACKAGES}"
-
-RDEPENDS_${PN} = "openssl procps util-linux-uuidgen util-linux-libuuid coreutils \
-  python perl perl-module-strict sed gawk grep ops-ovsdb \
-  ${@bb.utils.contains('MACHINE_FEATURES', 'ops-container', 'openvswitch-sim-switch', '',d)} \
-"
-
-RDEPENDS_${PN}_remove := "${@bb.utils.contains("IMAGE_FEATURES", "ops-p4", "openvswitch-sim-switch", "",d)}"
-
-RDEPENDS_ops-ovsdb = "ops ops-reboot"
-
-RDEPENDS_python-ops-ovsdb = "python-io python-netclient python-datetime \
-  python-logging python-threading python-math python-fcntl python-resource"
+inherit openswitch autotools distutils pkgconfig systemd useradd
 
 EXTRA_OECONF += "TARGET_PYTHON=${bindir}/python \
                  TARGET_PERL=${bindir}/perl \
                  --disable-static --enable-shared LIBS=-ljemalloc \
                  ${@bb.utils.contains('MACHINE_FEATURES', 'ops-container', '--enable-simulator-provider', '',d)} \
                  "
-FILES_ops-ovsdb = "/run /var/run /var/log /var/volatile ${bindir}/ovsdb* \
-  ${sbindir}/ovsdb-server ${datadir}/ovsdbmonitor ${sysconfdir}/openvswitch/ \
-  ${libdir}/libovscommon.so.1* ${libdir}/libovsdb.so.1* \
-  ${sysconfdir}/tmpfiles.d/openswitch.conf"
-
-inherit python-dir useradd
-
-FILES_python-ops-ovsdb = "${PYTHON_SITEPACKAGES_DIR}/ovs"
-
-FILES_${PN} = "${bindir}/ovs-appctl ${bindir}/ovs-pki ${bindir}/ovs-vsctl \
- /var/local/openvswitch \
- ${libdir}/libofproto.so.1* \
- ${libdir}/libopenvswitch.so.1* \
- ${libdir}/libsflow.so.1* \
- ${libdir}/libplugins.so.1* \
- ${libdir}/libvtep.so.1* \
-"
-
-USERADD_PACKAGES = "${PN}"
-
-GROUPADD_PARAM_${PN} ="-g 1020 ovsdb-client;ops_netop;ops_admin"
-
 do_configure_prepend() {
     export OPEN_HALON_BUILD=1
     export OPS_BUILD=1
@@ -104,28 +75,50 @@ do_configure_prepend() {
     fi
 }
 
-do_compile_prepend() {
-    cp ${STAGING_DIR_TARGET}/usr/share/openvswitch/vswitch.extschema ${S}/vswitchd/vswitch.extschema
+do_compile() {
     cp ${STAGING_DIR_TARGET}/usr/share/openvswitch/vswitch.ovsschema ${S}/vswitchd/vswitch.ovsschema
-    cp ${STAGING_DIR_TARGET}/usr/share/openvswitch/vswitch.xml ${S}/vswitchd/vswitch.xml
-    cp ${STAGING_DIR_TARGET}/usr/share/openvswitch/dhcp_leases.extschema ${S}/vswitchd/dhcp_leases.extschema
     cp ${STAGING_DIR_TARGET}/usr/share/openvswitch/dhcp_leases.ovsschema ${S}/vswitchd/dhcp_leases.ovsschema
-    cp ${STAGING_DIR_TARGET}/usr/share/openvswitch/dhcp_leases.xml ${S}/vswitchd/dhcp_leases.xml
     cp ${STAGING_DIR_TARGET}/usr/share/openvswitch/configdb.ovsschema ${S}/vswitchd/configdb.ovsschema
     cp ${STAGING_DIR_TARGET}/usr/share/openvswitch/vtep.ovsschema ${S}/vswitchd/vtep.ovsschema
-    cp ${STAGING_DIR_TARGET}/usr/share/openvswitch/vtep.xml ${S}/vswitchd/vtep.xml
 
-    touch ${S}/vswitchd/vswitch.xml
+    base_do_compile
 }
 
-do_install_append() {
+do_install() {
+    cd ${B}
+    autotools_do_install
+
+    # We run the compile step for python here, since it depends on having the headers from the C code
+    # already installed
+    export D=${D}
+    export libdir=${libdir}
+    export includedir=${includedir}
+    cd ${S}/python
+    sed \
+       -e '/^##/d' \
+       -e 's,[@]pkgdatadir[@],${datadir}/openvswitch,g' \
+       -e 's,[@]RUNDIR[@],${localstatedir}/run/openvswitch,g' \
+       -e 's,[@]LOGDIR[@],${localstatedir}/log/openvswitch,g' \
+       -e 's,[@]bindir[@],${bindir},g' \
+       -e 's,[@]sysconfdir[@],${sysconfdir},g' \
+       -e 's,[@]DBDIR[@],${sysconfdir}/openvswitch,g' \
+       < ${S}/python/ovs/dirs.py.template \
+       > ${S}/python/ovs/dirs.py
+    distutils_do_compile
+    distutils_do_install
+
+    # Correct the egg location
+    mv ${D}/${PYTHON_SITEPACKAGES_DIR}/ovs-*.egg/ovs ${D}/${PYTHON_SITEPACKAGES_DIR}
+
     # Need to remove files to prevent double-install by autotools - these are already installed from ops.
     rm -f ${D}/${prefix}/share/openvswitch/*.ovsschema
-    install -m 0644 lib/libovscommon.pc ${D}/${libdir}/pkgconfig/
-    install -m 0644 lib/libsflow.pc ${D}/${libdir}/pkgconfig/
-    install -m 0644 lib/libopenvswitch.pc ${D}/${libdir}/pkgconfig/
-    install -m 0644 ofproto/libofproto.pc ${D}/${libdir}/pkgconfig/
-    install -m 0644 ovsdb/libovsdb.pc ${D}/${libdir}/pkgconfig/
+
+    install -m 0644 ${B}/lib/libovscommon.pc ${D}/${libdir}/pkgconfig/
+    install -m 0644 ${B}/lib/libsflow.pc ${D}/${libdir}/pkgconfig/
+    install -m 0644 ${B}/lib/libopenvswitch.pc ${D}/${libdir}/pkgconfig/
+    install -m 0644 ${B}/ofproto/libofproto.pc ${D}/${libdir}/pkgconfig/
+    install -m 0644 ${B}/ovsdb/libovsdb.pc ${D}/${libdir}/pkgconfig/
+
     install -d ${D}${systemd_unitdir}/system
     install -d ${D}/var/local/openvswitch
     install -m 0644 ${WORKDIR}/ovsdb-server.service ${D}${systemd_unitdir}/system/
@@ -133,8 +126,9 @@ do_install_append() {
     echo "d /run/openvswitch/ 0770 - ovsdb-client -" > ${D}${sysconfdir}/tmpfiles.d/openswitch.conf
     echo "a+ /run/log/journal/%m - - - - d:group:ops_netop:r-x" >> ${D}${sysconfdir}/tmpfiles.d/openswitch.conf
     echo "A+ /run/log/journal/%m - - - - group:ops_netop:r-x" >> ${D}${sysconfdir}/tmpfiles.d/openswitch.conf
-    install -d ${D}${PYTHON_SITEPACKAGES_DIR}
-    mv ${D}/${prefix}/share/openvswitch/python/ovs ${D}${PYTHON_SITEPACKAGES_DIR}
+
+    # Remove python dir in favor of the one installed by distutils
+    rm -Rf ${D}/${prefix}/share/openvswitch/python/ovs
 }
 
 pkg_postinst_ops-ovsdb () {
@@ -150,4 +144,37 @@ SYSTEMD_PACKAGES = "${PN} ops-ovsdb"
 
 SYSTEMD_SERVICE_ops-ovsdb = "ovsdb-server.service"
 
-inherit openswitch autotools pkgconfig systemd
+PACKAGES = "${PN}-dbg ${PN}-staticdev ${PN}-dev ${PN}-docs ${PN} ops-ovsdb python-ops-ovsdb"
+PROVIDES = "${PACKAGES}"
+
+RDEPENDS_${PN} = "openssl procps util-linux-uuidgen util-linux-libuuid coreutils \
+  python perl perl-module-strict sed gawk grep ops-ovsdb bash \
+  ${@bb.utils.contains('MACHINE_FEATURES', 'ops-container', 'openvswitch-sim-switch', '',d)} \
+"
+
+RDEPENDS_${PN}_remove := "${@bb.utils.contains("IMAGE_FEATURES", "ops-p4", "openvswitch-sim-switch", "",d)}"
+
+RDEPENDS_ops-ovsdb = "ops ops-reboot"
+
+RDEPENDS_python-ops-ovsdb = "python-io python-netclient python-datetime \
+  python-logging python-threading python-math python-fcntl python-resource"
+
+FILES_ops-ovsdb = "/run /var/run /var/log /var/volatile ${bindir}/ovsdb* \
+  ${sbindir}/ovsdb-server ${datadir}/ovsdbmonitor ${sysconfdir}/openvswitch/ \
+  ${libdir}/libovscommon.so.1* ${libdir}/libovsdb.so.1* \
+  ${sysconfdir}/tmpfiles.d/openswitch.conf"
+
+FILES_python-ops-ovsdb = "${libdir}/${PYTHON_DIR}/*"
+
+FILES_${PN} = "${bindir}/ovs-appctl ${bindir}/ovs-pki ${bindir}/ovs-vsctl \
+ ${bindir}/ovs-ofctl ${bindir}/ovs-dpctl ${bindir}/ovs-testcontroller \
+ /var/local/openvswitch /etc/bash_completion.d \
+ ${libdir}/libofproto.so.1* \
+ ${libdir}/libopenvswitch.so.1* \
+ ${libdir}/libsflow.so.1* \
+ ${libdir}/libplugins.so.1* \
+ ${libdir}/libvtep.so.1* \
+"
+
+USERADD_PACKAGES = "${PN}"
+GROUPADD_PARAM_${PN} ="-g 1020 ovsdb-client;ops_netop;ops_admin"

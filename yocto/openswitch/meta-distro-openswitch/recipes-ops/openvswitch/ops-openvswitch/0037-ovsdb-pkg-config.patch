@@ -1,0 +1,40 @@
+From 264af645e70d1c2b9b4520d061a463ad5aa98b36 Mon Sep 17 00:00:00 2001
+From: "Ansari, Shad" <shad.ansari@hpe.com>
+Date: Fri, 22 Jan 2016 20:06:28 +0000
+Subject: [PATCH] ovsdb: Fix typo in libovsdb's pkg-config.
+
+Fix typo in the library name of pkg-config of libovsdb.
+
+Reported-by: Javier Albornz <javier.albornoz@hpe.com>
+Signed-off-by: Shad Ansari <shad.ansari@hpe.com>
+Signed-off-by: Ben Pfaff <blp@ovn.org>
+---
+ AUTHORS              | 1 +
+ ovsdb/libovsdb.pc.in | 2 +-
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/AUTHORS b/AUTHORS
+index 420aa2d..492f91a 100644
+--- a/AUTHORS
++++ b/AUTHORS
+@@ -312,6 +312,7 @@ James Schmidt           jschmidt@nicira.com
+ Jan Medved              jmedved@juniper.net
+ Janis Hamme             janis.hamme@student.kit.edu
+ Jari Sundell            sundell.software@gmail.com
++Javier Albornz          javier.albornoz@hpe.com
+ Jed Daniels             openvswitch@jeddaniels.com
+ Jeff Merrick            jmerrick@vmware.com
+ Jeongkeun Lee           jklee@hp.com
+diff --git a/ovsdb/libovsdb.pc.in b/ovsdb/libovsdb.pc.in
+index f413386..54c9039 100644
+--- a/ovsdb/libovsdb.pc.in
++++ b/ovsdb/libovsdb.pc.in
+@@ -3,7 +3,7 @@ exec_prefix=@exec_prefix@
+ libdir=@libdir@
+ includedir=@includedir@
+ 
+-Name: libofproto
++Name: libovsdb
+ Description: OVSDB library of Open vSwitch
+ Version: @VERSION@
+ Libs: -L${libdir} -lovsdb

@@ -5,10 +5,9 @@ Description=OpenSwitch ARP Manager Module Daemon
 After=ovsdb-server.service ops-init.service
 
 [Service]
-Type=forking
+Type=simple
 ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-arpmgrd.pid
-ExecStart=/sbin/ip netns exec swns /usr/bin/ops-arpmgrd --detach --pidfile -vSYSLOG:INFO
-PIDFile=/var/run/openvswitch/ops-arpmgrd.pid
+ExecStart=/sbin/ip netns exec swns /usr/bin/ops-arpmgrd --pidfile
 Restart=on-abort
 
 [Install]

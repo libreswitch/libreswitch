@@ -6,8 +6,7 @@ After=ovsdb-server.service ops-init.service snmpd.service
 
 [Service]
 ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-snmpd.pid
-ExecStart=/usr/bin/ops-snmpd --detach --pidfile
-PIDFile=/var/run/openvswitch/ops-snmpd.pid
+ExecStart=/usr/bin/ops-snmpd --pidfile
 Restart=on-abort
 
 [Install]

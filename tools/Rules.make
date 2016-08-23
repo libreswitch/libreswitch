@@ -37,11 +37,13 @@ export https_proxy
 
 # Some well known locations
 KERNEL_STAGING_DIR=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^STAGING_KERNEL_DIR=/ { gsub(/"/, "", $$2); print $$2 }')
+KERNEL_PROVIDER=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^PREFERRED_PROVIDER_virtual\/kernel=/ { gsub(/"/, "", $$2); print $$2 }')
+STAGING_BINDIR_TOOLCHAIN=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^STAGING_BINDIR_TOOLCHAIN=/ { gsub(/"/, "", $$2); print $$2 }')
 DISTRO_VERSION=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^DISTRO_VERSION=/ { gsub(/"/, "", $$2); print $$2 }')
 STAGING_DIR_TARGET=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^STAGING_DIR_TARGET=/ { gsub(/"/, "", $$2); print $$2 }')
 STAGING_DIR_NATIVE=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^STAGING_DIR_NATIVE=/ { gsub(/"/, "", $$2); print $$2 }')
 DEPLOY_DIR_IMAGE=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F= '/^DEPLOY_DIR_IMAGE=/ { gsub(/"/, "", $$2); print $$2 }')
-DEPLOY_DIR_IMAGE_ALL=$(subst $(CONFIGURED_PLATFORM),,$(DEPLOY_DIR_IMAGE))
+DEPLOY_DIR_IMAGE_ALL=$(shell dirname $(DEPLOY_DIR_IMAGE))
 # Used to identify the valid layers
 YOCTO_LAYERS=$(shell cd $(BUILDDIR) ; $(BUILD_ROOT)/yocto/poky/bitbake/bin/bitbake -e | awk -F'=' '/^BBLAYERS=/ { print $$2 }')
 BASE_UIMAGE_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/uImage
@@ -52,6 +54,8 @@ BASE_SIMPLEIMAGE_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/sim
 BASE_SIMPLEIMAGE_INITRAMFS_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/simpleImage.$(CONFIGURED_PLATFORM)-initramfs-$(CONFIGURED_PLATFORM).bin
 BASE_VMLINUX_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/vmlinux
 BASE_CPIO_FS_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(DISTRO_FS_TARGET)-$(CONFIGURED_PLATFORM).cpio.gz
+BASE_TAR_FS_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(DISTRO_FS_TARGET)-$(CONFIGURED_PLATFORM).tar
+BASE_TAR_DBG_FS_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(DISTRO_FS_TARGET)-$(CONFIGURED_PLATFORM).dbg.tar
 BASE_TARGZ_FS_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(DISTRO_FS_TARGET)-$(CONFIGURED_PLATFORM).tar.gz
 BASE_TARGZ_DBG_FS_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(DISTRO_FS_TARGET)-$(CONFIGURED_PLATFORM).dbg.tar.gz
 BASE_HDDIMG_FS_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(DISTRO_FS_TARGET)-$(CONFIGURED_PLATFORM).hddimg
@@ -176,7 +180,7 @@ header:: build/conf/site.conf build/conf/local.conf
 export PLATFORM_DTS_FILE
 
 ########## Common targets shared by most platforms ##############
-HOST_ARCH=$(shell uname -m)
+HOST_ARCH:=$(shell uname -m)
 
 .PHONY: kernel _kernel _kernel_links kernelconfig
 kernel: header _kernel
@@ -190,9 +194,12 @@ _kernel:
 	$(V) $(MAKE) _kernel_links
 	$(V) $(ECHO)
 
+KERNEL_BUILD_DIR=$(BUILDDIR)/tmp/work/$(CONFIGURED_MACHINE)*/$(KERNEL_PROVIDER)/*/*build/
+
 _kernel_links:
 	$(V)if test -f $(DISTRO_KERNEL_FILE) ; then ln -sf $(DISTRO_KERNEL_FILE) images/kernel-$(CONFIGURED_PLATFORM).bin ; fi
 	$(V)if test -f $(DISTRO_KERNEL_SYMBOLS_FILE) ; then ln -sf $(DISTRO_KERNEL_SYMBOLS_FILE) images/kernel-$(CONFIGURED_PLATFORM).elf ; fi
+	$(V)if [ -d "$(KERNEL_BUILD_DIR)" ] ; then ln -sf $(KERNEL_BUILD_DIR) images/kernel-src ; fi
 
 $(DISTRO_KERNEL_FILE) images/kernel-$(CONFIGURED_PLATFORM).bin:
 	$(V) $(MAKE) $(_KERNEL_TARGET)
@@ -214,7 +221,9 @@ _fs images/fs-$(CONFIGURED_PLATFORM):
 _fs_links:
 	$(V)ln -sf $(DISTRO_FS_FILE) images/`basename $(DISTRO_FS_FILE)`
 	$(V)for extra_fs in $(DISTRO_EXTRA_FS_FILES) ; do ln -sf $$extra_fs images/`basename $$extra_fs` ; done
-	@# If we have a tar.gz file, also link it, useful for docker images
+	@# If we have a tar file, also link it, useful for docker images
+	$(V)if [ -f $(BASE_TAR_FS_FILE) ] ; then ln -sf $(BASE_TAR_FS_FILE) images/`basename $(BASE_TAR_FS_FILE)` ; fi
+	$(V)if [ -f $(BASE_TAR_DBG_FS_FILE) ] ; then ln -sf $(BASE_TAR_DBG_FS_FILE) images/`basename $(BASE_TAR_DBG_FS_FILE)` ; fi
 	$(V)if [ -f $(BASE_TARGZ_FS_FILE) ] ; then ln -sf $(BASE_TARGZ_FS_FILE) images/`basename $(BASE_TARGZ_FS_FILE)` ; fi
 	$(V)if [ -f $(BASE_TARGZ_DBG_FS_FILE) ] ; then ln -sf $(BASE_TARGZ_DBG_FS_FILE) images/`basename $(BASE_TARGZ_DBG_FS_FILE)` ; fi
 	$(V)ln -sf `basename $(DISTRO_FS_FILE)` images/fs-$(CONFIGURED_PLATFORM)
@@ -252,8 +261,8 @@ deploy_lxc:
 	$(V) if ! which lxc-create > /dev/null ; then \
 	  $(call FATAL_ERROR,LXC does not seems installed, could not find lxc-create) ; \
 	fi
-	$(V) if ! test -f images/`basename $(BASE_TARGZ_FS_FILE)` ; then \
-	  $(call FATAL_ERROR,Your platform has not generated a .tar.gz file that can be used to create the LXC container) ; \
+	$(V) if ! test -f images/`basename $(BASE_TAR_FS_FILE)` ; then \
+	  $(call FATAL_ERROR,Your platform has not generated a .tar file that can be used to create the LXC container) ; \
 	fi
 	$(V) $(ECHO) "Exporting an LXC container with name '$(CONTAINER_NAME)' may ask for admin password..."
 	$(V) $(ECHO) -n "Checking that no LXC container with the same name already exists..."
@@ -263,7 +272,7 @@ deploy_lxc:
 	else \
 	  echo done ; \
 	fi
-	$(V) export OPENSWITCH_IMAGE=$(BUILD_ROOT)/images/`basename $(BASE_TARGZ_FS_FILE)` ; \
+	$(V) export OPENSWITCH_IMAGE=$(BUILD_ROOT)/images/`basename $(BASE_TAR_FS_FILE)` ; \
 	export BUILD_ROOT ; \
 	$(SUDO) -E lxc-create -n $(CONTAINER_NAME) -f /dev/null -t $(BUILD_ROOT)/tools/lxc/lxc-openswitch
 	$(V) $(ECHO) "Exporting completed.\nRun with 'sudo lxc-start -n $(CONTAINER_NAME)'"
@@ -283,12 +292,12 @@ export_docker_image:
 	    $(call FATAL_ERROR, Docker image '$(DOCKER_IMAGE)' is already created.\n \
 	                       \tYou can remove it using - docker rmi $(DOCKER_IMAGE)) ; \
 	fi
-	$(V) if ! test -f images/`basename $(BASE_TARGZ_FS_FILE)` ; then \
-	    $(call FATAL_ERROR, Unable to find $(BASE_TARGZ_FS_FILE)\n \
+	$(V) if ! test -f images/`basename $(BASE_TAR_FS_FILE)` ; then \
+	    $(call FATAL_ERROR, Unable to find $(BASE_TAR_FS_FILE)\n \
 	                       \tRun 'make' at the top level to create root-fs.) ; \
 	fi
-	$(V) $(ECHO) "$(BLUE)Exporting '$(BASE_TARGZ_FS_FILE)' as image '$(DOCKER_IMAGE)'...$(GRAY)\n"
-	$(V) /bin/zcat $(BASE_TARGZ_FS_FILE) | docker import - $(DOCKER_IMAGE)
+	$(V) $(ECHO) "$(BLUE)Exporting '$(BASE_TAR_FS_FILE)' as image '$(DOCKER_IMAGE)'...$(GRAY)\n"
+	$(V) docker import $(BASE_TAR_FS_FILE) $(DOCKER_IMAGE)
 	$(V) $(ECHO)
 
 .PHONY: deploy_nfsroot
@@ -298,8 +307,8 @@ deploy_nfsroot:
 	$(V) if ! which exportfs > /dev/null ; then \
 	  $(call FATAL_ERROR,Missing exportfs utility, unable to export rootfs. Did you install the NFS server package?) ; \
 	fi
-	$(V) if ! test -f images/$(notdir $(BASE_TARGZ_FS_FILE)) ; then \
-	  $(call FATAL_ERROR,Your platform has not generated a .tar.gz file that can be used to deploy the NFS root) ; \
+	$(V) if ! test -f images/$(notdir $(BASE_TAR_FS_FILE)) ; then \
+	  $(call FATAL_ERROR,Your platform has not generated a .tar file that can be used to deploy the NFS root) ; \
 	fi
 	$(V) if [ -d $(NFSROOTPATH) ] ; then \
 	  $(call WARNING,Removing previous deployed nfsroot directory at $(NFSROOTPATH) before re-deploying) ; \
@@ -309,7 +318,7 @@ deploy_nfsroot:
 	fi
 	$(V) mkdir -p $(NFSROOTPATH)
 	$(V) $(ECHO) -n "Extracting the NFS root into $(NFSROOTPATH)... "
-	$(V) tar -xzf images/$(notdir $(BASE_TARGZ_FS_FILE)) -C $(NFSROOTPATH)
+	$(V) tar -xf images/$(notdir $(BASE_TAR_FS_FILE)) -C $(NFSROOTPATH)
 	$(V) $(ECHO) done
 	$(V) if ! [ -f /etc/exports.d/$(notdir $(NFSROOTPATH)).exports ] ; then \
 	  $(ECHO) "\nExporting NFS directory, may ask for admin password..." ; \
@@ -336,6 +345,9 @@ endif
 # to fail. Unsetting it manually
 devshell: header
 	$(V)unset MAKEOVERRIDES ; $(call BITBAKE, -c devshell $(RECIPE))
+
+source_toolchain:
+	$(V)echo "export PATH=$(STAGING_BINDIR_TOOLCHAIN):$${PATH}"
 
 .PHONY: sdk _sdk
 sdk: header _sdk
@@ -398,9 +410,12 @@ ifneq ($(GITREVIEWUSER),)
 endif
 REVIEWUSER?=$(USER)
 
+# Some build systems derivated from OpenSwitch may not have a .gitreview file
 setup-git-review:
-	$(V) $(ECHO) "$(BLUE)Setting up git-review system...$(GRAY)\n"
-	$(V)$(MAKE) _setup-git-review
+	$(V) if [ -f .gitreview ] ; then \
+	  $(ECHO) "$(BLUE)Setting up git-review system...$(GRAY)\n" ; \
+	  $(MAKE) _setup-git-review ; \
+	fi
 
 _setup-git-review:: $(addprefix .git/hooks/,$(notdir $(wildcard $(BUILD_ROOT)/tools/bin/hooks/*)))
 	$(V) if which git-review > /dev/null ; then \
@@ -414,6 +429,7 @@ _setup-git-review:: $(addprefix .git/hooks/,$(notdir $(wildcard $(BUILD_ROOT)/to
 
 .PHONY: devenv_init devenv_clean devenv_add devenv_rm devenv_status devenv_cscope devenv_list_all
 .PHONY: check_devenv devenv_import dev_header devenv_refresh _devenv_refresh
+.PHONY: extract_debugfs devenv_generate_gdbinit
 
 -include src/Rules.make
 
@@ -584,6 +600,34 @@ _devenv_refresh:
 	  popd >/dev/null ; \
 	done < .devenv
 	$(V) $(ECHO) "\n$(PURPLE)Update completed$(GRAY)"
+
+$(BASE_TAR_DBG_FS_FILE):
+	$(V) if [ ! -f $(BASE_TAR_DBG_FS_FILE) ] ; then \
+          $(call FATAL_ERROR, Debug filesystem tarball not found, please build the filesystem first) ; \
+         fi
+
+DEBUGFS_LOCATION = $(BUILDDIR)/debugfs
+
+extract_debugfs: $(DEBUGFS_LOCATION)
+	$(V) $(ECHO) "Debug filesystem extraction to \"$(DEBUGFS_LOCATION)\" completed"
+
+$(DEBUGFS_LOCATION): $(BASE_TAR_DBG_FS_FILE)
+	$(V) $(ECHO) "$(BLUE) Extracting the latest version of the debug filesystem...$(GRAY)"
+	$(V) rm -Rf $(DEBUGFS_LOCATION)
+	$(V) mkdir -p $(DEBUGFS_LOCATION)
+	$(V) tar xf $(BASE_TAR_DBG_FS_FILE) -C $(DEBUGFS_LOCATION)
+	$(V) touch $(DEBUGFS_LOCATION)
+
+devenv_generate_gdbinit: check_devenv $(DEBUGFS_LOCATION)
+	$(V)$$(query-recipe.py -s -v WORKDIR $$(cat .devenv)) ; \
+	 echo "set sysroot $(STAGING_DIR_TARGET)" ; \
+	 for component in `cat .devenv` ; do \
+	   variable=WORKDIR_$$(echo $${component} | sed -e 's/-/_/g') ; \
+	   echo "set substitute-path /usr/src/debug/$${component} $$(eval echo \$$$$variable)/package/usr/src/debug/$$component" ; \
+	   echo "set substitute-path /usr/lib/debug/$${component} $$(eval echo \$$$$variable)/package/usr/lib/debug/$$component" ; \
+	 done ; \
+	 echo "set substitute-path /usr/src/debug $(DEBUGFS_LOCATION)/usr/src/debug" ; \
+	 echo "set substitute-path /usr/lib/debug $(DEBUGFS_LOCATION)/usr/lib/debug" ;
 
 # Test environment
 

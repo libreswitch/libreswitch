@@ -7,9 +7,10 @@ DEPENDS = "ops-openvswitch ops-ovsdb ops-cli"
 BRANCH ?= "${OPS_REPO_BRANCH}"
 
 SRC_URI = "${OPS_REPO_BASE_URL}/ops-broadview;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
-          file://ops-broadview.service"
+          file://ops-broadview.service \
+          file://ops-broadview.nginx"
 
-SRCREV="22c967c526adaa2a1342b75d0f8fceedd177a137"
+SRCREV="b9002fab5fe1f27628bfd403631840ff4a118cf2"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
@@ -20,6 +21,7 @@ S = "${WORKDIR}/git"
 export  BV_OVS_INCLUDE="${STAGING_DIR_TARGET}/usr/include/ovs"
 export  BV_OUTPUT="${S}/output/deliverables"
 export  BV_TARGET_SYSROOT="${STAGING_DIR_TARGET}"
+export  BV_PLATFORM ?= "${MACHINE}"
 CFLAGS += "--sysroot=${STAGING_DIR_TARGET}"
 
 do_compile () {
@@ -35,11 +37,13 @@ do_install() {
     install -m 0644 ${WORKDIR}/ops-broadview.service ${D}${systemd_unitdir}/system/
     install -d ${D}/usr/lib/cli/plugins
     install -m 0755 ${S}/output/deliverables/libbroadview_cli.so.1 ${D}/usr/lib/cli/plugins/libbroadview_cli.so
+    install -d ${D}/etc/nginx/conf.d
+    install -m 0644 ${WORKDIR}/ops-broadview.nginx ${D}/etc/nginx/conf.d/backend-broadview.conf
 }
 
 
 SYSTEMD_PACKAGES = "${PN}"
 SYSTEMD_SERVICE_${PN} = "ops-broadview.service"
-FILES_${PN} += "/usr/lib/cli/plugins/"
+FILES_${PN} += "/usr/lib/cli/plugins/ /etc/nginx/conf.d"
 
 inherit openswitch systemd

@@ -5,10 +5,9 @@ Description=OpenSwitch DHCP-Relay, DHCPv6-Relay and UDP-Broadcast-Forwarder
 After=ovsdb-server.service ops-init.service
 
 [Service]
-Type=forking
+Type=simple
 ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-relay.pid
-ExecStart=/sbin/ip netns exec swns /usr/bin/ops-relay --detach --pidfile -vSYSLOG:INFO
-PIDFile=/var/run/openvswitch/ops-relay.pid
+ExecStart=/sbin/ip netns exec swns /usr/bin/ops-relay --pidfile
 Restart=on-abort
 
 [Install]

@@ -2,7 +2,7 @@ SUMMARY = "OpenSwitch Switch Daemon"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
-DEPENDS = "ops ops-openvswitch ops-ovsdb ops-utils systemd libyaml jemalloc ops-cli"
+DEPENDS = "ops ops-openvswitch ops-ovsdb ops-utils libyaml jemalloc ops-cli"
 
 BRANCH ?= "${OPS_REPO_BRANCH}"
 
@@ -13,7 +13,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-switchd;protocol=${OPS_REPO_PROTOCOL};branch
    file://switchd_xpliant.service \
 "
 
-SRCREV = "c9242cc07dbbfa430903f282c31c607b68ab21a7"
+SRCREV = "0b648add950e62dbb6aa7f7034e6001cf2e06b2b"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.

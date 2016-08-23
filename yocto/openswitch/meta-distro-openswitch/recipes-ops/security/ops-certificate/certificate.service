@@ -1,0 +1,16 @@
+[Unit]
+Description=Certificate generation
+After=network.target nss-lookup.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/fix-certificate
+# By using "reload" we can let other services be reloaded when the certificate
+# changes. Another service wanting to use the system certificate would simply have
+# "ReloadPropagatedFrom=certificate.service" in its service file.
+ExecReload=/usr/sbin/fix-certificate
+# Needed for reload support
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

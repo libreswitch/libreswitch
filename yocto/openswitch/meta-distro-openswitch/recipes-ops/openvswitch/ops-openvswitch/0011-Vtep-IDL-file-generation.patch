@@ -159,5 +159,5 @@ index 0000000..7eaa053
 +Libs.private: @LIBS@
 +Cflags: -I${includedir}
 -- 
-1.9.1
+2.7.4
 

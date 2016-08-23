@@ -3,11 +3,20 @@ HOMEPAGE = "http://python-requests.org"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=d9bb3515869c0f426cb8441c899ae7f5"
 
-SRC_URI = "https://pypi.python.org/packages/49/6f/183063f01aae1e025cf0130772b55848750a2f3a89bfa11b385b35d7329d/requests-2.10.0.tar.gz"
+
+PR = "r0"
+SRCNAME = "requests"
+
+SRC_URI = "https://pypi.python.org/packages/49/6f/183063f01aae1e025cf0130772b55848750a2f3a89bfa11b385b35d7329d/${SRCNAME}-${PV}.tar.gz"
 SRC_URI[md5sum] = "a36f7a64600f1bfec4d55ae021d232ae"
 SRC_URI[sha256sum] = "63f1815788157130cee16a933b2ee184038e975f0017306d723ac326b5525b54"
-S = "${WORKDIR}/requests-2.10.0"
+S = "${WORKDIR}/${SRCNAME}-${PV}"
 
 PYPI_PACKAGE_HASH = "496f183063f01aae1e025cf0130772b55848750a2f3a89bfa11b385b35d7329d"
 
+
 RDEPENDS_${PN} = "${PYTHON_PN}-email ${PYTHON_PN}-json ${PYTHON_PN}-netserver ${PYTHON_PN}-urllib3"
+
+RDEPENDS_${PN}_class-native = ""
+
+BBCLASSEXTEND = "native nativesdk"

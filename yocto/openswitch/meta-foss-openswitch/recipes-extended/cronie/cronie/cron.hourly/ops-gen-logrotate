@@ -39,6 +39,7 @@ remoteIP = "0"
 protocol = "tftp"
 uri = "tftp://"
 log_file = ""
+hostname= "switch"
 
 
 # period, maxsize, target
@@ -47,11 +48,13 @@ def read_ovsdb():
     global protocol
     global uri
     global remoteIP
+    global hostname
 
     results = {}
     try:
         schema_helper = ovs.db.idl.SchemaHelper(location=OVSDB_SCHEMA)
         schema_helper.register_columns('System', ['logrotate_config'])
+        schema_helper.register_columns('System', ['mgmt_intf_status'])
         idl = ovs.db.idl.Idl(OVSDB_CONN, schema_helper)
         while not idl.run():
             # Wait for initial fetch to complete.
@@ -59,6 +62,8 @@ def read_ovsdb():
 
         if idl.tables['System'].rows:
             for ovs_rec in idl.tables['System'].rows.itervalues():
+                results = dict(ovs_rec.mgmt_intf_status)
+                hostname = results.get('hostname', 'switch')
                 results = dict(ovs_rec.logrotate_config)
                 target = results.get('target', 'local')
             uri = target
@@ -120,6 +125,8 @@ def removeRotatedLogfiles(path, filename):
 # clear old compressed logs and renames rotated log files with time extension
 
 def cleanLogfiles(path):
+    global hostname
+
     if(system("cd " + path +
               "; ls *.1.gz > /tmp/compressed_files 2>/dev/null")):
         print("No log files rotated")
@@ -133,8 +140,9 @@ def cleanLogfiles(path):
                 removeRotatedLogfiles(path, fileName)
                 timeSuffix = getoutput('date +"%Y%m%d%H"')
                 system("cd " + path + ";mv " + fileName +
-                       ".1.gz " + fileName + "-" + timeSuffix + ".gz")
-                target_file = fileName + "-" + timeSuffix + ".gz"
+                       ".1.gz " + fileName + "-" + timeSuffix +
+                       "_" + hostname + ".gz")
+                target_file = fileName + "-" + timeSuffix + "_" + hostname + ".gz"
                 tftp_file.write(target_file + "\n")
                 print("Rotated log file:" + target_file)
             tftp_file.close()
@@ -207,7 +215,7 @@ try:
     system("logrotate /etc/logrotate-ops.conf")
 
     if (os.path.isfile('/var/log/audit/audit.log.1.gz')):
-        system("mv audit/*.1.gz .")
+        system("mv /var/log/audit/*.1.gz /var/log/")
 
     if cleanLogfiles("/var/log/") and target != "local":
         if protocol == 'tftp':

@@ -1,4 +1,4 @@
-From c69d5bf8e1ec52dd91f43f502609e39194248d7a Mon Sep 17 00:00:00 2001
+From d633497110bc34f7f57aa2330de489eeac3c78f5 Mon Sep 17 00:00:00 2001
 From: Esteban Rodriguez Betancourt <estebarb@hpe.com>
 Date: Wed, 8 Jun 2016 17:18:39 -0600
 Subject: [PATCH] Strong references cascade fix
@@ -18,7 +18,7 @@ Signed-off-by: Esteban Rodriguez Betancourt <estebarb@hpe.com>
  1 file changed, 11 insertions(+), 9 deletions(-)
 
 diff --git a/ovsdb/transaction.c b/ovsdb/transaction.c
-index d720306..a4bf8c2 100644
+index 9e90b48..1b041b6 100644
 --- a/ovsdb/transaction.c
 +++ b/ovsdb/transaction.c
 @@ -281,16 +281,18 @@ update_row_ref_count(struct ovsdb_txn *txn, struct ovsdb_txn_row *r)
@@ -50,5 +50,5 @@ index d720306..a4bf8c2 100644
          }
      }
 -- 
-1.9.1
+2.7.4
 

@@ -10,13 +10,14 @@ HOMEPAGE = "http://werkzeug.pocoo.org/"
 LICENSE = "BSD"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=a68f5361a2b2ca9fdf26b38aaecb6faa"
 
-SRC_URI = "https://pypi.python.org/packages/4c/01/7c64cf317ace1ff2c9b44cbf2c967dfcb170088b3676a871b7f08c059dfd/Werkzeug-0.10.1.tar.gz"
-SRC_URI[md5sum] = "231d10996b7c3c1efe1776f22d570f83"
-SRC_URI[sha256sum] = "9cf783990b1a99173e707a5768610800aa87775e9d86e211d17180d5b6c245ab"
+PR = "r0"
+SRCNAME = "Werkzeug"
 
-S = "${WORKDIR}/Werkzeug-0.10.1"
+SRC_URI = "https://pypi.python.org/packages/source/W/${SRCNAME}/${SRCNAME}-${PV}.tar.gz"
+SRC_URI[md5sum] = "7ffc339ac66eec241278aa81ed40c4de"
+SRC_URI[sha256sum] = "729730a25f43a29ac6a79f08384ea18a3a125d07079492e15c3b3c2a3f090c37"
 
-PYPI_PACKAGE = "Werkzeug"
+S = "${WORKDIR}/${SRCNAME}-${PV}"
 
 RDEPENDS_${PN} += " \
     ${PYTHON_PN}-difflib \
@@ -30,3 +31,5 @@ RDEPENDS_${PN} += " \
     ${PYTHON_PN}-threading \
     ${PYTHON_PN}-unixadmin \
 "
+
+CLEANBROKEN = "1"

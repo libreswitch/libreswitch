@@ -1,7 +1,7 @@
-From aabbd61c49a08b5de08ab56f77b4069a73abf5eb Mon Sep 17 00:00:00 2001
+From 74cefe7d5608ae634eb0ba528ccfb3f1c06fa783 Mon Sep 17 00:00:00 2001
 From: Esteban Rodriguez Betancourt <estebarb@hpe.com>
 Date: Tue, 12 Jul 2016 10:05:48 -0600
-Subject: [PATCH 32/32] OVSDB: Wait Monitoring Functions
+Subject: [PATCH] OVSDB: Wait Monitoring Functions
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
@@ -19,7 +19,7 @@ Signed-off-by: Esteban Rodriguez Betancourt <estebarb@hpe.com>
 ---
  lib/ovsdb-idl-provider.h |   3 +
  lib/ovsdb-idl.c          | 476 ++++++++++++++++++++++++++++++++++++++++++++++-
- lib/ovsdb-idl.h          |  95 ++++++++++
+ lib/ovsdb-idl.h          | 102 ++++++++++
  lib/stream-fd.c          |   2 +-
  ovsdb/column.c           |   2 +
  ovsdb/column.h           |  11 ++
@@ -31,7 +31,7 @@ Signed-off-by: Esteban Rodriguez Betancourt <estebarb@hpe.com>
  ovsdb/ovsdb.h            |  60 ++++++
  tests/ovsdb-idl.at       | 276 +++++++++++++++++++++++++++
  tests/test-ovsdb.c       | 388 ++++++++++++++++++++++++++++++++++++++
- 14 files changed, 2182 insertions(+), 4 deletions(-)
+ 14 files changed, 2189 insertions(+), 4 deletions(-)
 
 diff --git a/lib/ovsdb-idl-provider.h b/lib/ovsdb-idl-provider.h
 index 446e357..ab19a61 100644
@@ -636,7 +636,7 @@ index cd4d719..9e5a107 100644
          const struct ovsdb_idl_table_class *class = row->table->class;
  
 diff --git a/lib/ovsdb-idl.h b/lib/ovsdb-idl.h
-index 4d06b5c..1fb2fb9 100644
+index 4d06b5c..edbc2a1 100644
 --- a/lib/ovsdb-idl.h
 +++ b/lib/ovsdb-idl.h
 @@ -38,6 +38,8 @@
@@ -648,7 +648,7 @@ index 4d06b5c..1fb2fb9 100644
  #include "ovsdb-types.h"
  #include "skiplist.h"
  
-@@ -148,6 +150,99 @@ void ovsdb_idl_add_table(struct ovsdb_idl *,
+@@ -148,6 +150,106 @@ void ovsdb_idl_add_table(struct ovsdb_idl *,
  void ovsdb_idl_omit(struct ovsdb_idl *, const struct ovsdb_idl_column *);
  void ovsdb_idl_omit_alert(struct ovsdb_idl *, const struct ovsdb_idl_column *);
  
@@ -741,6 +741,13 @@ index 4d06b5c..1fb2fb9 100644
 + * ovsdb_idl_wait_update_destroy */
 +#define WAIT_UPDATE_FOR_EACH_SAFE(REQ, NEXT, IDL) \
 +    LIST_FOR_EACH_SAFE(REQ, NEXT, node, ovsdb_idl_wait_update_get_list(IDL))
++
++/* Iterates over all the current ovsdb_idl_wait_update
++ * requests AND REMOVES the request from the requests list.
++ * The developer still MUST release the request using
++ * ovsdb_idl_wait_update_destroy */
++#define WAIT_UPDATE_FOR_EACH_POP(REQ, IDL) \
++    LIST_FOR_EACH_POP(REQ, node, ovsdb_idl_wait_update_get_list(IDL))
 +
 +void ovsdb_idl_wait_update_destroy(struct ovsdb_idl_wait_update *);
 +

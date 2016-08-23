@@ -120,5 +120,5 @@ index 65367cc..a943f02 100644
      }
      if (hmap_node_is_null(&row->txn_node)) {
 -- 
-1.9.1
+2.7.4
 

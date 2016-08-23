@@ -5,10 +5,9 @@ Description=OpenSwitch Temperature Daemon
 After=ovsdb-server.service ops-init.service
 
 [Service]
-Type=forking
+Type=simple
 ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-tempd.pid
-ExecStart=/sbin/ip netns exec nonet /usr/bin/ops-tempd --detach --pidfile -vSYSLOG:INFO
-PIDFile=/var/run/openvswitch/ops-tempd.pid
+ExecStart=/sbin/ip netns exec nonet /usr/bin/ops-tempd --pidfile
 Restart=on-abort
 
 [Install]

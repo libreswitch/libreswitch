@@ -68,6 +68,7 @@ RDEPENDS_packagegroup-ops-base = "\
     ops-ansible \
     ops-ntpd \
     ops-supportability \
+    ops-node-exporter \
     strongswan \
     firejail \
     ops-ipapps \
@@ -77,9 +78,11 @@ RDEPENDS_packagegroup-ops-base = "\
     nicstat \
     sysstat \
     ${@bb.utils.contains("MACHINE_FEATURES", "ops-kdump", "ops-kdump", "", d)} \
+    ${@bb.utils.contains("MACHINE_FEATURES", "ops-container-coredump", "ops-container-coredump", "", d)} \
     ops-snmpd \
     ops-l2macd \
     ops-rbac \
+    nginx \
 "
 
 RDEPENDS_packagegroup-ops-base_append_arm = "\

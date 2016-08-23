@@ -10,17 +10,21 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-portd;protocol=${OPS_REPO_PROTOCOL};branch=$
            file://ops-portd.service \
            "
 
-SRCREV = "1ca16df755d03d9ac7387c16b0125334a8464c5a"
+SRCREV = "b808b3100c320346ba3cfd3a8873adf91271a1e0"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
 PV = "git${SRCPV}"
 
 S = "${WORKDIR}/git"
-
+FILES_${PN} += "/usr/share/opsplugins "
 do_install_append() {
      install -d ${D}${systemd_unitdir}/system
      install -m 0644 ${WORKDIR}/ops-portd.service ${D}${systemd_unitdir}/system/
+     install -d ${D}/usr/share/opsplugins
+     for plugin in $(find ${S}/ops/opsplugins -name "*.py"); do \
+         install -m 0644 ${plugin} ${D}/usr/share/opsplugins
+     done
 }
 
 SYSTEMD_PACKAGES = "${PN}"
