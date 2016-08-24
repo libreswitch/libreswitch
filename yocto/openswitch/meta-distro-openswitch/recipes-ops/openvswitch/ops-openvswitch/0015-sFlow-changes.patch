@@ -1,0 +1,53 @@
+From bc8b52c9e4702e91e6f83a4cd7c4dc6c6e6182ab Mon Sep 17 00:00:00 2001
+From: Bhaskar Upadhyayula <sarma.bha.upadhyayula@hpe.com>
+Date: Wed, 15 Jun 2016 23:08:58 -0700
+Subject: [PATCH] sFlow changes.
+
+* Maintain a list of ports on which sFlow is disabled. When applying sFlow
+  sampling, ignore these ports.
+* Change the log message used when collector is not reachable.
+
+Change-Id: Ia529847e6d296985f95738ae43aa8b645b3ce35f
+Signed-off-by: Bhaskar Upadhyayula <sarma.bha.upadhyayula@hpe.com>
+Signed-off-by: Vasanth Viswanathan <vasanth.viswanathan@hpe.com>
+
+%% original patch: 0012-sFlow-CLI-restriction-changes.patch
+
+%% original patch: 0015-sFlow-CLI-restriction-changes.patch
+---
+ ofproto/collectors.c | 6 ++----
+ ofproto/ofproto.h    | 1 +
+ 2 files changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/ofproto/collectors.c b/ofproto/collectors.c
+index 5b29212..56b7b4e 100644
+--- a/ofproto/collectors.c
++++ b/ofproto/collectors.c
+@@ -112,10 +112,8 @@ collectors_send(const struct collectors *c, const void *payload, size_t n)
+         for (i = 0; i < c->n_fds; i++) {
+             static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(1, 5);
+             if (send(c->fds[i], payload, n, 0) == -1) {
+-                char *s = describe_fd(c->fds[i]);
+-                VLOG_WARN_RL(&rl, "%s: sending to collector failed (%s)",
+-                             s, ovs_strerror(errno));
+-                free(s);
++                VLOG_WARN_RL(&rl, "sending sample to collector failed (%s)",
++                             ovs_strerror(errno));
+             }
+         }
+     }
+diff --git a/ofproto/ofproto.h b/ofproto/ofproto.h
+index 3f29f0a..a0b4a70 100644
+--- a/ofproto/ofproto.h
++++ b/ofproto/ofproto.h
+@@ -73,6 +73,7 @@ struct ofproto_sflow_options {
+ #ifdef OPS
+     char agent_ip[INET6_ADDRSTRLEN];     /* ip (v4 or v6) of interface */
+     uint32_t max_datagram;               /* Maximum datagram size */
++    struct sset ports; /* port names on which sFlow is disabled */
+ #endif
+     char *control_ip;
+ };
+-- 
+2.9.2
+
