@@ -7,7 +7,7 @@ PACKAGES += "ops-librbac ops-librbac-dev"
 FILES_ops-librbac = "/usr/lib/librbac.so.*.*.*"
 FILES_ops-librbac-dev = "/usr/lib/pkgconfig/rbac.pc /usr/lib/librbac.so*"
 
-DEPENDS = ""
+DEPENDS = "ops-cli"
 
 BRANCH ?= "feature/tacacs_plus"
 
