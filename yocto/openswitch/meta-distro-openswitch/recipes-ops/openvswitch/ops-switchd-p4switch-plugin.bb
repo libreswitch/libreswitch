@@ -11,7 +11,7 @@ BRANCH ?= "${OPS_REPO_BRANCH}"
 
 SRC_URI = "gitsm://${OPS_REPO_HOSTNAME}/${OPS_REPO_PATH}/ops-switchd-p4switch-plugin;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH}"
 
-SRCREV = "230cd0cbfbb9370c2ac47b223e60104be61e0015"
+SRCREV = "24dc977fbd7c1b389e1e1309b20ab4db63242608"
 
 S = "${WORKDIR}/git"
 
