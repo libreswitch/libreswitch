@@ -1,0 +1,7 @@
+#
+# Invoke tacacs first.  Tacacs pam returns success if authentication
+# was successful with tacacs, failure otherwise.  Tacacs failure
+# will not affect the local user authentication case.
+#
+session    sufficient   /usr/lib/security/libpam_tacplus.so bypass_acct
+session    required     pam_loginuid.so
