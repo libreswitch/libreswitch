@@ -1,23 +1,27 @@
-From 080d4e117c167e412bcf2c10fadd9420f05a7e99 Mon Sep 17 00:00:00 2001
+From 314474839cfbc5b63e438935f02cc7e306f4fe60 Mon Sep 17 00:00:00 2001
 From: Vasanth Viswanathan <vasanth.viswanathan@hpe.com>
 Date: Wed, 23 Mar 2016 23:29:33 -0700
 Subject: [PATCH] sFlow related changes
 
 * sFlow related changes merged from feature/sflow branch
 * Addded constants used in sFlow CLI
+* Modified sFlow max datagram size from 1500 to 9000
 
 Signed-off-by: Vasanth Viswanathan <vasanth.viswanathan@hpe.com>
 
 %% original patch: 0014-sFlow-related-changes.patch
+%% original patch: 0015-sFlow-related-changes.patch
+
+Change-Id: I43fd04936af2ce892823d06f307094b660f3ad22
 ---
  lib/automake.mk      |  4 ++++
  lib/netdev.h         |  9 +++++++++
- lib/sflow.h          |  4 ++++
+ lib/sflow.h          |  6 +++++-
  lib/sflow_api.h      |  7 +++++++
  lib/sflow_receiver.c | 36 ++++++++++++++++++++++++++++++++++++
  ofproto/automake.mk  |  1 +
  ofproto/ofproto.h    | 10 +++++++++-
- 7 files changed, 70 insertions(+), 1 deletion(-)
+ 7 files changed, 71 insertions(+), 2 deletions(-)
 
 diff --git a/lib/automake.mk b/lib/automake.mk
 index 504d6bb..95175bc 100644
@@ -62,7 +66,7 @@ index 68985b6..6136e62 100644
  
  /* Configuration specific to tunnels. */
 diff --git a/lib/sflow.h b/lib/sflow.h
-index 95bedd9..dd25b3b 100644
+index 95bedd9..b546641 100644
 --- a/lib/sflow.h
 +++ b/lib/sflow.h
 @@ -48,7 +48,11 @@ typedef struct _SFLAddress {
@@ -77,6 +81,15 @@ index 95bedd9..dd25b3b 100644
  #define SFL_DEFAULT_POLLING_INTERVAL 30
  
  /* The header protocol describes the format of the sampled header */
+@@ -659,7 +663,7 @@ typedef struct _SFLSample_datagram_hdr {
+     u_int32_t num_records;           /* Number of tag-len-val flow/counter records to follow */
+ } SFLSample_datagram_hdr;
+
+-#define SFL_MAX_DATAGRAM_SIZE 1500
++#define SFL_MAX_DATAGRAM_SIZE 9000
+ #define SFL_MIN_DATAGRAM_SIZE 200
+ #define SFL_DEFAULT_DATAGRAM_SIZE 1400
+
 diff --git a/lib/sflow_api.h b/lib/sflow_api.h
 index 2730a4c..4e33d58 100644
 --- a/lib/sflow_api.h
@@ -197,5 +210,5 @@ index 53aa127..a0b4a70 100644
      PORT_OPT_MAX
  };
 -- 
-2.7.4
+2.9.3
 
