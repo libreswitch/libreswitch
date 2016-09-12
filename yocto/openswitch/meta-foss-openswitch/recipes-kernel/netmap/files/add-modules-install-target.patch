@@ -1,15 +1,19 @@
-Index: git/LINUX/Makefile
+Index: git/LINUX/netmap.mak.in
 ===================================================================
---- git.orig/LINUX/Makefile
-+++ git/LINUX/Makefile
-@@ -100,6 +100,10 @@ build: $(GET_DRIVERS)
- 		O_DRIVERS="$(DRIVERS:%.c=%.o)" modules
- 	@ls -l `find . -name \*.ko`
+--- git.orig/LINUX/netmap.mak.in	2016-09-11 22:27:06.767604646 -0600
++++ git/LINUX/netmap.mak.in	2016-09-11 23:26:48.519438260 -0600
+@@ -64,6 +64,14 @@
+ 		$(if $(MODPATH),INSTALL_MOD_PATH=$(MODPATH)) \
+ 		modules_install
  
 +modules_install:
 +	$(MAKE) -C $(KSRC) M=$(PWD) CONFIG_NETMAP=m $(MOD_LIST) \
-+		EXTRA_CFLAGS='$(EXTRA_CFLAGS)'			\
-+		O_DRIVERS="$(DRIVERS:%.c=%.o)" modules_install	
- 
++	      O_DRIVERS="$(DRIVERS:%.c=%.o)" \
++	      $(KOPTS) \
++	      NETMAP_DRIVER_SUFFIX=$(DRVSUFFIX) \
++	      EXTRA_CFLAGS='$(EXTRA_CFLAGS)'   \
++	      modules_install  
++
  test:
  	@echo "version $(LIN_VER)"
+ 	@echo "patches $(PATCHES)"
