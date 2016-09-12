@@ -58,7 +58,6 @@ set( CMAKE_CXX_LINK_FLAGS "${BUILD_CC_ARCH} ${BUILD_CXXFLAGS} ${BUILD_LDFLAGS}" 
 # up libraries and tools from the native build machine
 set( CMAKE_FIND_ROOT_PATH ${STAGING_DIR_HOST} ${STAGING_DIR_NATIVE} ${CROSS_DIR} ${OECMAKE_PERLNATIVE_DIR} ${OECMAKE_EXTRA_ROOT_PATH} ${EXTERNAL_TOOLCHAIN})
 set( CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY )
-set( CMAKE_FIND_ROOT_PATH_MODE_PROGRAM ONLY )
 set( CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY )
 set( CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY )
 
@@ -94,8 +93,6 @@ do_compile_prepend_class-target() {
 }
 
 do_compile() {
-    oe_runmake llvm-tblgen
-    oe_runmake clang-tblgen
     oe_runmake
 }
 
@@ -117,7 +114,7 @@ llvm_native_sysroot_preprocess() {
     sysroot_stage_dir ${D}${STAGING_DIR_NATIVE}/usr/libexec ${SYSROOT_DESTDIR}${bindir}
 }
 
-PACKAGES_prepend = "clang clang-static-dev clang-static-analysis "
+PACKAGES_prepend = "clang clang-static-dev clang-static-analysis ${PN}-tools "
 PACKAGES += "${PN}-bugpointpasses ${PN}-llvmhello ${PN}-liblto"
 
 FILES_clang = "${bindir}/*clang* ${bindir}/sancov ${bindir}/c-index-test /usr/share/clang \
@@ -128,10 +125,9 @@ FILES_clang-static-analysis = "/usr/share/scan-build/* /usr/share/scan-view/* /u
 FILES_clang-staticdev = "${libdir}/libclang*.a"
 
 FILES_${PN} += "${libdir}/libLLVM*.so"
+FILES_${PN}-tools = "${bindir}"
 FILES_${PN}-dev = "/usr/share/llvm/* ${includedir}"
 FILES_${PN}-staticdev = "${libdir}/libLLVM*.a"
-
-RRECOMMENDS_${PN}-dev += "${PN}-bugpointpasses ${PN}-llvmhello ${PN}-liblto"
 
 FILES_${PN}-bugpointpasses = "${libdir}/BugpointPasses.so"
 FILES_${PN}-llvmhello = "${libdir}/LLVMHello.so"

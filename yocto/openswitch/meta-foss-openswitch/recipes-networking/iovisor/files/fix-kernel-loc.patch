@@ -1,0 +1,13 @@
+Index: git/src/cc/frontends/clang/loader.cc
+===================================================================
+--- git.orig/src/cc/frontends/clang/loader.cc
++++ git/src/cc/frontends/clang/loader.cc
+@@ -82,7 +82,7 @@ int ClangLoader::parse(unique_ptr<llvm::
+   unique_ptr<llvm::MemoryBuffer> main_buf;
+   struct utsname un;
+   uname(&un);
+-  string kdir = string(KERNEL_MODULES_DIR) + "/" + un.release;
++  string kdir = string(KERNEL_MODULES_DIR);
+ 
+   // clang needs to run inside the kernel dir
+   DirStack dstack(kdir + "/" + KERNEL_MODULES_SUFFIX);
