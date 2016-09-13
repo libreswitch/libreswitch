@@ -17,10 +17,6 @@ PV = "git${SRCPV}"
 
 S = "${WORKDIR}/git"
 
-do_install_append() {
-     install -d ${D}${systemd_unitdir}/system
-}
-
 SYSTEMD_PACKAGES = "${PN}"
 
 inherit openswitch cmake systemd
