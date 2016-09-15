@@ -8,7 +8,7 @@ BRANCH ?= "feature/tacacs_plus"
 
 SRC_URI = "${OPS_REPO_BASE_URL}/ops-utils;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH}"
 
-SRCREV = "a2d0de483e0b63e6d66741f5943e8ba03e3e8cc0"
+SRCREV = "${AUTOREV}"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
