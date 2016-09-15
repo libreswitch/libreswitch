@@ -29,7 +29,7 @@ do_install() {
     distutils_do_install
 }
 
-RDEPENDS_${PN} = "python-core python-ctypes python-json python-multiprocessing kernel-devsrc"
+RDEPENDS_${PN} = "python-core python-modules kernel-devsrc"
 
 PACKAGES_prepend = " ${PN}-examples ${PN}-tools "
 
