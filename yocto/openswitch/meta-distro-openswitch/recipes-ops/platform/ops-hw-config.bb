@@ -9,7 +9,7 @@ BRANCH ?= "${OPS_REPO_BRANCH}"
 SRC_URI = "${OPS_REPO_BASE_URL}/ops-hw-config;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
 "
 
-SRCREV = "5cc597ae3868cda629fafbfa319cebbcbcdb3229"
+SRCREV = "4bc063c34fd78b662ee805ac48152abd0953a405"
 
 PLATFORM_PATH?="${MACHINE}"
 
