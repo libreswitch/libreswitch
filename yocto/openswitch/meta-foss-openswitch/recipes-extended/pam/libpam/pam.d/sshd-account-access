@@ -4,5 +4,6 @@
 # will not affect the local user authentication case.
 #
 account    sufficient   /usr/lib/security/libpam_tacplus.so bypass_acct
+account    sufficient   /usr/lib/security/libpam_radius.so bypass_acct
 account    required     pam_nologin.so
 account    include      common-account-access

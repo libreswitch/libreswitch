@@ -3,5 +3,6 @@
 # was successful with tacacs, failure otherwise.  Tacacs failure
 # will not affect the local user authentication case.
 #
-session    sufficient   /usr/lib/security/libpam_tacplus.so bypass_acct
+session    sufficient   /usr/lib/security/libpam_tacplus.so bypass_session
+session    sufficient   /usr/lib/security/libpam_radius.so bypass_session
 session    required     pam_loginuid.so
