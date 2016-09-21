@@ -1,0 +1,12 @@
+[Unit]
+Description=OpenSSH Per-Connection Daemon
+Wants=sshdgenkeys.service
+After=sshdgenkeys.service
+
+[Service]
+Environment=LD_PRELOAD=/usr/lib/security/libaaa_utils_lib.so
+ExecStart=-@SBINDIR@/sshd -i
+ExecReload=@BASE_BINDIR@/kill -HUP $MAINPID
+StandardInput=socket
+StandardError=syslog
+KillMode=process
