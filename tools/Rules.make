@@ -199,7 +199,7 @@ KERNEL_BUILD_DIR=$(BUILDDIR)/tmp/work/$(CONFIGURED_MACHINE)*/$(KERNEL_PROVIDER)/
 _kernel_links:
 	$(V)if test -f $(DISTRO_KERNEL_FILE) ; then ln -sf $(DISTRO_KERNEL_FILE) images/kernel-$(CONFIGURED_PLATFORM).bin ; fi
 	$(V)if test -f $(DISTRO_KERNEL_SYMBOLS_FILE) ; then ln -sf $(DISTRO_KERNEL_SYMBOLS_FILE) images/kernel-$(CONFIGURED_PLATFORM).elf ; fi
-	$(V)if [ -d "$(KERNEL_BUILD_DIR)" ] ; then ln -sf $(KERNEL_BUILD_DIR) images/kernel-src ; fi
+	$(V)if [ -d `eval echo "$(KERNEL_BUILD_DIR)"` ] ; then ln -sf $(KERNEL_BUILD_DIR) images/kernel-src ; fi
 
 $(DISTRO_KERNEL_FILE) images/kernel-$(CONFIGURED_PLATFORM).bin:
 	$(V) $(MAKE) $(_KERNEL_TARGET)
