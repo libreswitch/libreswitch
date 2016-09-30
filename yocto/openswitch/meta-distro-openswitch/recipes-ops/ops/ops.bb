@@ -8,7 +8,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops;protocol=${OPS_REPO_PROTOCOL};branch=${BRANC
 	file://ops-schemadoc.nginx \
 "
 
-SRCREV = "d179b0d292b906dd1ebe11fec9ba6e5aec2a0dda"
+SRCREV = "8e55a592caa3c5316758e83657a3e02f5e820f8d"
 
 DEPENDS = " \
     python-jsonref-native \
