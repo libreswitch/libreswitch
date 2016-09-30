@@ -4,7 +4,7 @@ Wants=sshdgenkeys.service
 After=sshdgenkeys.service
 
 [Service]
-Environment=LD_PRELOAD=/usr/lib/security/libaaa_utils_lib.so
+Environment=LD_PRELOAD=/usr/lib/security/libstub_getpwnam.so
 ExecStart=-@SBINDIR@/sshd -i
 ExecReload=@BASE_BINDIR@/kill -HUP $MAINPID
 StandardInput=socket

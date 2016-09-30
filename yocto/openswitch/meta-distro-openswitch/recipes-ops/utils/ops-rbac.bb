@@ -7,13 +7,13 @@ PACKAGES += "ops-librbac ops-librbac-dev"
 FILES_ops-librbac = "/usr/lib/librbac.so.*.*.*"
 FILES_ops-librbac-dev = "/usr/lib/pkgconfig/rbac.pc /usr/lib/librbac.so*"
 
-DEPENDS = "ops-cli"
+DEPENDS = "ops-ovsdb"
 
-BRANCH ?= "feature/tacacs_plus"
+BRANCH ?= "${OPS_REPO_BRANCH}"
 
 SRC_URI = "${OPS_REPO_BASE_URL}/ops-rbac;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH}"
 
-SRCREV = "${AUTOREV}"
+SRCREV = "0b4c64bd959fabcf4e9437e03d0074a5e1ed93a3"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.

@@ -16,4 +16,18 @@ PV = "git${SRCPV}"
 
 S = "${WORKDIR}/git"
 
-inherit openswitch cmake
+inherit openswitch cmake setuptools
+
+do_compile() {
+     cd ${S}
+     distutils_do_compile
+     # Cmake compile changes to the B directory
+     cmake_do_compile
+}
+
+do_install() {
+     cd ${S}
+     distutils_do_install
+     # Cmake compile changes to the B directory
+     cmake_do_install
+}

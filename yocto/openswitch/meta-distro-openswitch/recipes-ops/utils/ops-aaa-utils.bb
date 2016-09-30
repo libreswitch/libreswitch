@@ -3,7 +3,7 @@ LICENSE = "Apache-2.0"
 
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
-DEPENDS = "ops-ovsdb ops-cli ops-supportability"
+DEPENDS = "ops-ovsdb ops-cli ops-supportability ops-utils"
 
 RDEPENDS_${PN} = "python-argparse python-json python-ops-ovsdb python-distribute python-pam pam-plugin-radius-auth pam-plugin-radius-chap-auth"
 
@@ -15,7 +15,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-aaa-utils;protocol=${OPS_REPO_PROTOCOL};bran
            file://useradd \
          "
 
-SRCREV = "74614f82d6912b8edd1d10890d86f49fc2e2a9fa"
+SRCREV = "c0926a5767a047f56b251f49ff44cbac9fe2e952"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.

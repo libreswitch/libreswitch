@@ -3,14 +3,14 @@ LICENSE = "GPL-2.0 & LGPL-2.0"
 LIC_FILES_CHKSUM = "file://COPYING;md5=81bcece21748c91ba9992349a91ec11d\
                     file://COPYING.LIB;md5=01ef24401ded36cd8e5d18bfe947240c"
 
-DEPENDS = "ops-utils ops-ovsdb"
+DEPENDS = "ops-utils ops-ovsdb ops-rbac"
 
 BRANCH ?= "${OPS_REPO_BRANCH}"
 
 SRC_URI = "${OPS_REPO_BASE_URL}/ops-cli;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
 "
 
-SRCREV = "399bebd2f89ed13e095d975f4cd6c72da8f608f1"
+SRCREV = "65b7c985b6be91389b0b606174e31cf9a0487e94"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
