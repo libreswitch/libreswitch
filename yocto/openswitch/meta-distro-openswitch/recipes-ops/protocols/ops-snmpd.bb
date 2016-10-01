@@ -13,7 +13,7 @@ SRC_URI = "${OPS_REPO_BASE_URL}/ops-snmpd;protocol=${OPS_REPO_PROTOCOL};branch=$
            file://snmpd.conf\
            "
 
-SRCREV="a0ed581dab108ead6041022dba8fa2c0280b1024"
+SRCREV="98ae5991e5d1f48af1d6a9ad9fc0d3f1d6a55209"
 
 # When using AUTOREV, we need to force the package version to the revision of git
 # in order to avoid stale shared states.
