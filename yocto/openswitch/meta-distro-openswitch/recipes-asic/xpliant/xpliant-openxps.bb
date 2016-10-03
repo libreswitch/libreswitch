@@ -11,7 +11,7 @@ RDEPENDS_${PN} = "libpcap python-doctest"
 
 SRC_URI = "git://github.com/xpliant/OpenXPS;protocol=http"
 
-SRCREV = "d4b89d86a06552811254776841d08027797811e6"
+SRCREV = "a6b856f2faa5b2325d9774ebf4d5efc48067179f"
 
 # When using AUTOREV, we need to force the package version
 # to the revision of git in order to avoid stale shared states.
