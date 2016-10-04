@@ -25,6 +25,7 @@ DEPENDS = "\
         ops-p4c-native \
         ops-p4c-libpd \
         ops-openvswitch \
+        ops-classifierd \
 "
 
 RDEPENDS_${PN} = " \
