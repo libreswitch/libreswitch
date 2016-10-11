@@ -5,7 +5,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 
 DEPENDS = "ops-ovsdb ops-cli ops-supportability ops-utils"
 
-RDEPENDS_${PN} = "python-argparse python-json python-ops-ovsdb python-distribute python-pam pam-plugin-radius-auth pam-plugin-radius-chap-auth"
+RDEPENDS_${PN} = "python-argparse python-json python-ops-ovsdb python-distribute python-pam"
 
 BRANCH ?= "${OPS_REPO_BRANCH}"
 
