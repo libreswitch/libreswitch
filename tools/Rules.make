@@ -63,7 +63,7 @@ BASE_OVA_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(DISTRO_FS
 BASE_BOX_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(DISTRO_FS_TARGET)-$(CONFIGURED_PLATFORM).box
 BASE_QCOW2_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(DISTRO_FS_TARGET)-$(CONFIGURED_PLATFORM).qcow2
 BASE_ONIE_INSTALLER_FILE = $(BUILDDIR)/tmp/deploy/images/$(CONFIGURED_PLATFORM)/$(ONIE_INSTALLER_FILE)
-BASE_DOCKER_IMAGE = openswitch/${CONFIGURED_PLATFORM}
+BASE_DOCKER_IMAGE = libreswitch/${CONFIGURED_PLATFORM}
 HOST_INTERPRETER := $(shell readelf -a /bin/sh | grep interpreter | awk '{ print substr($$4, 0, length($$4)-1)}')
 TARGET_INTERPRETER=$(STAGING_DIR_TARGET)/lib/ld-linux-x86-64.so.2
 
@@ -262,7 +262,7 @@ cleansstate: header _cleansstate
 _cleansstate:
 	$(V)$(call BITBAKE,-c cleansstate $(RECIPE))
 
-CONTAINER_NAME?=openswitch
+CONTAINER_NAME?=libreswitch
 .PHONY: deploy_lxc
 deploy_lxc:
 	$(V) if ! which lxc-create > /dev/null ; then \
@@ -279,9 +279,9 @@ deploy_lxc:
 	else \
 	  echo done ; \
 	fi
-	$(V) export OPENSWITCH_IMAGE=$(BUILD_ROOT)/images/`basename $(BASE_TAR_FS_FILE)` ; \
+	$(V) export LIBRESWITCH_IMAGE=$(BUILD_ROOT)/images/`basename $(BASE_TAR_FS_FILE)` ; \
 	export BUILD_ROOT ; \
-	$(SUDO) -E lxc-create -n $(CONTAINER_NAME) -f /dev/null -t $(BUILD_ROOT)/tools/lxc/lxc-openswitch
+	$(SUDO) -E lxc-create -n $(CONTAINER_NAME) -f /dev/null -t $(BUILD_ROOT)/tools/lxc/lxc-libreswitch
 	$(V) $(ECHO) "Exporting completed.\nRun with 'sudo lxc-start -n $(CONTAINER_NAME)'"
 
 .PHONY: export_docker_image
@@ -417,7 +417,7 @@ ifneq ($(GITREVIEWUSER),)
 endif
 REVIEWUSER?=$(USER)
 
-# Some build systems derivated from OpenSwitch may not have a .gitreview file
+# Some build systems derivated from LibreSwitch may not have a .gitreview file
 setup-git-review:
 	$(V) if [ -f .gitreview ] ; then \
 	  $(ECHO) "$(BLUE)Setting up git-review system...$(GRAY)\n" ; \

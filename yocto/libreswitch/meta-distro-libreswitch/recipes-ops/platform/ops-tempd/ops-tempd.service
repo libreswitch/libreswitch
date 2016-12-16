@@ -1,0 +1,14 @@
+# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+
+[Unit]
+Description=LibreSwitch Temperature Daemon
+After=ovsdb-server.service ops-init.service
+
+[Service]
+Type=simple
+ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-tempd.pid
+ExecStart=/sbin/ip netns exec nonet /usr/bin/ops-tempd --pidfile
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target

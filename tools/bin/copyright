@@ -26,7 +26,7 @@ import re
 import sys
 import tempfile
 
-LICENSE = 'OpenSwitch'
+LICENSE = 'LibreSwitch'
 
 """
 Note: COPYRIGHT_RE a list of regular expressions used to locate the entire
@@ -35,10 +35,10 @@ regex must match the last line in the license.  Any intermediate regexes can be
 used to avoid false positive matches.
 """
 
-if LICENSE == 'OpenSwitch':
+if LICENSE == 'LibreSwitch':
 
     COPYRIGHT = """\
-Copyright (C) %s Hewlett Packard Enterprise Development LP
+Copyright (C) %s
 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -58,25 +58,6 @@ under the License.\
         r"Copyright.*Hewlett.*Packard.*Development",
         r"Apache License",
         r"under the License\."
-        ]
-
-elif LICENSE == 'PVOS':
-
-    COPYRIGHT = """\
-Copyright (C) %s Hewlett Packard Enterprise Development LP
-All Rights Reserved.
-
-The contents of this software are proprietary and confidential
-to the Hewlett Packard Enterprise Development LP.  No part of this
-program may be photocopied, reproduced, or translated into another
-programming language without prior written consent of the
-Hewlett Packard Enterprise Development LP.\
-"""
-
-    COPYRIGHT_RE = [
-        r"Copyright.*Hewlett.*Packard.*Development",
-        r"Hewlett.*Packard.*Development",
-        r"Hewlett.*Packard.*Development.*\."
         ]
 
 else:

@@ -1,0 +1,6 @@
+{
+  "provider": "virtualbox",
+  "name": "libreswitch-appliance-image",
+  "description": "This box contains an image of LibreSwitch."
+}
+

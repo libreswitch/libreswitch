@@ -1,0 +1,14 @@
+# Copyright (C) 2015 Hewlett Packard Enterprise Development LP
+
+[Unit]
+Description=LibreSwitch DHCP-TFTP Daemon
+After=ovsdb-server.service ops-init.service
+
+[Service]
+Type=simple
+ExecStartPre=/bin/rm -f /var/run/ops_dhcp_tftp.pid
+ExecStart=/sbin/ip netns exec swns /usr/bin/ops_dhcp_tftp
+PIDFile=/var/run/ops_dhcp_tftp.pid
+
+[Install]
+WantedBy=multi-user.target

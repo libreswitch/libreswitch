@@ -1,0 +1,14 @@
+# LibreSwitch 'ops-bgpd' service script
+
+[Unit]
+Description=LibreSwitch BGPD Daemon
+After=ovsdb-server.service ops-init.service
+
+[Service]
+Type=simple
+ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-bgpd.pid
+ExecStart=/sbin/ip netns exec swns /usr/sbin/ops-bgpd --pidfile
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target

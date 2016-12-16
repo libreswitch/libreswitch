@@ -1,0 +1,15 @@
+# (C) Copyright 2015 Hewlett-Packard Enterprise Development Company, L.P.
+
+[Unit]
+Description=LibreSwitch REST service Daemon
+After=cfgd.service
+
+[Service]
+Type=simple
+ExecStartPre=/bin/rm -f /var/run/restd.pid
+ExecStart=/usr/bin/restd --HTTPS=f --create_ssl=f --HTTP_port=8091 --force_https=f
+PIDFile=/var/run/restd.pid
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

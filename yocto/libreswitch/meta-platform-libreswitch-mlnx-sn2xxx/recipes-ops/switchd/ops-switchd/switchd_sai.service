@@ -1,0 +1,14 @@
+[Unit]
+Description=LibreSwitch Switch Daemon for SAI
+After=ovsdb-server.service ops-init.service ops-sysd.service
+
+[Service]
+Type=forking
+ExecStartPre=/bin/bash /usr/bin/sx_cleanup.sh
+ExecStart=/sbin/ip netns exec swns /usr/sbin/ops-switchd --no-chdir --pidfile --detach -vSYSLOG:INFO
+WorkingDirectory=/var/run/openvswitch
+PIDFile=/var/run/openvswitch/ops-switchd.pid
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target

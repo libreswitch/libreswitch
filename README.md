@@ -1,2 +1,2 @@
-# OpenSwitch Build System
-For more documentation, please visit http://www.openswitch.net
+# LibreSwitch
+For more documentation, please visit http://www.libreswitch.net

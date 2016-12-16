@@ -1,0 +1,14 @@
+# LibreSwitch 'ops-zebra' daemon service script
+
+[Unit]
+Description=LibreSwitch Zebra Daemon
+After=ovsdb-server.service ops-init.service
+
+[Service]
+Type=simple
+ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-zebra.pid
+ExecStart=/sbin/ip netns exec swns /usr/sbin/ops-zebra --pidfile
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,11 @@
+# Copyright (C) 2016 Hewlett Packard Enterprise Development LP
+
+[Unit]
+Description=LibreSwitch mclagd Module Daemon
+After=ovsdb-server.service ops-init.service
+
+[Service]
+Type=simple
+ExecStartPre=/bin/rm -f /var/run/openvswitch/ops-mclagd.pid
+ExecStart=/sbin/ip netns exec swns /usr/bin/ops-mclagd --pidfile
+Restart=on-abort
