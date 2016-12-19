@@ -14,8 +14,8 @@
 
 DISTRO_HELP_LINK=http://www.libreswitch.net
 
-DISTRO_ARCHIVE_ADDRESS?=archive.libreswitch.net
-DISTRO_SSTATE_ADDRESS?=sstate.libreswitch.net
+DISTRO_ARCHIVE_ADDRESS?=yocto.libreswitch.org/downloads
+DISTRO_SSTATE_ADDRESS?=yocto.libreswitch.org/sstate-cache
 DISTRO_FS_TARGET = libreswitch-image
 
 DISTRO_CA_BUNDLE = ${BUILD_ROOT}/yocto/libreswitch/certs/libreswitch.net.crt
