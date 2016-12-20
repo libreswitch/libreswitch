@@ -9,7 +9,7 @@ PLATFORM_PATH = "${SYSTEM_MANUFACTURER}/MSN2700-CS2F/"
 
 # Workaround for bitbake issue with pathes that contains spaces
 do_install_append() {
-        install -d ${D}${sysconfdir}/libreswitch/platform/Mellanox\ Technologies\ Ltd./
-        cp -R ${D}${sysconfdir}/libreswitch/platform/${SYSTEM_MANUFACTURER}/* ${D}${sysconfdir}/libreswitch/platform/Mellanox\ Technologies\ Ltd./
-        rm -rf {D}${sysconfdir}/libreswitch/platform/${SYSTEM_MANUFACTURER}/
+        install -d ${D}${sysconfdir}/openswitch/platform/Mellanox\ Technologies\ Ltd./
+        cp -R ${D}${sysconfdir}/openswitch/platform/${SYSTEM_MANUFACTURER}/* ${D}${sysconfdir}/openswitch/platform/Mellanox\ Technologies\ Ltd./
+        rm -rf {D}${sysconfdir}/openswitch/platform/${SYSTEM_MANUFACTURER}/
 }

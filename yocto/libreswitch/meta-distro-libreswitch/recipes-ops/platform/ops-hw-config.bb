@@ -21,15 +21,15 @@ PV = "git${SRCPV}"
 S = "${WORKDIR}/git"
 
 do_install_append () {
-    install -d ${D}${sysconfdir}/libreswitch/platform/${PLATFORM_PATH}
+    install -d ${D}${sysconfdir}/openswitch/platform/${PLATFORM_PATH}
     for f in ${S}/${PLATFORM_PATH}/*.yaml ; do
         d=`dirname "$f"`
         n=`basename "$f"`
         # If there's a flavor override, use that
         if test -n "${PLATFORM_FLAVOR}" -a -e "${d}/${PLATFORM_FLAVOR}/${n}" ; then
-            cp "${d}/${PLATFORM_FLAVOR}/${n}" "${D}${sysconfdir}/libreswitch/platform/${PLATFORM_PATH}"
+            cp "${d}/${PLATFORM_FLAVOR}/${n}" "${D}${sysconfdir}/openswitch/platform/${PLATFORM_PATH}"
         else
-            cp "${d}/${n}" "${D}${sysconfdir}/libreswitch/platform/${PLATFORM_PATH}"
+            cp "${d}/${n}" "${D}${sysconfdir}/openswitch/platform/${PLATFORM_PATH}"
         fi
     done
 }
