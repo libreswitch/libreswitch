@@ -6,7 +6,6 @@ compiler: gcc
 branches:
   only:
   - master
-  - libreswitch
   - "/^release.*$/"
 
 env:
@@ -39,3 +38,11 @@ deploy:
   script: cd $TRAVIS_BUILD_DIR/build/sstate-cache/ && rsync -avzL --progress ?? universal libreswitch-ci@yocto.libreswitch.org:/data/yocto-cache/sstate-cache/
   on:
     branch: master
+
+notifications:
+  webhooks:
+    urls:
+      - https://webhooks.gitter.im/e/a392ac25d47cc2eaf127
+  on_success: change
+  on_failure: always
+  on_start: never
