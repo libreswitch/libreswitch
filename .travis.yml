@@ -3,23 +3,39 @@ sudo: required
 dist: trusty
 compiler: gcc
 
-# safelist
 branches:
   only:
   - master
   - libreswitch
-  - /^release.*$/
+  - "/^release.*$/"
 
 env:
 - PLATFORM=appliance
 - PLATFORM=genericx86-64
 
+addons:
+  ssh_known_hosts: yocto.libreswitch.org
+
 before_install:
 - sudo apt-get update -qq
-- sudo apt-get install -qq gawk wget git-core diffstat unzip texinfo build-essential chrpath screen curl device-tree-compiler
-
+- sudo apt-get install -qq gawk wget git-core diffstat unzip texinfo build-essential
+  chrpath screen curl device-tree-compiler
 install: true
 
 script:
 - make configure $PLATFORM
 - make
+
+before_deploy:
+- openssl aes-256-cbc -K $encrypted_2b923ab06c69_key -iv $encrypted_2b923ab06c69_iv
+  -in tools/ci/deploy_rsa.enc -out /tmp/deploy_rsa -d
+- eval "$(ssh-agent -s)"
+- chmod 600 /tmp/deploy_rsa
+- ssh-add /tmp/deploy_rsa
+
+deploy:
+  provider: script
+  skip_cleanup: true
+  script: cd $TRAVIS_BUILD_DIR/build/sstate-cache/ && rsync -avzL --progress ?? universal libreswitch-ci@yocto.libreswitch.org:/data/yocto-cache/sstate-cache/
+  on:
+    branch: master
