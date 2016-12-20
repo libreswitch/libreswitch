@@ -11,5 +11,5 @@
 #
 # - Update patchelf tools to newer version to avoid issues with go-generated binaries
 
-UNINATIVE_URL = "http://archive.openswitch.net/uninative/0.95/"
+UNINATIVE_URL = "https://yocto.libreswitch.org/downloads/uninative/0e1496dc728e43803b9589c1d76eff735bfba12253414234d3459d4f0f46c665/"
 UNINATIVE_CHECKSUM[x86_64] ?= "0e1496dc728e43803b9589c1d76eff735bfba12253414234d3459d4f0f46c665"
