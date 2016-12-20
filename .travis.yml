@@ -1,0 +1,28 @@
+language: c
+sudo: required
+dist: trusty
+
+# safelist
+branches:
+  only:
+  - master
+  - /^release.*$/
+
+env:
+- PLATFORM=appliance
+- PLATFORM=genericx86-64
+
+before_install:
+- sudo apt-get update -qq
+- sudo apt-get install -qq gawk wget git-core diffstat unzip texinfo build-essential chrpath screen curl
+
+matrix:
+  include:
+    - env: PLATFORM=appliance
+    - env: PLATFORM=genericx86-64
+
+install: true
+
+script:
+- make configure $PLATFORM
+- make
