@@ -11,7 +11,7 @@ OPENNSL_PLATFORM ?= "undefined"
 OPENNSL_PLATFORM_BUILD ?= "unknown"
 GPL_MODULES_DIR ?= "undefined"
 
-SRC_URI = "http://archive.libreswitch.net/opennsl/opennsl-${PV}-cdp-${OPENNSL_PLATFORM}-${OPENNSL_PLATFORM_BUILD}.tar.bz2 \
+SRC_URI = "https://archive.openswitch.net/opennsl/opennsl-${PV}-cdp-${OPENNSL_PLATFORM}-${OPENNSL_PLATFORM_BUILD}.tar.bz2 \
 "
 
 inherit module-base
@@ -53,7 +53,7 @@ do_install() {
     install -d ${D}/usr/lib/pkgconfig
     install -m 0755 ${S}/bin/${OPENNSL_PLATFORM}/libopennsl.so.1 ${D}/usr/lib/
     ln -s libopennsl.so.1 ${D}/usr/lib/libopennsl.so
-    install -m 0655 ${S}/libreswitch/opennsl.pc ${D}/usr/lib/pkgconfig/opennsl.pc
+    install -m 0655 ${S}/openswitch/opennsl.pc ${D}/usr/lib/pkgconfig/opennsl.pc
 
     # Installing netserve utility
     install -d ${D}/usr/bin/
@@ -65,12 +65,12 @@ do_install() {
     install -m 0644 ${S}/${GPL_MODULES_DIR}/build/linux/user/${OPENNSL_PLATFORM}/linux-bcm-knet.ko ${D}/lib/modules/${KERNEL_VERSION}/extra/opennsl
     install -m 0644 ${S}/${GPL_MODULES_DIR}/build/linux/user/${OPENNSL_PLATFORM}/linux-user-bde.ko ${D}/lib/modules/${KERNEL_VERSION}/extra/opennsl
     install -d ${D}${sysconfdir}/modules-load.d/
-    install -m 0655 ${S}/libreswitch/bcm-modules.conf ${D}${sysconfdir}/modules-load.d/
+    install -m 0655 ${S}/openswitch/bcm-modules.conf ${D}${sysconfdir}/modules-load.d/
     install -d ${D}${sysconfdir}/modprobe.d/
-    install -m 0655 ${S}/libreswitch/bcm-options.conf ${D}${sysconfdir}/modprobe.d/
+    install -m 0655 ${S}/openswitch/bcm-options.conf ${D}${sysconfdir}/modprobe.d/
     install -d ${D}${sysconfdir}/udev/rules.d
-    install -m 0644 ${S}/libreswitch/bcm.rules ${D}${sysconfdir}/udev/rules.d/70-bcm.rules
-    install -m 0755 ${S}/libreswitch/bcm_devices.sh ${D}${sysconfdir}/udev/rules.d/
+    install -m 0644 ${S}/openswitch/bcm.rules ${D}${sysconfdir}/udev/rules.d/70-bcm.rules
+    install -m 0755 ${S}/openswitch/bcm_devices.sh ${D}${sysconfdir}/udev/rules.d/
 }
 
 INSANE_SKIP_${PN} += "already-stripped"
