@@ -1,2 +1,2 @@
 # LibreSwitch [![Build Status](https://travis-ci.org/libreswitch/libreswitch.svg?branch=master)](https://travis-ci.org/libreswitch/libreswitch) [![Docs](https://readthedocs.org/projects/docs/badge/?version=latest)](http://libreswitch.readthedocs.io/en/latest/?badge=latest) [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/libreswitch/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-For more documentation, please visit http://www.libreswitch.net
+For more information, please visit https://www.libreswitch.org
