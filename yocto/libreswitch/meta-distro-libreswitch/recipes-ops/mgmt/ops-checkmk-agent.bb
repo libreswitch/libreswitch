@@ -4,9 +4,9 @@ LIC_FILES_CHKSUM="file://${COMMON_LICENSE_DIR}/GPL-2.0;md5=801f80980d171dd642561
 
 RDEPENDS_${PN} = "bash"
 
-BRANCH ?= "${OPS_REPO_BRANCH}"
+BRANCH ?= "${LBS_REPO_BRANCH}"
 
-SRC_URI = "${OPS_REPO_BASE_URL}/ops-checkmk-agent;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
+SRC_URI = "${LBS_REPO_BASE_URL}/checkmk-agent;protocol=${LBS_REPO_PROTOCOL};branch=${BRANCH} \
            file://checkmk-agent.sh \
            file://checkmk-agent@.service \
            file://checkmk-agent.socket \

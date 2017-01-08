@@ -8,9 +8,9 @@ RDEPENDS_${PN} = "openvswitch-sim-switch"
 PROVIDES += "virtual/ops-switchd-switch-api-plugin"
 RPROVIDES_${PN} += "virtual/ops-switchd-switch-api-plugin"
 
-BRANCH ?= "${OPS_REPO_BRANCH}"
+BRANCH ?= "${LBS_REPO_BRANCH}"
 
-SRC_URI = "${OPS_REPO_BASE_URL}/ops-switchd-container-plugin;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
+SRC_URI = "${LBS_REPO_BASE_URL}/switchd-container-plugin;protocol=${LBS_REPO_PROTOCOL};branch=${BRANCH} \
 "
 FILES_${PN} = "${libdir}/openvswitch/plugins"
 

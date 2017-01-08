@@ -4,9 +4,9 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 
 DEPENDS = "ops ops-openvswitch ops-ovsdb ops-utils libyaml jemalloc ops-cli"
 
-BRANCH ?= "${OPS_REPO_BRANCH}"
+BRANCH ?= "${LBS_REPO_BRANCH}"
 
-SRC_URI = "${OPS_REPO_BASE_URL}/ops-switchd;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
+SRC_URI = "${LBS_REPO_BASE_URL}/switchd;protocol=${LBS_REPO_PROTOCOL};branch=${BRANCH} \
    file://switchd_bcm.service \
    file://switchd_sim.service \
    file://switchd_p4sim.service \

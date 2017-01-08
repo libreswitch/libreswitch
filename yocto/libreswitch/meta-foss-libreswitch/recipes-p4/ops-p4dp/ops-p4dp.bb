@@ -3,9 +3,9 @@ HOMEPAGE = "https://github.com/p4lang/p4factory"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=2f3453ba8e98aaed11a290758a999e65"
 
-OPS_P4DP_REPO = "github.com/p4lang/behavioral-model.git"
+LBS_P4DP_REPO = "github.com/p4lang/behavioral-model.git"
 
-SRC_URI = "git://${OPS_P4DP_REPO};protocol=https;branch=ops \
+SRC_URI = "git://${LBS_P4DP_REPO};protocol=https;branch=ops \
            file://simple_switch.service \
            file://0001-Remove-warnings-when-compiling-in-GCC-5.patch \
            "

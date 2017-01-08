@@ -2,9 +2,9 @@ SUMMARY = "LibreSwitch"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7cacdbeed46a0096b10"
 
-BRANCH ?= "${OPS_REPO_BRANCH}"
+BRANCH ?= "${LBS_REPO_BRANCH}"
 
-SRC_URI = "${OPS_REPO_BASE_URL}/ops;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
+SRC_URI = "${LBS_REPO_BASE_URL}/ops;protocol=${LBS_REPO_PROTOCOL};branch=${BRANCH} \
 	file://ops-schemadoc.nginx \
 "
 
@@ -34,7 +34,7 @@ FILES_${PN} += " \
     /srv/www/schemadoc \
 "
 
-OPS_SCHEMA_PATH="${S}/schema"
+LBS_SCHEMA_PATH="${S}/schema"
 
 do_install_prepend() {
     make doc

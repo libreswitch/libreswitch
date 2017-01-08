@@ -14,12 +14,12 @@ RDEPENDS_${PN} = "virtual/sai"
 PROVIDES += "virtual/ops-switchd-switch-api-plugin"
 RPROVIDES_${PN} += "virtual/ops-switchd-switch-api-plugin"
 
-SAI_PLUGIN_BASE_URL ??= "${OPS_REPO_BASE_URL}"
-SAI_PLUGIN_PROTOCOL ??= "${OPS_REPO_PROTOCOL}"
-SAI_PLUGIN_BRANCH ??= "${OPS_REPO_BRANCH}"
+SAI_PLUGIN_BASE_URL ??= "${LBS_REPO_BASE_URL}"
+SAI_PLUGIN_PROTOCOL ??= "${LBS_REPO_PROTOCOL}"
+SAI_PLUGIN_BRANCH ??= "${LBS_REPO_BRANCH}"
 
 SRC_URI = " \
-   ${SAI_PLUGIN_BASE_URL}/ops-switchd-sai-plugin;protocol=${SAI_PLUGIN_PROTOCOL};branch=${SAI_PLUGIN_BRANCH} \
+   ${SAI_PLUGIN_BASE_URL}/switchd-sai-plugin;protocol=${SAI_PLUGIN_PROTOCOL};branch=${SAI_PLUGIN_BRANCH} \
 "
 FILES_${PN} = "${libdir}/openvswitch/plugins"
 

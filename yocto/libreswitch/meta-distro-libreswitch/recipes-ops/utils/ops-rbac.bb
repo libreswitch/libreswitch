@@ -9,9 +9,9 @@ FILES_ops-librbac-dev = "/usr/lib/pkgconfig/rbac.pc /usr/lib/librbac.so*"
 
 DEPENDS = "ops-ovsdb"
 
-BRANCH ?= "${OPS_REPO_BRANCH}"
+BRANCH ?= "${LBS_REPO_BRANCH}"
 
-SRC_URI = "${OPS_REPO_BASE_URL}/ops-rbac;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH}"
+SRC_URI = "${LBS_REPO_BASE_URL}/rbac;protocol=${LBS_REPO_PROTOCOL};branch=${BRANCH}"
 
 SRCREV = "0b4c64bd959fabcf4e9437e03d0074a5e1ed93a3"
 

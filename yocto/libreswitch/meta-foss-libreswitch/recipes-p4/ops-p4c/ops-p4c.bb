@@ -3,9 +3,9 @@ HOMEPAGE = "https://github.com/p4lang/p4factory"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=2f3453ba8e98aaed11a290758a999e65"
 
-OPS_P4C_REPO = "github.com/p4lang/p4c-bm.git"
+LBS_P4C_REPO = "github.com/p4lang/p4c-bm.git"
 
-SRC_URI = "git://${OPS_P4C_REPO};protocol=https;branch=ops \
+SRC_URI = "git://${LBS_P4C_REPO};protocol=https;branch=ops \
            "
 SRCREV = "a82c029c91f37950e8d51572d093dfda2c178711"
 PV = "git${SRCPV}"

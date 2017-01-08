@@ -7,9 +7,9 @@ DEPENDS = "ops-utils ops-ovsdb ops-cli"
 
 RDEPENDS_${PN} = "python-argparse python-json python-ops-ovsdb python-distribute"
 
-BRANCH ?= "${OPS_REPO_BRANCH}"
+BRANCH ?= "${LBS_REPO_BRANCH}"
 
-SRC_URI = "${OPS_REPO_BASE_URL}/ops-mgmt-intf;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
+SRC_URI = "${LBS_REPO_BASE_URL}/mgmt-intf;protocol=${LBS_REPO_PROTOCOL};branch=${BRANCH} \
            file://mgmt-intf.service \
          "
 
