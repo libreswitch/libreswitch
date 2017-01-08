@@ -4,9 +4,9 @@ LIC_FILES_CHKSUM = "file://setup.py;beginline=1;endline=15;md5=718b8f9952f79dfe2
 
 RDEPENDS_${PN} = "python-argparse python-json python-ops-ovsdb python-distribute python-six"
 
-BRANCH ?= "${OPS_REPO_BRANCH}"
+BRANCH ?= "${LBS_REPO_BRANCH}"
 
-SRC_URI = "${OPS_REPO_BASE_URL}/ops-cfgd;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
+SRC_URI = "${LBS_REPO_BASE_URL}/cfgd;protocol=${LBS_REPO_PROTOCOL};branch=${BRANCH} \
            file://cfgd.service \
 "
 

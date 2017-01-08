@@ -6,9 +6,9 @@ DEPENDS = "net-snmp ops-openvswitch ops-ovsdb ops-cli"
 
 RDEPENDS_${PN} = "net-snmp-client net-snmp-server net-snmp-mibs net-snmp-libs perl"
 
-BRANCH ?= "${OPS_REPO_BRANCH}"
+BRANCH ?= "${LBS_REPO_BRANCH}"
 
-SRC_URI = "${OPS_REPO_BASE_URL}/ops-snmpd;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
+SRC_URI = "${LBS_REPO_BASE_URL}/snmpd;protocol=${LBS_REPO_PROTOCOL};branch=${BRANCH} \
            file://ops-snmpd.service\
            file://snmpd.conf\
            "

@@ -7,9 +7,9 @@ RPROVIDES_${PN} += "virtual/ops-switchd-switch-api-plugin"
 
 PV = "git${SRCPV}"
 
-BRANCH ?= "${OPS_REPO_BRANCH}"
+BRANCH ?= "${LBS_REPO_BRANCH}"
 
-SRC_URI = "gitsm://${OPS_REPO_HOSTNAME}/${OPS_REPO_PATH}/ops-switchd-p4switch-plugin;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH}"
+SRC_URI = "gitsm://${LBS_REPO_HOSTNAME}/${LBS_REPO_PATH}/ops-switchd-p4switch-plugin;protocol=${LBS_REPO_PROTOCOL};branch=${BRANCH}"
 
 SRCREV = "064c26b304877df3fe40ff3c766646fd488acd18"
 

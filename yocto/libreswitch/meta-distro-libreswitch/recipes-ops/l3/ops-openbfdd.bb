@@ -6,9 +6,9 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/Apache-2.0;md5=89aea4e17d99a7ca
 
 DEPENDS = "ops-utils ops-ovsdb ops-cli"
 
-BRANCH ?= "${OPS_REPO_BRANCH}"
+BRANCH ?= "${LBS_REPO_BRANCH}"
 
-SRC_URI = "${OPS_REPO_BASE_URL}/ops-openbfdd;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
+SRC_URI = "${LBS_REPO_BASE_URL}/openbfdd;protocol=${LBS_REPO_PROTOCOL};branch=${BRANCH} \
 	file://bfdd-beacon.service \
 "
 SRCREV = "8c68a74f197a93fe05e14d264b2c9ca1ad1ea7ec"

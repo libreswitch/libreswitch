@@ -7,9 +7,9 @@ DEPENDS = "ops-ovsdb ops-cli ops-supportability ops-utils"
 
 RDEPENDS_${PN} = "python-argparse python-json python-ops-ovsdb python-distribute python-pam"
 
-BRANCH ?= "${OPS_REPO_BRANCH}"
+BRANCH ?= "${LBS_REPO_BRANCH}"
 
-SRC_URI = "${OPS_REPO_BASE_URL}/ops-aaa-utils;protocol=${OPS_REPO_PROTOCOL};branch=${BRANCH} \
+SRC_URI = "${LBS_REPO_BASE_URL}/aaa-utils;protocol=${LBS_REPO_PROTOCOL};branch=${BRANCH} \
            file://aaautils.service \
            file://server \
            file://useradd \

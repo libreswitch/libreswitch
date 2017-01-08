@@ -1,4 +1,0 @@
-[gerrit]
-host=review.openswitch.net
-port=29418
-project=openswitch/ops-build
