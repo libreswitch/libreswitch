@@ -7,5 +7,5 @@ tmpfs                /run                 tmpfs      mode=0755,nodev,nosuid,stri
 tmpfs                /var/volatile        tmpfs      defaults              0  0
 
 # Mount the configuration partition at /var/local
-LABEL=LibreSwitch\040Conf /var/local        auto       defaults              1  1
-LABEL=LibreSwitch\040Diags /var/diagnostics           auto       defaults              0  0
+PARTLABEL=LibreSwitch\040Conf /var/local        auto       defaults              1  1
+PARTLABEL=LibreSwitch\040Diag /var/diagnostics           auto       defaults              0  0
