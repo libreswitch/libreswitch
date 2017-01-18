@@ -29,7 +29,7 @@ echo -e "${bold}LibreSwitch ONIE installer (version $installer_version) for $MAC
 attr_bitmask="0x0000000000000001"
 label="LibreSwitch"
 config_label="$label Conf"
-diags_label="$label Diags"
+diags_label="$label Diag"
 primary_label="$label 1"
 secondary_label="$label 2"
 mount_point=/mnt/ops
