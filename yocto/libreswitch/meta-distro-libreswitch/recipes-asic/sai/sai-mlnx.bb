@@ -26,7 +26,7 @@ B = "${S}"
 SRCREV = "0132a7172291af350f35946aeaee6911ff2710fa"
 
 SRC_URI = " \
-   git://github.com/Mellanox/SAI-Implementation.git;protocol=https;branch=libreswitch \
+   git://github.com/Mellanox/SAI-Implementation.git;protocol=https;branch=openswitch \
 "
 
 FILES_${PN} += "${prefix}/share"

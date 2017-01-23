@@ -12,8 +12,8 @@ SRC_URI = " \
     ${SX_SDK_URI}/mlnx-applibs-${SX_SDK_VERSION}.tar.gz;subdir=mlnx-applibs-${SX_SDK_VERSION} \
 "
 
-SRC_URI[md5sum] = "062e094509bd72698355dbe9bfdf5805"
-SRC_URI[sha256sum] = "0ca839caee1dd48b2383b72848f939690bbbfb863f5cfe4ef41a0cf2f9f78247"
+SRC_URI[md5sum] = "003c0ec5776b91951f71f12d79f8c8c6"
+SRC_URI[sha256sum] = "d69a945244bb251c413dea00d38f5575da368cdce92950ae8cb68c880d744d4d"
 
 S = "${WORKDIR}/mlnx-applibs-${SX_SDK_VERSION}/"
 
