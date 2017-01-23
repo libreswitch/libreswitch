@@ -1,4 +1,4 @@
-language: c
+language: generic
 sudo: required
 dist: trusty
 compiler: gcc
@@ -8,9 +8,25 @@ branches:
   - master
   - "/^release.*$/"
 
+cache:
+  directories:
+  - build/sstate-cache
+
+before_cache:
+  - cd build ; ../yocto/poky/scripts/sstate-cache-management.sh -y -L -d --cache-dir=./sstate-cache
+
 env:
 - PLATFORM=appliance
 - PLATFORM=genericx86-64
+- PLATFORM=as5712
+- PLATFORM=as6712
+- PLATFORM=as7712
+#currently broken due compiler flags
+#- PLATFORM=as7512
+#- PLATFORM=mlnx-sn2xxx
+# these are missing opennsl
+#- PLATFORM=as5812t
+#- PLATFORM=as5812x
 
 addons:
   ssh_known_hosts: yocto.libreswitch.org
@@ -23,7 +39,7 @@ install: true
 
 script:
 - make configure $PLATFORM
-- make
+- travis_wait 50 make
 
 before_deploy:
 - openssl aes-256-cbc -K $encrypted_2b923ab06c69_key -iv $encrypted_2b923ab06c69_iv
