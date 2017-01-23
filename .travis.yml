@@ -42,7 +42,7 @@ script:
 - travis_wait 50 make
 
 before_deploy:
-- openssl aes-256-cbc -K $encrypted_2b923ab06c69_key -iv $encrypted_2b923ab06c69_iv
+- cd $TRAVIS_BUILD_DIR ; openssl aes-256-cbc -K $encrypted_2b923ab06c69_key -iv $encrypted_2b923ab06c69_iv
   -in tools/ci/deploy_rsa.enc -out /tmp/deploy_rsa -d
 - eval "$(ssh-agent -s)"
 - chmod 600 /tmp/deploy_rsa
