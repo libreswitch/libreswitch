@@ -9,7 +9,9 @@ DEPENDS = "libxml2 libpcap lmsensors"
 
 RDEPENDS_${PN} = "libpcap python-doctest"
 
-SRC_URI = "git://github.com/xpliant/OpenXPS;protocol=http"
+SRC_URI = "git://github.com/xpliant/OpenXPS;protocol=http \
+           file://Replace-strnicmp-with-strncasecmp.patch \
+          "
 
 SRCREV = "a6b856f2faa5b2325d9774ebf4d5efc48067179f"
 
