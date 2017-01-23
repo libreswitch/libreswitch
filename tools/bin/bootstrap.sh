@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Definitions
-SERVER_URL=https://archive.openswitch.net/
+SERVER_URL=https://yocto.libreswitch.org/downloads/
 CORKSCREW=corkscrew-2.0
 CORKSCREW_PACKAGE=$CORKSCREW.tar.gz
 BOOTSTRAP_TMP=$BUILD_ROOT/build/tmp
