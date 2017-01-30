@@ -22,8 +22,7 @@ env:
 - PLATFORM=as6712
 - PLATFORM=as7712
 - PLATFORM=as7512
-#currently broken due compiler flags
-#- PLATFORM=mlnx-sn2xxx
+- PLATFORM=mlnx-sn2xxx
 # these are missing opennsl
 #- PLATFORM=as5812t
 #- PLATFORM=as5812x
