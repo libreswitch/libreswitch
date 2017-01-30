@@ -5,7 +5,7 @@ LIC_FILES_CHKSUM = "file://packages/cdp/docs/LICENSE_CDP_BIN;md5=e4111c2d8b944da
 # Point by default to some http server where the file is hosted, even if doesn't exists
 # Using the local file by default causes bitbake to warn againts the inability to find the
 # file during the parsing stage
-SRC_URI += "https://archive.openswitch.net/opennsl/opennsl-${PV}-odp.tar.bz2;name=opennsl"
+SRC_URI += "https://libreswitch.org/opennsl/opennsl-${PV}-odp.tar.bz2;name=opennsl"
 # Use this SRC_URI if you put the tarball on the local download directory
 #SRC_URI += "file://${DL_DIR}/opennsl-${PV}-odp.tar.bz2;name=opennsl"
 
