@@ -11,7 +11,7 @@ OPENNSL_PLATFORM ?= "undefined"
 OPENNSL_PLATFORM_BUILD ?= "unknown"
 GPL_MODULES_DIR ?= "undefined"
 
-SRC_URI = "https://archive.openswitch.net/opennsl/opennsl-${PV}-cdp-${OPENNSL_PLATFORM}-${OPENNSL_PLATFORM_BUILD}.tar.bz2 \
+SRC_URI = "https://libreswitch.org/opennsl/opennsl-${PV}-cdp-${OPENNSL_PLATFORM}-${OPENNSL_PLATFORM_BUILD}.tar.bz2 \
 "
 
 inherit module-base
