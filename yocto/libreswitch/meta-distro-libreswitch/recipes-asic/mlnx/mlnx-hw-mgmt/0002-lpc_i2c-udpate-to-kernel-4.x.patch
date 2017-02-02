@@ -1,0 +1,26 @@
+From 2a70800ccf11b202e03261ee8e5d9394e5dbefbb Mon Sep 17 00:00:00 2001
+From: Vitaliy Ivanov <vitaliyi@interfacemasters.com>
+Date: Thu, 2 Feb 2017 15:53:36 +0200
+Subject: [PATCH 2/2] lpc_i2c: udpate to kernel 4.x.
+
+Signed-off-by: Vitaliy Ivanov <vitaliyi@interfacemasters.com>
+---
+ lpc_i2c.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/lpc_i2c.c b/lpc_i2c.c
+index bce4c89..6bbf4b0 100644
+--- a/lpc_i2c.c
++++ b/lpc_i2c.c
+@@ -843,7 +843,7 @@ static DEVICE_ATTR(timeout, 0644, show_timeout, store_timeout);
+ static DEVICE_ATTR(retr_num, 0644, show_retr_num, store_retr_num);
+ static DEVICE_ATTR(poll_time, 0644, show_poll_time, store_poll_time);
+ static DEVICE_ATTR(block_sz, 0644, show_block_sz, store_block_sz);
+-static DEVICE_ATTR(reset, 0222, NULL, store_reset);
++static DEVICE_ATTR(reset, 0220, NULL, store_reset);
+ 
+ static struct attribute *lpci2c_attributes[] = {
+ 	&dev_attr_dbg_lvl.attr,
+-- 
+2.7.4
+

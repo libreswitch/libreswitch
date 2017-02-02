@@ -1,0 +1,44 @@
+From 5614383091f9244ea7f087f72c80ef1160bec7c0 Mon Sep 17 00:00:00 2001
+From: Vitaliy Ivanov <vitaliyi@interfacemasters.com>
+Date: Thu, 2 Feb 2017 15:52:05 +0200
+Subject: [PATCH 1/2] mlnx-asic-drv: update to kernel 4.x.
+
+Signed-off-by: Vitaliy Ivanov <vitaliyi@interfacemasters.com>
+---
+ mlnx-asic-drv.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/mlnx-asic-drv.c b/mlnx-asic-drv.c
+index 1bfd99e..2acf2cc 100644
+--- a/mlnx-asic-drv.c
++++ b/mlnx-asic-drv.c
+@@ -1944,7 +1944,7 @@ static int cz_set_cur_state(struct thermal_cooling_device *tcdev,
+ 	return 0;
+ }
+ 
+-static int tz_get_temp(struct thermal_zone_device *tzdev, /*int from 4.3 */ unsigned long *temperature)
++static int tz_get_temp(struct thermal_zone_device *tzdev, int *temperature)
+ {
+         struct asic_data *asicdata = (struct asic_data *)tzdev->devdata;
+ 	struct temp_config *temp = NULL;
+@@ -1976,7 +1976,7 @@ static int tz_get_trip_type(struct thermal_zone_device *tzdev,
+ }
+ 
+ static int tz_get_trip_temp(struct thermal_zone_device *tzdev,
+-				int trip, unsigned long *temperature /* int from 4.3 */)
++				int trip, int *temperature)
+ {
+         struct asic_data *asicdata = (struct asic_data *)tzdev->devdata;
+ 
+@@ -2169,7 +2169,7 @@ static int asic_probe(struct i2c_client *client, const struct i2c_device_id *dev
+ 		}
+ 		err = thermal_zone_bind_cooling_device(asicdata->tzdev, 0, asicdata->tcdev,
+ 							THERMAL_NO_LIMIT, THERMAL_NO_LIMIT
+-							/* from 4.2. ,THERMAL_WEIGHT_DEFAULT*/);
++							,THERMAL_WEIGHT_DEFAULT);
+         	if (err)
+ 			goto exit_remove_thermal;
+ 	}
+-- 
+2.7.4
+
