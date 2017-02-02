@@ -1,0 +1,70 @@
+From 159ff41fb0be3619f552abf51c2c5d035eb43961 Mon Sep 17 00:00:00 2001
+From: Vitaliy Ivanov <vitaliyi@interfacemasters.com>
+Date: Thu, 2 Feb 2017 15:59:02 +0200
+Subject: [PATCH 1/2] configure: update to kernel 4.x.
+
+Signed-off-by: Vitaliy Ivanov <vitaliyi@interfacemasters.com>
+---
+ configure            | 3 +++
+ makefile             | 2 +-
+ sx_scripts/configure | 3 +++
+ sx_scripts/makefile  | 2 +-
+ 4 files changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/configure b/configure
+index 590ed73..526ae09 100755
+--- a/configure
++++ b/configure
+@@ -214,6 +214,9 @@ if [ ! -e ${kernel_patching_marker_file} ]; then
+ 		3.16.*)
+ 			apply_backporting_patches "3.10.0"
+                 ;;
++		4.4.*)
++			apply_backporting_patches "3.10.0"
++                ;;
+ 		*)
+ 			echo "Kernel version ${KVERSION} is not supported, supported versions are 2.6.32-EL6, 2.6.32, 3.10.*"
+ 			exit 1
+diff --git a/makefile b/makefile
+index 348056d..0c1940b 100644
+--- a/makefile
++++ b/makefile
+@@ -84,7 +84,7 @@ endif
+ 
+ V ?= 1
+ 
+-ifneq ($(findstring 3.10,$(KVERSION))$(findstring 3.13,$(KVERSION))$(findstring 3.14,$(KVERSION))$(findstring 3.16,$(KVERSION)),)
++ifneq ($(findstring 3.10,$(KVERSION))$(findstring 3.13,$(KVERSION))$(findstring 3.14,$(KVERSION))$(findstring 3.16,$(KVERSION))$(findstring 4.4,$(KVERSION)),)
+ MLNX_LINUX_AUTOCONF_FILE = include/generated/autoconf.h
+ MLNX_LINUX_EXTRA_INCLUDE_FILES = -include $(KSRC)/include/linux/kconfig.h
+ MLNX_LINUX_EXTRA_INCLUDE_FOLDERS = \
+diff --git a/sx_scripts/configure b/sx_scripts/configure
+index 590ed73..526ae09 100755
+--- a/sx_scripts/configure
++++ b/sx_scripts/configure
+@@ -214,6 +214,9 @@ if [ ! -e ${kernel_patching_marker_file} ]; then
+ 		3.16.*)
+ 			apply_backporting_patches "3.10.0"
+                 ;;
++		4.4.*)
++			apply_backporting_patches "3.10.0"
++                ;;
+ 		*)
+ 			echo "Kernel version ${KVERSION} is not supported, supported versions are 2.6.32-EL6, 2.6.32, 3.10.*"
+ 			exit 1
+diff --git a/sx_scripts/makefile b/sx_scripts/makefile
+index ae17b77..2d6eb94 100644
+--- a/sx_scripts/makefile
++++ b/sx_scripts/makefile
+@@ -84,7 +84,7 @@ endif
+ 
+ V ?= 1
+ 
+-ifneq ($(findstring 3.10,$(KVERSION))$(findstring 3.13,$(KVERSION))$(findstring 3.14,$(KVERSION))$(findstring 3.16,$(KVERSION)),)
++ifneq ($(findstring 3.10,$(KVERSION))$(findstring 3.13,$(KVERSION))$(findstring 3.14,$(KVERSION))$(findstring 3.16,$(KVERSION))$(findstring 4.4,$(KVERSION)),)
+ MLNX_LINUX_AUTOCONF_FILE = include/generated/autoconf.h
+ MLNX_LINUX_EXTRA_INCLUDE_FILES = -include include/linux/kconfig.h
+ MLNX_LINUX_EXTRA_INCLUDE_FOLDERS = \
+-- 
+2.7.4
+

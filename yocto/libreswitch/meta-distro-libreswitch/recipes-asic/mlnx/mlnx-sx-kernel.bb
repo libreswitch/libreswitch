@@ -7,6 +7,8 @@ inherit module libreswitch mellanox
 
 SRC_URI = " \
     ${SX_SDK_URI}/mlnx-sx-kernel-${SX_SDK_VERSION}.tar.gz;subdir=mlnx-sx-kernel-${SX_SDK_VERSION} \
+    file://0001-configure-update-to-kernel-4.x.patch \
+    file://0002-sx_netdev_main-update-to-kernel-4.x.patch \
 "
 
 SRC_URI[md5sum] = "d050e52ccc493ee8d23599d9fdfabc05"
