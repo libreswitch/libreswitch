@@ -9,6 +9,8 @@ inherit module systemd libreswitch mellanox
 SRC_URI = " \
     ${MLNX_HW_MGMT_URI}/mlnx-hw-mgmt-${MLNX_HW_MGMT_VERSION}.tar.gz;subdir=mlnx-hw-mgmt-${MLNX_HW_MGMT_VERSION} \
     file://mlnx-bsp.service \
+    file://0001-mlnx-asic-drv-update-to-kernel-4.x.patch \
+    file://0002-lpc_i2c-udpate-to-kernel-4.x.patch \
 "
 
 SRC_URI[md5sum] = "41a7d9c878742a36d57eb47b6044f85d"

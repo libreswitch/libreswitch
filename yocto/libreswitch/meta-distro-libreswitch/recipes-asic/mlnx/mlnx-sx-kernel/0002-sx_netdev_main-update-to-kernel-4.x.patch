@@ -1,0 +1,35 @@
+From 418cdb319c51e4292ebafa400aa1d3df942764c2 Mon Sep 17 00:00:00 2001
+From: Vitaliy Ivanov <vitaliyi@interfacemasters.com>
+Date: Thu, 2 Feb 2017 15:59:40 +0200
+Subject: [PATCH 2/2] sx_netdev_main: update to kernel 4.x.
+
+Signed-off-by: Vitaliy Ivanov <vitaliyi@interfacemasters.com>
+---
+ drivers/net/sx_netdev/sx_netdev_main.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/sx_netdev/sx_netdev_main.c b/drivers/net/sx_netdev/sx_netdev_main.c
+index 1bf5d66..ddd39fe 100644
+--- a/drivers/net/sx_netdev/sx_netdev_main.c
++++ b/drivers/net/sx_netdev/sx_netdev_main.c
+@@ -1103,7 +1103,7 @@ static void  *__sx_netdev_init_one_netdev(struct sx_dev *dev, int swid, int synd
+ 		return NULL;
+ 
+ 	sprintf(name,"swid%d_eth", swid);
+-	netdev = alloc_netdev(sizeof(*net_priv), name, ether_setup);
++	netdev = alloc_netdev(sizeof(*net_priv), name, NET_NAME_UNKNOWN, ether_setup);
+ 	if (!netdev) {
+ 		printk(KERN_ERR PFX  "Net Device struct %s alloc failed, "
+ 			"aborting.\n", name);
+@@ -1154,7 +1154,7 @@ static void  *__sx_netdev_init_one_port_netdev(struct sx_dev *dev, u16 sysport,
+ 		return NULL;
+ 
+ 
+-	netdev = alloc_netdev(sizeof(*net_priv), name, ether_setup);
++	netdev = alloc_netdev(sizeof(*net_priv), name, NET_NAME_UNKNOWN, ether_setup);
+ 	if (!netdev) {
+ 		printk(KERN_ERR PFX  "Net Device struct %s alloc failed, "
+ 			"aborting.\n", name);
+-- 
+2.7.4
+
