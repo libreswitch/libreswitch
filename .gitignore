@@ -13,6 +13,6 @@ nfsroot*
 
 # Exclude layers providing additional functionality ...
 /yocto/*/
-# ... and keep the layers providing basic OpenSwitch functionality
-!/yocto/openswitch/
+# ... and keep the layers providing basic LibreSwitch functionality
+!/yocto/libreswitch/
 !/yocto/poky/
